@@ -1,4 +1,4 @@
-// Pagemarks v16 — app logic
+// Pagemarks v17 — app logic
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-app.js";
 import {
   getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect,
@@ -890,6 +890,7 @@ $("#f-folder-btn").addEventListener("click", async () => {
   if (f === null) return;
   $("#f-folder").value = f;
   syncFolderField();
+  setTimeout(refreshEditSuggest, 0);
 });
 
 // ---------- Bulk actions ----------
@@ -1008,6 +1009,98 @@ $("#bulk-delete").addEventListener("click", async () => {
   await bulkWrite((batch, ref) => batch.delete(ref), (n) => `${n} deleted`);
 });
 
+// ---------- Folder suggestions ----------
+// Built-in matching: looks at where you've filed similar pages (same website, shared words).
+const STOP = new Set("the and for with from your you this that what how are was were www com org net html http https index page pages home official site guide about into their them they have has our out not all can will just more one two new get use using lesson channels youtube".split(" "));
+const words = (s) => (s || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").split(" ").filter((w) => w.length > 2 && !STOP.has(w) && !/^\d+$/.test(w));
+const siteOf = (url) => { const h = hostOf(url); const p = h.split("."); return p.length > 2 ? p.slice(-2).join(".") : h; };
+
+function folderSuggestions(b, max = 2) {
+  const scores = new Map();
+  const add = (f, n) => scores.set(f, (scores.get(f) || 0) + n);
+  const host = hostOf(b.url), site = siteOf(b.url);
+  const mine = new Set(words(b.title + " " + (parseUrl(b.url)?.pathname || "")));
+  const filed = pagemarks.filter((p) => p.folder && p.id !== b.id);
+  // Same website as Pagemarks already filed
+  for (const p of filed) {
+    if (hostOf(p.url) === host) add(p.folder, 4);
+    else if (siteOf(p.url) === site) add(p.folder, 2);
+  }
+  // Words shared with folder names (strong) and with titles already in a folder (weaker)
+  for (const f of allFolderPaths()) {
+    for (const w of words(f)) if (mine.has(w) || [...mine].some((m) => m.startsWith(w) || w.startsWith(m))) add(f, 3);
+  }
+  for (const p of filed) {
+    let shared = 0;
+    for (const w of new Set(words(p.title))) if (mine.has(w)) shared++;
+    if (shared) add(p.folder, Math.min(shared, 3) * 0.75);
+  }
+  return [...scores.entries()]
+    .filter(([, s]) => s >= 2.5)
+    .sort((a, b) => b[1] - a[1] || b[0].split(" / ").length - a[0].split(" / ").length)
+    .slice(0, max)
+    .map(([f]) => f);
+}
+
+// All suggestions for one Pagemark: a loaded one first (may be a new folder), then built-in matches
+function suggestionsFor(b) {
+  const out = [];
+  if (b.suggestedFolder) out.push(b.suggestedFolder);
+  for (const f of folderSuggestions(b)) if (!out.includes(f)) out.push(f);
+  return out.slice(0, 3);
+}
+
+function suggestButton(f, onPick) {
+  const exists = allFolderPaths().includes(f);
+  return el("button", { type: "button", class: "btn suggest-btn" + (exists ? "" : " is-new"), title: exists ? f : "Creates this new folder", onclick: () => onPick(f) },
+    folderIcon(), el("span", { class: "sb-name", text: f }), exists ? null : el("span", { class: "sb-new", text: "new" }));
+}
+
+// Load a suggestions file: { "suggestions": [ { "url": "...", "folder": "A / B" }, ... ] }
+$("#file-suggest").addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const status = $("#suggest-status");
+  try {
+    const data = JSON.parse(await file.text());
+    const list = Array.isArray(data) ? data : data.suggestions || [];
+    const byUrl = new Map(pagemarks.filter((b) => !b.folder).map((b) => [b.normUrl || normalizeUrl(b.url), b]));
+    const updates = [];
+    let missed = 0;
+    for (const s of list) {
+      const b = byUrl.get(normalizeUrl(s.url || ""));
+      const folder = cleanFolder(s.folder || "");
+      if (b && folder) updates.push([b.id, folder]); else missed++;
+    }
+    for (let i = 0; i < updates.length; i += 400) {
+      const batch = writeBatch(db);
+      for (const [id, folder] of updates.slice(i, i + 400)) batch.update(doc(pmCol(), id), { suggestedFolder: folder });
+      await batch.commit();
+    }
+    status.textContent = `Loaded ${plural(updates.length, "suggestion")}` + (missed ? ` (${missed} didn't match a Pagemark with no folder)` : "") + ". Open Tidy up to review them.";
+  } catch (err) {
+    console.error(err);
+    status.textContent = "Couldn't read that file: " + (err.message || err);
+  } finally {
+    e.target.value = "";
+  }
+});
+
+// Suggestion line in the Add / Edit dialog (only while no folder is chosen)
+function refreshEditSuggest() {
+  const line = $("#f-suggest");
+  if ($("#f-folder").value) { line.hidden = true; return; }
+  const u = parseUrl($("#f-url").value);
+  if (!u) { line.hidden = true; return; }
+  const draft = { id: editingId, url: u.href, title: $("#f-title").value, suggestedFolder: editingId ? pagemarks.find((x) => x.id === editingId)?.suggestedFolder : "" };
+  const list = suggestionsFor(draft);
+  if (!list.length) { line.hidden = true; return; }
+  line.replaceChildren(el("span", { class: "muted", text: "Suggested: " }), ...list.map((f) => suggestButton(f, (pick) => { $("#f-folder").value = pick; syncFolderField(); refreshEditSuggest(); })));
+  line.hidden = false;
+}
+$("#f-url").addEventListener("input", () => setTimeout(refreshEditSuggest, 0));
+$("#f-title").addEventListener("input", refreshEditSuggest);
+
 // ---------- Tidy up ----------
 const dlgTidy = $("#dlg-tidy");
 let tidyQueue = [];
@@ -1032,11 +1125,18 @@ function nextTidy() {
     el("div", { class: "bm-meta", text: host + " · saved " + fmtDate(dateOf(b)) + (s !== "pending" ? " · " + LINK_LABEL[s] : "") })
   );
   $("#tidy-controls").hidden = false;
+  // Suggestions first
+  const sugg = suggestionsFor(b);
+  $("#tidy-suggest").hidden = !sugg.length;
+  $("#tidy-suggest-list").replaceChildren(...sugg.map((f) => suggestButton(f, fileTidy)));
+  const remainingSuggested = tidyQueue.filter((id) => pagemarks.find((x) => x.id === id)?.suggestedFolder).length;
+  $("#tidy-accept-all").hidden = remainingSuggested < 2;
+  $("#tidy-accept-all").textContent = `Accept all ${remainingSuggested} suggestions…`;
   // Quick picks: recently used, then biggest folders
   const counts = new Map();
   for (const p of pagemarks) if (p.folder) counts.set(p.folder, (counts.get(p.folder) || 0) + 1);
   const top = [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([f]) => f);
-  const picks = [...new Set([...tidyRecent, ...top])].slice(0, 8);
+  const picks = [...new Set([...tidyRecent, ...top])].filter((f) => !sugg.includes(f)).slice(0, 8);
   $("#tidy-picks").replaceChildren(...picks.map((f) => el("button", { type: "button", class: "chip", text: f, onclick: () => fileTidy(f) })));
 }
 
@@ -1047,7 +1147,7 @@ async function fileTidy(folderRaw) {
   tidyRecent = [folder, ...tidyRecent.filter((f) => f !== folder)].slice(0, 4);
   tidyDone++;
   nextTidy();
-  await updateDoc(doc(pmCol(), id), { folder, updatedAt: serverTimestamp() });
+  await updateDoc(doc(pmCol(), id), { folder, suggestedFolder: null, updatedAt: serverTimestamp() });
 }
 
 $("#btn-tidy").addEventListener("click", () => {
@@ -1068,6 +1168,18 @@ $("#tidy-delete").addEventListener("click", async () => {
   await deleteDoc(doc(pmCol(), id));
 });
 $("#tidy-close").addEventListener("click", () => dlgTidy.close());
+$("#tidy-accept-all").addEventListener("click", async () => {
+  const items = tidyQueue.map((id) => pagemarks.find((x) => x.id === id)).filter((b) => b && b.suggestedFolder);
+  if (!(await ask({ title: `File ${plural(items.length, "Pagemark")} in their suggested folders?`, text: "Any suggested folders that don't exist yet will be created. You can still move things afterwards.", ok: "File them all" }))) return;
+  for (let i = 0; i < items.length; i += 400) {
+    const batch = writeBatch(db);
+    for (const b of items.slice(i, i + 400)) batch.update(doc(pmCol(), b.id), { folder: b.suggestedFolder, suggestedFolder: null, updatedAt: serverTimestamp() });
+    await batch.commit();
+  }
+  tidyDone += items.length;
+  toast(`Filed ${plural(items.length, "Pagemark")}`);
+  nextTidy();
+});
 
 // ---------- Add / edit ----------
 const dlgEdit = $("#dlg-edit");
@@ -1368,7 +1480,7 @@ $("#btn-editmode").classList.toggle("primary", editing);
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "16";
+const APP_VERSION = "17";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {

@@ -572,3 +572,19 @@ body:not(.editing) .sub-row { padding-left: 1.25rem; padding-right: 1.25rem; }
 .ff-change { color: var(--accent); font-size: 0.88rem; }
 .tidy-choose { margin-top: 0.75rem; }
 p.tidy-label { margin: 0 0 0.5rem; }
+
+/* ---------- v17: folder suggestions ---------- */
+.suggest-buttons { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 1rem; }
+.suggest-btn {
+  display: flex; align-items: center; gap: 0.55rem; text-align: left;
+  border-color: #cfe0d6; background: var(--accent-soft); color: var(--accent); font-weight: 700;
+}
+.suggest-btn:hover { background: #d9e9df; border-color: var(--accent); }
+.suggest-btn .sub-icon { width: 22px; height: 22px; background: transparent; }
+.suggest-btn .sub-icon svg { width: 18px; height: 18px; }
+.sb-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sb-new { font-size: 0.75rem; font-weight: 400; padding: 0.05rem 0.5rem; border-radius: 999px; background: var(--warn-bg); color: var(--warn-ink); }
+.suggest-btn.is-new { border-style: dashed; }
+.suggest-line { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; margin: -0.4rem 0 0.95rem; font-size: 0.9rem; }
+.suggest-line .suggest-btn { padding: 0.25rem 0.65rem; font-size: 0.88rem; }
+.tidy-suggest .tidy-label, p.tidy-label { font-weight: 700; font-size: 0.92rem; }

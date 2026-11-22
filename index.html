@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Gentium+Plus:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=16">
+  <link rel="stylesheet" href="styles.css?v=17">
 </head>
 <body>
 
@@ -148,6 +148,8 @@
         </label>
       </div>
 
+      <p id="f-suggest" class="suggest-line" hidden></p>
+
       <label>Notes
         <textarea id="f-notes" rows="3"></textarea>
       </label>
@@ -239,12 +241,17 @@
       <p class="muted" id="tidy-progress"></p>
       <div id="tidy-card" class="tidy-card"></div>
       <div id="tidy-controls">
-        <p class="tidy-label">File it in</p>
+        <div id="tidy-suggest" class="tidy-suggest" hidden>
+          <p class="tidy-label">Suggested</p>
+          <div id="tidy-suggest-list" class="suggest-buttons"></div>
+        </div>
+        <p class="tidy-label">Or file it in</p>
         <div id="tidy-picks" class="tag-cloud"></div>
-        <button type="button" id="tidy-file" class="btn primary tidy-choose">Choose a folder…</button>
+        <button type="button" id="tidy-file" class="btn tidy-choose">Choose a folder…</button>
         <div class="dlg-actions">
           <button type="button" id="tidy-delete" class="btn danger">Delete</button>
           <span class="spacer"></span>
+          <button type="button" id="tidy-accept-all" class="btn" hidden>Accept all suggestions…</button>
           <button type="button" id="tidy-skip" class="btn">Skip for now</button>
         </div>
       </div>
@@ -266,6 +273,13 @@
         <p class="muted">In Chrome or Edge, export your favorites as an HTML file, then choose it here. Each one becomes a Pagemark. Duplicates are skipped.</p>
         <input type="file" id="file-import" accept=".html,.htm,text/html">
         <p id="import-status" class="status"></p>
+      </section>
+
+      <section>
+        <h3>Folder suggestions</h3>
+        <p class="muted">Load a suggestions file (made for you in a chat with Claude). Each Pagemark with no folder gets its suggested folder ready to accept in Tidy up.</p>
+        <input type="file" id="file-suggest" accept=".json,application/json">
+        <p id="suggest-status" class="status"></p>
       </section>
 
       <section>
@@ -300,6 +314,6 @@
 
   <div id="toast" class="toast" hidden></div>
 
-  <script type="module" src="app.js?v=16"></script>
+  <script type="module" src="app.js?v=17"></script>
 </body>
 </html>
