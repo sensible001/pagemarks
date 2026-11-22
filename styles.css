@@ -460,3 +460,26 @@ body.dragging .drop-root::after { content: "  ← drop here for top level"; text
 }
 .folder-dest { width: 100%; font: inherit; font-size: 1rem; padding: 0.3rem; border: 1px solid var(--line); border-radius: 8px; margin-top: 0.3rem; }
 .folder-dest option { padding: 0.25rem 0.4rem; }
+
+/* ---------- v9: calm view, Organize mode, styled confirm ---------- */
+body:not(.editing) .edit-only,
+body:not(.editing) .pick,
+body:not(.editing) .bm-actions,
+body:not(.editing) .fix-row,
+body:not(.editing) .pill { display: none !important; }
+body:not(.editing) .bm { grid-template-columns: 36px 1fr; padding: 1rem 1.25rem; }
+body:not(.editing) .bm[draggable] { cursor: default; }
+body:not(.editing) .bm-list { gap: 0.6rem; }
+body.editing .bm-list { gap: 0.75rem; }
+
+.dlg-confirm { width: min(420px, calc(100vw - 2rem)); }
+.dlg-confirm form { padding: 1.6rem 1.75rem 1.4rem; }
+.dlg-confirm h2 { margin-bottom: 0.5rem; font-size: 1.25rem; }
+.dlg-confirm p { margin: 0 0 0.5rem; color: #4a463f; }
+.dlg-confirm .dlg-actions { margin-top: 1.25rem; }
+.btn.danger-solid { background: var(--danger); border-color: var(--danger); color: #fff; }
+.btn.danger-solid:hover { background: #8e2e22; }
+
+@media (max-width: 760px) {
+  body:not(.editing) .bm { grid-template-columns: 32px 1fr; }
+}

@@ -1,4 +1,4 @@
-// Pagemarks v8 — app logic
+// Pagemarks v9 — app logic
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-app.js";
 import {
   getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect,
@@ -59,6 +59,41 @@ function toast(msg) {
   t.hidden = false;
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => (t.hidden = true), 2600);
+}
+
+// Styled replacement for the browser's confirm()/alert(). Resolves true if OK was clicked.
+function ask({ title, text, ok = "OK", cancel = "Cancel", danger = false }) {
+  const dlg = $("#dlg-confirm");
+  $("#confirm-title").textContent = title;
+  $("#confirm-text").textContent = text || "";
+  $("#confirm-text").hidden = !text;
+  const okBtn = $("#confirm-ok");
+  okBtn.textContent = ok;
+  okBtn.className = "btn " + (danger ? "danger-solid" : "primary");
+  $("#confirm-cancel").textContent = cancel;
+  $("#confirm-cancel").hidden = cancel === null;
+  return new Promise((resolve) => {
+    dlg.returnValue = "cancel";
+    dlg.addEventListener("close", () => resolve(dlg.returnValue === "ok"), { once: true });
+    dlg.showModal();
+    (danger ? $("#confirm-cancel") : okBtn).focus();
+  });
+}
+const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
+// ---------- Organize mode ----------
+let editing = false;
+try { editing = localStorage.getItem("pm-editing") === "1"; } catch { /* ignore */ }
+function setEditing(on) {
+  editing = on;
+  try { localStorage.setItem("pm-editing", on ? "1" : "0"); } catch { /* ignore */ }
+  if (!on) selected.clear();
+  document.body.classList.toggle("editing", on);
+  const b = $("#btn-editmode");
+  b.textContent = on ? "✓ Done" : "Organize";
+  b.classList.toggle("primary", on);
+  if (!on && ["broken", "moved", "unknown"].includes(view.type)) view = { type: "all", value: null };
+  render();
 }
 
 function withScheme(raw) {
@@ -277,7 +312,7 @@ function renderTree(node, depth) {
         toggle,
         el("button", {
           class: "nav-item" + (active ? " active" : ""), title: k.path,
-          draggable: "true", "data-folder": k.path,
+          draggable: editing ? "true" : "false", "data-folder": k.path,
           onclick: () => setView({ type: "folder", value: k.path })
         }, el("span", { class: "label", text: k.name }), el("span", { class: "count", text: String(k.count) }))
       )
@@ -420,7 +455,7 @@ function renderItem(b) {
     el("button", { class: "btn small", text: "Edit", onclick: () => openEdit(b) })
   );
 
-  const li = el("li", { class: "bm" + (selected.has(b.id) ? " picked" : ""), draggable: "true" }, box, fav, body, actions);
+  const li = el("li", { class: "bm" + (selected.has(b.id) ? " picked" : ""), draggable: editing ? "true" : "false" }, box, fav, body, actions);
   li.addEventListener("dragstart", (e) => {
     if (e.target !== li) return;
     const ids = selected.has(b.id) ? [...selected] : [b.id];
@@ -639,8 +674,11 @@ $("#bulk-update").addEventListener("click", async () => {
   const risky = moved.length - safe.length;
   const msg = `Update ${safe.length} link${safe.length === 1 ? "" : "s"} to their new addresses?` +
     (risky ? `\n\n${risky} will be left alone because they now go to a home page or sign-in page, which usually means the page is gone. Check those by hand.` : "");
-  if (!safe.length) { alert(`All ${risky} selected moves go to a home page or sign-in page. Check those by hand.`); return; }
-  if (!confirm(msg)) return;
+  if (!safe.length) {
+    await ask({ title: "Nothing to update", text: `All ${risky} selected pages now go to a home page or sign-in page, which usually means the original is gone. Check those by hand.`, ok: "OK", cancel: null });
+    return;
+  }
+  if (!(await ask({ title: `Update ${plural(safe.length, "link")}?`, text: msg.split("\n\n")[1] || "Each one will point to its new address.", ok: "Update" }))) return;
   for (let i = 0; i < safe.length; i += 400) {
     const batch = writeBatch(db);
     for (const b of safe.slice(i, i + 400)) {
@@ -707,7 +745,8 @@ $("#form-bulk").addEventListener("submit", async (e) => {
 $("#bulk-later").addEventListener("click", () =>
   bulkWrite((batch, ref) => batch.update(ref, { readLater: true, updatedAt: serverTimestamp() }), (n) => `${n} marked Read later`));
 $("#bulk-delete").addEventListener("click", async () => {
-  if (!confirm(`Delete ${selected.size} Pagemarks? This can't be undone.`)) return;
+  const n = selected.size;
+  if (!(await ask({ title: `Delete ${plural(n, "Pagemark")}?`, text: "This can't be undone.", ok: "Delete", danger: true }))) return;
   await bulkWrite((batch, ref) => batch.delete(ref), (n) => `${n} deleted`);
 });
 
@@ -869,7 +908,7 @@ $("#form-edit").addEventListener("submit", async (e) => {
 
 $("#btn-delete").addEventListener("click", async () => {
   if (!editingId) return;
-  if (!confirm("Delete this Pagemark?")) return;
+  if (!(await ask({ title: "Delete this Pagemark?", text: "This can't be undone.", ok: "Delete", danger: true }))) return;
   await deleteDoc(doc(pmCol(), editingId));
   dlgEdit.close();
   toast("Deleted");
@@ -1035,7 +1074,7 @@ function startInvites() {
         el("button", {
           class: "btn small danger", text: "Remove",
           onclick: async () => {
-            if (!confirm(`Remove ${email}? Their saved Pagemarks stay in the database but they can no longer sign in.`)) return;
+            if (!(await ask({ title: `Remove ${email}?`, text: "Their saved Pagemarks stay, but they can no longer sign in.", ok: "Remove", danger: true }))) return;
             await deleteDoc(doc(db, "allowlist", email));
           }
         })
@@ -1057,3 +1096,12 @@ $("#form-invite").addEventListener("submit", async (e) => {
     toast("Could not add. Check the Firestore rules.");
   }
 });
+
+// Organize mode wiring
+$("#btn-editmode").addEventListener("click", () => setEditing(!editing));
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && editing && !document.querySelector("dialog[open]")) setEditing(false);
+});
+document.body.classList.toggle("editing", editing);
+$("#btn-editmode").textContent = editing ? "✓ Done" : "Organize";
+$("#btn-editmode").classList.toggle("primary", editing);
