@@ -628,3 +628,33 @@ p.tidy-label { margin: 0 0 0.5rem; }
   .topbar-main > .btn { padding: 0.42rem 0.7rem; }
   .topbar-main > .icon-btn { padding: 0.42rem 0.6rem; }
 }
+
+/* ---------- v25: equal header buttons, even Settings spacing ---------- */
+.topbar-main > .btn { height: 2.45rem; display: inline-flex; align-items: center; justify-content: center; line-height: 1; }
+.topbar-main > .icon-btn { width: 2.45rem; padding: 0; font-size: 1.05rem; }
+
+/* Settings: every section gets the same space above and below its dividing line */
+.settings > p.muted { margin: 0.6rem 0 0; }
+.settings section { border-top: 1px solid var(--line); margin-top: 1.4rem; padding-top: 1.4rem; }
+.settings section h3 { margin: 0 0 0.6rem; }
+.settings section > :last-child { margin-bottom: 0; }
+.settings section p { margin: 0 0 0.75rem; }
+.settings .status:empty { display: none; }
+.settings .status { margin: 0.6rem 0 0; }
+.settings input[type="file"] { display: block; }
+.settings .howto:last-of-type { border-bottom: 0; padding-bottom: 0; }
+#form-invite { margin: 0; }
+.invite-list { margin: 0.75rem 0 0; }
+.invite-list:empty { display: none; }
+.invite-list li:last-child { border-bottom: 0; padding-bottom: 0; }
+.settings section:last-child p { margin-bottom: 0.75rem; }
+
+@media (max-width: 760px) {
+  .topbar-main > .btn { height: 2.3rem; }
+  .topbar-main > .icon-btn { width: 2.3rem; padding: 0; }
+}
+/* The invite box is a form inside a dialog, so it was picking up the dialog's padding */
+.settings #form-invite { padding: 0; margin: 0; }
+.invite-list li { font-size: 0.92rem; padding: 0.45rem 0; }
+.settings .howto:last-of-type summary { padding-bottom: 0; }
+.settings #form-invite { align-items: stretch; }
