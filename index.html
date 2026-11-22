@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pagemarks</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Gentium+Plus:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Loading -->
+  <section id="screen-loading" class="screen center">
+    <p class="muted">Loading Pagemarks…</p>
+  </section>
+
+  <!-- Sign in -->
+  <section id="screen-signin" class="screen center" hidden>
+    <div class="card welcome">
+      <img src="icon.svg" alt="" class="welcome-icon">
+      <h1>Pagemarks</h1>
+      <p class="muted">Your private Pagemarks, on every device.</p>
+      <button id="btn-signin" class="btn primary large">Sign in with Google</button>
+      <p id="signin-error" class="error" hidden></p>
+    </div>
+  </section>
+
+  <!-- Not invited -->
+  <section id="screen-notinvited" class="screen center" hidden>
+    <div class="card welcome">
+      <h1>Invitation needed</h1>
+      <p>Pagemarks is private. <strong id="notinvited-email"></strong> isn't on the invite list yet.</p>
+      <p class="muted">Ask the owner to add this email, then sign in again.</p>
+      <button id="btn-signout-ni" class="btn">Sign out</button>
+    </div>
+  </section>
+
+  <!-- App -->
+  <section id="screen-app" class="screen" hidden>
+    <header class="topbar">
+      <a class="brand" href="#" id="brand-home">
+        <img src="icon.svg" alt="" width="28" height="28"><span>Pagemarks</span>
+      </a>
+      <div class="search-wrap">
+        <input id="search" type="search" placeholder="Search titles, tags, notes…" autocomplete="off">
+      </div>
+      <button id="btn-add" class="btn primary">+ Add</button>
+      <button id="btn-settings" class="btn icon-btn" title="Settings" aria-label="Settings">⚙</button>
+    </header>
+
+    <div class="layout">
+      <nav class="sidebar" aria-label="Filters">
+        <ul class="nav-list">
+          <li><button class="nav-item" data-view="all">All Pagemarks <span class="count" id="count-all">0</span></button></li>
+          <li><button class="nav-item" data-view="later">Read later <span class="count" id="count-later">0</span></button></li>
+          <li><button class="nav-item" data-view="unfiled">Unfiled <span class="count" id="count-unfiled">0</span></button></li>
+        </ul>
+        <button id="btn-tidy" class="btn tidy-btn" hidden>Tidy up Unfiled (<span id="tidy-count">0</span>)</button>
+        <h3>Link health</h3>
+        <ul class="nav-list">
+          <li><button class="nav-item" data-view="broken"><span class="label"><span class="dot dot-broken"></span>Broken</span> <span class="count" id="count-broken">0</span></button></li>
+          <li><button class="nav-item" data-view="moved"><span class="label"><span class="dot dot-moved"></span>Moved</span> <span class="count" id="count-moved">0</span></button></li>
+          <li><button class="nav-item" data-view="unknown"><span class="label"><span class="dot dot-unknown"></span>Couldn't check</span> <span class="count" id="count-unknown">0</span></button></li>
+        </ul>
+        <p class="muted small-note" id="health-note"></p>
+        <h3>Folders</h3>
+        <ul class="nav-list" id="folder-list"></ul>
+        <h3>Tags</h3>
+        <div class="tag-cloud" id="tag-list"></div>
+      </nav>
+
+      <main class="main">
+        <div class="main-head">
+          <h2 id="view-title">All Pagemarks</h2>
+          <button id="btn-filters" class="btn small filters-btn">Folders &amp; tags</button>
+          <label class="sort">Sort
+            <select id="sort">
+              <option value="new">Newest first</option>
+              <option value="old">Oldest first</option>
+              <option value="az">Title A–Z</option>
+            </select>
+          </label>
+        </div>
+        <div id="bulk-bar" class="bulk-bar">
+          <label class="select-all"><input type="checkbox" id="bulk-all"> <span id="bulk-all-label">Select all</span></label>
+          <strong id="bulk-count" class="bulk-count"></strong>
+          <span class="spacer"></span>
+          <span class="bulk-actions">
+            <button type="button" class="btn small" id="bulk-update" hidden>Update links</button>
+            <button type="button" class="btn small" id="bulk-move" disabled>Move to folder…</button>
+            <button type="button" class="btn small" id="bulk-tag" disabled>Add tag…</button>
+            <button type="button" class="btn small" id="bulk-later" disabled>Read later</button>
+            <button type="button" class="btn small danger" id="bulk-delete" disabled>Delete</button>
+          </span>
+        </div>
+        <ul id="list" class="bm-list"></ul>
+        <div id="empty" class="empty" hidden>
+          <p>No Pagemarks here yet.</p>
+          <p class="muted">Click <strong>+ Add</strong> to save a Pagemark, or import your favorites under ⚙ Settings.</p>
+        </div>
+      </main>
+    </div>
+  </section>
+
+  <!-- Add / edit dialog -->
+  <dialog id="dlg-edit">
+    <form id="form-edit" method="dialog">
+      <h2 id="edit-heading">Add Pagemark</h2>
+
+      <label>Web address
+        <input id="f-url" type="url" required placeholder="https://…" autocomplete="off">
+      </label>
+      <p id="dup-warning" class="warning" hidden></p>
+
+      <label>Title
+        <div class="row">
+          <input id="f-title" type="text" placeholder="Filled in automatically">
+          <button type="button" id="btn-lookup" class="btn small">Look up</button>
+        </div>
+      </label>
+
+      <label>Description
+        <input id="f-desc" type="text">
+      </label>
+
+      <div class="two-col">
+        <label>Folder
+          <input id="f-folder" type="text" list="folder-options" placeholder="e.g. Recipes">
+          <datalist id="folder-options"></datalist>
+        </label>
+        <label>Tags <span class="hint">separate with commas</span>
+          <input id="f-tags" type="text" placeholder="e.g. knee, research">
+        </label>
+      </div>
+
+      <label>Notes
+        <textarea id="f-notes" rows="3"></textarea>
+      </label>
+
+      <label class="check"><input id="f-later" type="checkbox"> Read later</label>
+
+      <div class="dlg-actions">
+        <button type="button" id="btn-delete" class="btn danger" hidden>Delete</button>
+        <span class="spacer"></span>
+        <button type="button" id="btn-cancel" class="btn">Cancel</button>
+        <button type="submit" id="btn-save" class="btn primary">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Bulk dialog -->
+  <dialog id="dlg-bulk">
+    <form id="form-bulk" method="dialog">
+      <h2 id="bulk-heading">Move to folder</h2>
+      <label><span id="bulk-label">Folder</span>
+        <input id="bulk-input" type="text" autocomplete="off">
+      </label>
+      <div class="dlg-actions">
+        <span class="spacer"></span>
+        <button type="button" id="bulk-cancel" class="btn">Cancel</button>
+        <button type="submit" class="btn primary">Apply</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Tidy up dialog -->
+  <dialog id="dlg-tidy">
+    <div class="settings">
+      <div class="dlg-title-row">
+        <h2>Tidy up</h2>
+        <button type="button" class="btn icon-btn" id="tidy-close" aria-label="Close">✕</button>
+      </div>
+      <p class="muted" id="tidy-progress"></p>
+      <div id="tidy-card" class="tidy-card"></div>
+      <div id="tidy-controls">
+        <label class="tidy-label">File in folder
+          <div class="row">
+            <input id="tidy-folder" type="text" list="folder-options" placeholder="Type or pick a folder" autocomplete="off">
+            <button type="button" id="tidy-file" class="btn primary">File it</button>
+          </div>
+        </label>
+        <div id="tidy-picks" class="tag-cloud"></div>
+        <div class="dlg-actions">
+          <button type="button" id="tidy-delete" class="btn danger">Delete</button>
+          <span class="spacer"></span>
+          <button type="button" id="tidy-skip" class="btn">Skip for now</button>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Settings dialog -->
+  <dialog id="dlg-settings">
+    <div class="settings">
+      <div class="dlg-title-row">
+        <h2>Settings</h2>
+        <button type="button" class="btn icon-btn" id="btn-close-settings" aria-label="Close">✕</button>
+      </div>
+
+      <p class="muted">Signed in as <strong id="me-email"></strong></p>
+
+      <section>
+        <h3>Import favorites</h3>
+        <p class="muted">In Chrome or Edge, export your favorites as an HTML file, then choose it here. Each one becomes a Pagemark. Duplicates are skipped.</p>
+        <input type="file" id="file-import" accept=".html,.htm,text/html">
+        <p id="import-status" class="status"></p>
+      </section>
+
+      <section>
+        <h3>Export</h3>
+        <p class="muted">Download everything. The HTML file can be imported back into any browser.</p>
+        <div class="row">
+          <button type="button" class="btn" id="btn-export-html">Download HTML</button>
+          <button type="button" class="btn" id="btn-export-json">Download JSON</button>
+        </div>
+      </section>
+
+      <section id="invite-section" hidden>
+        <h3>Invite list</h3>
+        <p class="muted">People must sign in with this exact Google email.</p>
+        <form id="form-invite" class="row">
+          <input type="email" id="invite-email" placeholder="name@gmail.com" required>
+          <button type="submit" class="btn primary">Invite</button>
+        </form>
+        <ul id="invite-list" class="invite-list"></ul>
+      </section>
+
+      <section>
+        <button type="button" class="btn" id="btn-signout">Sign out</button>
+      </section>
+    </div>
+  </dialog>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

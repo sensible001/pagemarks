@@ -1,0 +1,894 @@
+// Pagemarks v7 — app logic
+import { initializeApp } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-app.js";
+import {
+  getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect,
+  onAuthStateChanged, signOut
+} from "https://www.gstatic.com/firebasejs/13.4.0/firebase-auth.js";
+import {
+  initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
+  collection, doc, onSnapshot, setDoc, updateDoc, deleteDoc, getDoc,
+  writeBatch, serverTimestamp, Timestamp, getDocsFromServer, query, limit
+} from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
+import { firebaseConfig } from "./config.js";
+
+// ---------- Firebase ----------
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+let db;
+try {
+  db = initializeFirestore(app, {
+    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+  });
+} catch {
+  db = initializeFirestore(app, {});
+}
+
+// ---------- State ----------
+let user = null;
+let isAdmin = false;
+let pagemarks = [];          // [{id, ...data}]
+let unsubPagemarks = null;
+let unsubInvites = null;
+let view = { type: "all", value: null };   // all | later | unfiled | folder | tag | broken | moved | unknown
+let editingId = null;
+
+// ---------- Helpers ----------
+const $ = (sel) => document.querySelector(sel);
+const el = (tag, attrs = {}, ...children) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "class") n.className = v;
+    else if (k === "text") n.textContent = v;
+    else if (k.startsWith("on")) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v);
+  }
+  for (const c of children) if (c != null) n.append(c);
+  return n;
+};
+
+function showScreen(name) {
+  for (const s of ["loading", "signin", "notinvited", "app"]) {
+    $(`#screen-${s}`).hidden = s !== name;
+  }
+}
+
+let toastTimer;
+function toast(msg) {
+  const t = $("#toast");
+  t.textContent = msg;
+  t.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => (t.hidden = true), 2600);
+}
+
+function withScheme(raw) {
+  const s = raw.trim();
+  if (!s) return "";
+  return /^[a-z][a-z0-9+.-]*:/i.test(s) ? s : "https://" + s;
+}
+
+function parseUrl(raw) {
+  try {
+    const u = new URL(withScheme(raw));
+    if (u.protocol !== "http:" && u.protocol !== "https:") return null;
+    return u;
+  } catch { return null; }
+}
+
+// Used for duplicate detection: ignores http/https, www., trailing slash, #hash and tracking codes.
+function normalizeUrl(raw) {
+  const u = parseUrl(raw);
+  if (!u) return (raw || "").trim().toLowerCase();
+  const host = u.hostname.toLowerCase().replace(/^www\./, "");
+  const params = [...u.searchParams.entries()]
+    .filter(([k]) => !/^(utm_|fbclid$|gclid$|mc_cid$|mc_eid$|ref$)/i.test(k))
+    .sort(([a], [b]) => a.localeCompare(b));
+  const qs = params.length ? "?" + new URLSearchParams(params).toString() : "";
+  let path = u.pathname.replace(/\/+$/, "");
+  return host + (u.port ? ":" + u.port : "") + path + qs;
+}
+
+function hostOf(url) {
+  const u = parseUrl(url);
+  return u ? u.hostname.replace(/^www\./, "") : "";
+}
+
+function parseTags(s) {
+  return [...new Set(
+    (s || "").split(",").map((t) => t.trim().toLowerCase()).filter(Boolean)
+  )];
+}
+
+function cleanFolder(s) {
+  return (s || "").split("/").map((p) => p.trim()).filter(Boolean).join(" / ");
+}
+
+function dateOf(b) {
+  const c = b.createdAt;
+  if (c && typeof c.toDate === "function") return c.toDate();
+  return new Date();
+}
+
+function fmtDate(d) {
+  return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+}
+
+function pmCol() { return collection(db, "users", user.uid, "pagemarks"); }
+
+// Free title lookup (microlink.io). Falls back quietly if it fails or hits its daily limit.
+async function lookupPage(url) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 7000);
+  try {
+    const r = await fetch("https://api.microlink.io/?url=" + encodeURIComponent(url), { signal: ctrl.signal });
+    const j = await r.json();
+    if (j.status === "success" && j.data) {
+      return { title: j.data.title || "", description: j.data.description || "" };
+    }
+  } catch { /* ignore */ }
+  finally { clearTimeout(timer); }
+  return null;
+}
+
+// ---------- Auth ----------
+$("#btn-signin").addEventListener("click", async () => {
+  $("#signin-error").hidden = true;
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: "select_account" });
+  try {
+    await signInWithPopup(auth, provider);
+  } catch (e) {
+    if (e.code === "auth/popup-blocked" || e.code === "auth/operation-not-supported-in-this-environment") {
+      await signInWithRedirect(auth, provider);
+    } else if (e.code !== "auth/popup-closed-by-user" && e.code !== "auth/cancelled-popup-request") {
+      $("#signin-error").textContent = "Sign-in failed: " + (e.message || e.code);
+      $("#signin-error").hidden = false;
+    }
+  }
+});
+
+const doSignOut = () => signOut(auth);
+$("#btn-signout").addEventListener("click", () => { $("#dlg-settings").close(); doSignOut(); });
+$("#btn-signout-ni").addEventListener("click", doSignOut);
+
+onAuthStateChanged(auth, async (u) => {
+  if (unsubPagemarks) { unsubPagemarks(); unsubPagemarks = null; }
+  if (unsubInvites) { unsubInvites(); unsubInvites = null; }
+  user = u;
+  pagemarks = [];
+  if (!u) { showScreen("signin"); return; }
+
+  showScreen("loading");
+  const email = (u.email || "").toLowerCase();
+  // Only the owner is allowed to list the invite list, so a successful read means "owner".
+  try {
+    await getDocsFromServer(query(collection(db, "allowlist"), limit(1)));
+    isAdmin = true;
+  } catch { isAdmin = false; }
+
+  let invited = isAdmin;
+  if (!invited) {
+    try {
+      const snap = await getDoc(doc(db, "allowlist", email));
+      invited = snap.exists();
+    } catch { invited = false; }
+  }
+  if (!invited) {
+    $("#notinvited-email").textContent = u.email;
+    showScreen("notinvited");
+    return;
+  }
+
+  $("#me-email").textContent = u.email;
+  $("#invite-section").hidden = !isAdmin;
+  showScreen("app");
+  startPagemarks();
+  if (isAdmin) startInvites();
+});
+
+// ---------- Live data ----------
+function startPagemarks() {
+  unsubPagemarks = onSnapshot(pmCol(), (snap) => {
+    pagemarks = snap.docs.map((d) => ({ id: d.id, ...d.data({ serverTimestamps: "estimate" }) }));
+    render();
+  }, (err) => {
+    console.error(err);
+    toast("Could not load Pagemarks. Check the Firestore rules.");
+  });
+}
+
+// ---------- Rendering ----------
+const LINK_LABEL = { ok: "Working", moved: "Moved", broken: "Broken", unknown: "Couldn't check" };
+const selected = new Set();
+let expanded = new Set();
+try { expanded = new Set(JSON.parse(localStorage.getItem("pm-expanded") || "[]")); } catch { /* ignore */ }
+const saveExpanded = () => { try { localStorage.setItem("pm-expanded", JSON.stringify([...expanded])); } catch { /* ignore */ } };
+
+const linkStatus = (b) => (b.link && b.link.status) || "pending";
+
+function filtered() {
+  let list = pagemarks;
+  if (view.type === "later") list = list.filter((b) => b.readLater);
+  else if (view.type === "unfiled") list = list.filter((b) => !b.folder);
+  else if (view.type === "folder") list = list.filter((b) => b.folder === view.value || (b.folder || "").startsWith(view.value + " / "));
+  else if (view.type === "tag") list = list.filter((b) => (b.tags || []).includes(view.value));
+  else if (["broken", "moved", "unknown"].includes(view.type)) list = list.filter((b) => linkStatus(b) === view.type);
+
+  const terms = $("#search").value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (terms.length) {
+    list = list.filter((b) => {
+      const hay = [b.title, b.url, b.description, b.notes, b.folder, ...(b.tags || [])]
+        .join(" ").toLowerCase();
+      return terms.every((t) => hay.includes(t));
+    });
+  }
+
+  const sort = $("#sort").value;
+  list = [...list];
+  if (sort === "az") list.sort((a, b) => (a.title || a.url).localeCompare(b.title || b.url, undefined, { sensitivity: "base" }));
+  else if (sort === "old") list.sort((a, b) => dateOf(a) - dateOf(b));
+  else list.sort((a, b) => dateOf(b) - dateOf(a));
+  return list;
+}
+
+function viewTitle() {
+  if (view.type === "later") return "Read later";
+  if (view.type === "unfiled") return "Unfiled";
+  if (view.type === "folder") return view.value;
+  if (view.type === "tag") return "Tag: " + view.value;
+  if (view.type === "broken") return "Broken links";
+  if (view.type === "moved") return "Moved pages";
+  if (view.type === "unknown") return "Couldn't check";
+  return "All Pagemarks";
+}
+
+// Build a nested folder tree with counts that include subfolders.
+function buildTree() {
+  const root = { children: new Map(), count: 0 };
+  for (const b of pagemarks) {
+    if (!b.folder) continue;
+    let node = root;
+    let path = "";
+    for (const part of b.folder.split(" / ")) {
+      path = path ? path + " / " + part : part;
+      if (!node.children.has(part)) node.children.set(part, { name: part, path, children: new Map(), count: 0 });
+      node = node.children.get(part);
+      node.count++;
+    }
+  }
+  return root;
+}
+
+function renderTree(node, depth) {
+  const items = [];
+  const kids = [...node.children.values()].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+  for (const k of kids) {
+    const hasKids = k.children.size > 0;
+    const open = expanded.has(k.path);
+    const active = view.type === "folder" && view.value === k.path;
+    const toggle = hasKids
+      ? el("button", {
+          class: "twisty", "aria-label": open ? "Collapse" : "Expand",
+          onclick: (e) => { e.stopPropagation(); open ? expanded.delete(k.path) : expanded.add(k.path); saveExpanded(); render(); }
+        }, open ? "▾" : "▸")
+      : el("span", { class: "twisty-space" });
+    const li = el("li", {},
+      el("div", { class: "tree-row", style: `padding-left:${depth * 14}px` },
+        toggle,
+        el("button", {
+          class: "nav-item" + (active ? " active" : ""), title: k.path,
+          onclick: () => setView({ type: "folder", value: k.path })
+        }, el("span", { class: "label", text: k.name }), el("span", { class: "count", text: String(k.count) }))
+      )
+    );
+    items.push(li);
+    if (hasKids && open) items.push(...renderTree(k, depth + 1));
+  }
+  return items;
+}
+
+function render() {
+  // Drop selections that no longer exist
+  const ids = new Set(pagemarks.map((b) => b.id));
+  for (const id of [...selected]) if (!ids.has(id)) selected.delete(id);
+
+  // Counts
+  const count = (fn) => pagemarks.filter(fn).length;
+  $("#count-all").textContent = pagemarks.length;
+  $("#count-later").textContent = count((b) => b.readLater);
+  const unfiled = count((b) => !b.folder);
+  $("#count-unfiled").textContent = unfiled;
+  $("#tidy-count").textContent = unfiled;
+  $("#btn-tidy").hidden = unfiled === 0;
+  for (const s of ["broken", "moved", "unknown"]) $(`#count-${s}`).textContent = count((b) => linkStatus(b) === s);
+  const checked = count((b) => linkStatus(b) !== "pending");
+  $("#health-note").textContent = checked ? "" : "Links are checked every night.";
+
+  // Sidebar nav state
+  document.querySelectorAll(".nav-item[data-view]").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.view === view.type);
+  });
+
+  // Folder tree
+  const tree = buildTree();
+  const fl = $("#folder-list");
+  fl.replaceChildren(...renderTree(tree, 0));
+  if (!tree.children.size) fl.append(el("li", { class: "muted", text: "None yet" }));
+  const allFolders = [...new Set(pagemarks.map((b) => b.folder).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  const opts = () => allFolders.map((f) => el("option", { value: f }));
+  $("#folder-options").replaceChildren(...opts());
+
+  // Tags
+  const tagCounts = new Map();
+  for (const b of pagemarks) for (const t of b.tags || []) tagCounts.set(t, (tagCounts.get(t) || 0) + 1);
+  const tags = [...tagCounts.keys()].sort((a, b) => a.localeCompare(b));
+  const tl = $("#tag-list");
+  tl.replaceChildren(...tags.map((t) => el("button", {
+    class: "chip" + (view.type === "tag" && view.value === t ? " active" : ""),
+    onclick: () => setView({ type: "tag", value: t }),
+    text: `${t} (${tagCounts.get(t)})`
+  })));
+  if (!tags.length) tl.append(el("span", { class: "muted", text: "None yet" }));
+
+  // List
+  $("#view-title").textContent = viewTitle();
+  const items = filtered();
+  $("#list").replaceChildren(...items.map(renderItem));
+  $("#empty").hidden = items.length > 0;
+  renderBulkBar(items);
+}
+
+function linkBadge(b) {
+  const s = linkStatus(b);
+  if (s === "pending") return el("span", { class: "dot dot-pending", title: "Not checked yet" });
+  const when = b.link.checkedAt && b.link.checkedAt.toDate ? " · checked " + fmtDate(b.link.checkedAt.toDate()) : "";
+  const why = b.link.reason ? ` (${b.link.reason})` : "";
+  return el("span", { class: `dot dot-${s}`, title: LINK_LABEL[s] + why + when });
+}
+
+function renderItem(b) {
+  const host = hostOf(b.url);
+  const safeHref = parseUrl(b.url) ? parseUrl(b.url).href : "#";
+  const s = linkStatus(b);
+
+  const box = el("input", { type: "checkbox", class: "pick", "aria-label": "Select" });
+  box.checked = selected.has(b.id);
+  box.addEventListener("change", () => { box.checked ? selected.add(b.id) : selected.delete(b.id); render(); });
+
+  const fav = el("div", { class: "fav" });
+  if (host) {
+    const img = el("img", { alt: "", loading: "lazy", src: `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=64` });
+    img.addEventListener("error", () => { fav.textContent = host[0].toUpperCase(); });
+    fav.append(img);
+  } else fav.textContent = "?";
+
+  const title = el("a", { class: "bm-title", href: safeHref, target: "_blank", rel: "noopener noreferrer", text: b.title || host || b.url });
+  const titleLine = el("div", { class: "title-line" }, linkBadge(b), title);
+  if (s === "broken") titleLine.append(el("span", { class: "pill pill-broken", text: "Broken" }));
+  if (s === "moved") titleLine.append(el("span", { class: "pill pill-moved", text: "Moved" }));
+  if (b.readLater) titleLine.append(el("span", { class: "later-badge", text: "Read later" }));
+
+  const meta = el("div", { class: "bm-meta" });
+  meta.append(host + " · " + fmtDate(dateOf(b)));
+  if (b.folder) {
+    meta.append(" · ");
+    meta.append(el("span", { class: "folder-label", text: b.folder }));
+  }
+
+  const body = el("div", { class: "bm-body" }, titleLine, meta);
+
+  if (s === "broken") {
+    const fix = el("div", { class: "fix-row" }, el("span", { text: "This page no longer loads." }));
+    if (b.link.archiveUrl) fix.append(" ", el("a", { href: b.link.archiveUrl, target: "_blank", rel: "noopener noreferrer", text: "Open the archived copy" }));
+    else fix.append(" ", el("a", { href: "https://web.archive.org/web/*/" + b.url, target: "_blank", rel: "noopener noreferrer", text: "Search the Internet Archive" }));
+    body.append(fix);
+  }
+  if (s === "moved" && b.link.finalUrl) {
+    if (suspiciousMove(b.url, b.link.finalUrl)) body.append(el("div", { class: "fix-row warn-text", text: "Goes to a home or sign-in page, so the original may be gone." }));
+    body.append(el("div", { class: "fix-row" },
+      el("span", { text: "Now goes to " }),
+      el("span", { class: "mono", text: hostOf(b.link.finalUrl) + (parseUrl(b.link.finalUrl)?.pathname || "") }),
+      " ",
+      el("button", { class: "btn small", text: "Update link", onclick: () => updateLink(b) })
+    ));
+  }
+
+  if (b.description) body.append(el("p", { class: "bm-desc", text: b.description }));
+  if (b.notes) body.append(el("p", { class: "bm-notes", text: b.notes }));
+  if ((b.tags || []).length) {
+    body.append(el("div", { class: "bm-tags" },
+      ...b.tags.map((t) => el("button", { class: "chip", text: t, onclick: () => setView({ type: "tag", value: t }) }))));
+  }
+
+  const actions = el("div", { class: "bm-actions" },
+    el("button", {
+      class: "btn small",
+      title: b.readLater ? "Mark as read" : "Read later",
+      text: b.readLater ? "✓ Read" : "Later",
+      onclick: () => updateDoc(doc(pmCol(), b.id), { readLater: !b.readLater, updatedAt: serverTimestamp() })
+    }),
+    el("button", { class: "btn small", text: "Edit", onclick: () => openEdit(b) })
+  );
+
+  return el("li", { class: "bm" + (selected.has(b.id) ? " picked" : "") }, box, fav, body, actions);
+}
+
+async function updateLink(b) {
+  const u = parseUrl(b.link.finalUrl);
+  if (!u) return;
+  await updateDoc(doc(pmCol(), b.id), {
+    url: u.href, normUrl: normalizeUrl(u.href),
+    link: { ...b.link, status: "ok", finalUrl: "", reason: "", fails: 0 },
+    updatedAt: serverTimestamp()
+  });
+  toast("Link updated");
+}
+
+function setView(v) {
+  view = v;
+  selected.clear();
+  document.querySelector(".sidebar").classList.remove("open");
+  render();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+document.querySelectorAll(".nav-item[data-view]").forEach((btn) => {
+  btn.addEventListener("click", () => setView({ type: btn.dataset.view, value: null }));
+});
+$("#brand-home").addEventListener("click", (e) => { e.preventDefault(); $("#search").value = ""; setView({ type: "all", value: null }); });
+$("#search").addEventListener("input", () => { selected.clear(); render(); });
+$("#btn-filters").addEventListener("click", () => document.querySelector(".sidebar").classList.toggle("open"));
+$("#sort").addEventListener("change", render);
+
+// ---------- Bulk actions ----------
+function renderBulkBar(shown) {
+  $("#bulk-bar").hidden = shown.length === 0;
+  const picked = shown.filter((b) => selected.has(b.id)).length;
+  const box = $("#bulk-all");
+  box.checked = picked > 0 && picked === shown.length;
+  box.indeterminate = picked > 0 && picked < shown.length;
+  $("#bulk-all-label").textContent = `Select all ${shown.length}`;
+  $("#bulk-count").textContent = selected.size ? `${selected.size} selected` : "Tick boxes to move, tag or delete several at once";
+  $("#bulk-count").classList.toggle("hint-text", !selected.size);
+  $("#bulk-bar").classList.toggle("active", selected.size > 0);
+  for (const id of ["bulk-move", "bulk-tag", "bulk-later", "bulk-delete"]) $("#" + id).disabled = selected.size === 0;
+  const movedPicked = pagemarks.filter((b) => selected.has(b.id) && linkStatus(b) === "moved" && b.link.finalUrl).length;
+  const upd = $("#bulk-update");
+  upd.hidden = !(movedPicked > 0 || view.type === "moved");
+  upd.disabled = movedPicked === 0;
+  upd.textContent = movedPicked ? `Update ${movedPicked} link${movedPicked === 1 ? "" : "s"}` : "Update links";
+}
+
+// A redirect to a site's home page or a sign-in page usually means the original page is gone.
+function suspiciousMove(oldUrl, newUrl) {
+  const o = parseUrl(oldUrl), n = parseUrl(newUrl);
+  if (!o || !n) return true;
+  const oPath = o.pathname.replace(/\/+$/, ""), nPath = n.pathname.replace(/\/+$/, "");
+  if (oPath && !nPath) return true;
+  return /(^|[\/._-])(log-?in|sign-?in|signin|auth|sso|account\/login|session|404|not-?found|error)([\/._?-]|$)/i.test(n.pathname + n.search);
+}
+
+$("#bulk-update").addEventListener("click", async () => {
+  const moved = pagemarks.filter((b) => selected.has(b.id) && linkStatus(b) === "moved" && b.link.finalUrl);
+  const safe = moved.filter((b) => !suspiciousMove(b.url, b.link.finalUrl));
+  const risky = moved.length - safe.length;
+  const msg = `Update ${safe.length} link${safe.length === 1 ? "" : "s"} to their new addresses?` +
+    (risky ? `\n\n${risky} will be left alone because they now go to a home page or sign-in page, which usually means the page is gone. Check those by hand.` : "");
+  if (!safe.length) { alert(`All ${risky} selected moves go to a home page or sign-in page. Check those by hand.`); return; }
+  if (!confirm(msg)) return;
+  for (let i = 0; i < safe.length; i += 400) {
+    const batch = writeBatch(db);
+    for (const b of safe.slice(i, i + 400)) {
+      const u = parseUrl(b.link.finalUrl);
+      batch.update(doc(pmCol(), b.id), {
+        url: u.href, normUrl: normalizeUrl(u.href),
+        link: { ...b.link, status: "ok", finalUrl: "", reason: "", fails: 0 },
+        updatedAt: serverTimestamp()
+      });
+    }
+    await batch.commit();
+  }
+  for (const b of safe) selected.delete(b.id);
+  toast(`${safe.length} link${safe.length === 1 ? "" : "s"} updated` + (risky ? ` · ${risky} left to check` : ""));
+});
+
+$("#bulk-all").addEventListener("change", () => {
+  const shown = filtered();
+  const allShown = shown.length > 0 && shown.every((b) => selected.has(b.id));
+  if (allShown) selected.clear(); else shown.forEach((b) => selected.add(b.id));
+  render();
+});
+
+async function bulkWrite(fn, doneMsg) {
+  const ids = [...selected];
+  for (let i = 0; i < ids.length; i += 400) {
+    const batch = writeBatch(db);
+    for (const id of ids.slice(i, i + 400)) fn(batch, doc(pmCol(), id), pagemarks.find((b) => b.id === id));
+    await batch.commit();
+  }
+  selected.clear();
+  toast(doneMsg(ids.length));
+}
+
+const dlgBulk = $("#dlg-bulk");
+let bulkMode = null;
+function openBulk(mode) {
+  bulkMode = mode;
+  $("#bulk-heading").textContent = mode === "move" ? `Move ${selected.size} to folder` : `Add a tag to ${selected.size}`;
+  $("#bulk-label").textContent = mode === "move" ? "Folder (leave empty for Unfiled)" : "Tag";
+  $("#bulk-input").value = "";
+  $("#bulk-input").setAttribute("list", mode === "move" ? "folder-options" : "");
+  dlgBulk.showModal();
+  $("#bulk-input").focus();
+}
+$("#bulk-move").addEventListener("click", () => openBulk("move"));
+$("#bulk-tag").addEventListener("click", () => openBulk("tag"));
+$("#bulk-cancel").addEventListener("click", () => dlgBulk.close());
+$("#form-bulk").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const val = $("#bulk-input").value;
+  dlgBulk.close();
+  if (bulkMode === "move") {
+    const folder = cleanFolder(val);
+    await bulkWrite((batch, ref) => batch.update(ref, { folder, updatedAt: serverTimestamp() }),
+      (n) => `${n} moved to ${folder || "Unfiled"}`);
+  } else {
+    const newTags = parseTags(val);
+    if (!newTags.length) return;
+    await bulkWrite((batch, ref, b) => batch.update(ref, { tags: [...new Set([...(b?.tags || []), ...newTags])], updatedAt: serverTimestamp() }),
+      (n) => `Tagged ${n}`);
+  }
+});
+$("#bulk-later").addEventListener("click", () =>
+  bulkWrite((batch, ref) => batch.update(ref, { readLater: true, updatedAt: serverTimestamp() }), (n) => `${n} marked Read later`));
+$("#bulk-delete").addEventListener("click", async () => {
+  if (!confirm(`Delete ${selected.size} Pagemarks? This can't be undone.`)) return;
+  await bulkWrite((batch, ref) => batch.delete(ref), (n) => `${n} deleted`);
+});
+
+// ---------- Tidy up ----------
+const dlgTidy = $("#dlg-tidy");
+let tidyQueue = [];
+let tidyDone = 0;
+let tidyRecent = [];
+
+function nextTidy() {
+  const ids = new Set(pagemarks.filter((b) => !b.folder).map((b) => b.id));
+  tidyQueue = tidyQueue.filter((id) => ids.has(id));
+  if (!tidyQueue.length) {
+    $("#tidy-card").replaceChildren(el("p", { class: "tidy-finished", text: "All tidy. Nothing left in Unfiled." }));
+    $("#tidy-controls").hidden = true;
+    return;
+  }
+  const b = pagemarks.find((x) => x.id === tidyQueue[0]);
+  const host = hostOf(b.url);
+  const s = linkStatus(b);
+  $("#tidy-progress").textContent = `${tidyDone} tidied · ${tidyQueue.length} to go`;
+  $("#tidy-card").replaceChildren(
+    el("div", { class: "title-line" }, linkBadge(b),
+      el("a", { class: "bm-title", href: parseUrl(b.url)?.href || "#", target: "_blank", rel: "noopener noreferrer", text: b.title || host })),
+    el("div", { class: "bm-meta", text: host + " · saved " + fmtDate(dateOf(b)) + (s !== "pending" ? " · " + LINK_LABEL[s] : "") })
+  );
+  $("#tidy-controls").hidden = false;
+  $("#tidy-folder").value = "";
+  // Quick picks: recently used, then biggest folders
+  const counts = new Map();
+  for (const p of pagemarks) if (p.folder) counts.set(p.folder, (counts.get(p.folder) || 0) + 1);
+  const top = [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([f]) => f);
+  const picks = [...new Set([...tidyRecent, ...top])].slice(0, 8);
+  $("#tidy-picks").replaceChildren(...picks.map((f) => el("button", { type: "button", class: "chip", text: f, onclick: () => fileTidy(f) })));
+}
+
+async function fileTidy(folderRaw) {
+  const folder = cleanFolder(folderRaw);
+  if (!folder) { $("#tidy-folder").focus(); return; }
+  const id = tidyQueue.shift();
+  tidyRecent = [folder, ...tidyRecent.filter((f) => f !== folder)].slice(0, 4);
+  tidyDone++;
+  nextTidy();
+  await updateDoc(doc(pmCol(), id), { folder, updatedAt: serverTimestamp() });
+}
+
+$("#btn-tidy").addEventListener("click", () => {
+  tidyQueue = pagemarks.filter((b) => !b.folder).sort((a, b) => dateOf(b) - dateOf(a)).map((b) => b.id);
+  tidyDone = 0;
+  dlgTidy.showModal();
+  nextTidy();
+});
+$("#tidy-file").addEventListener("click", () => fileTidy($("#tidy-folder").value));
+$("#tidy-folder").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); fileTidy($("#tidy-folder").value); } });
+$("#tidy-skip").addEventListener("click", () => { tidyQueue.push(tidyQueue.shift()); nextTidy(); });
+$("#tidy-delete").addEventListener("click", async () => {
+  const id = tidyQueue.shift();
+  tidyDone++;
+  nextTidy();
+  await deleteDoc(doc(pmCol(), id));
+});
+$("#tidy-close").addEventListener("click", () => dlgTidy.close());
+
+// ---------- Add / edit ----------
+const dlgEdit = $("#dlg-edit");
+
+function openEdit(b = null) {
+  editingId = b ? b.id : null;
+  $("#edit-heading").textContent = b ? "Edit Pagemark" : "Add Pagemark";
+  $("#f-url").value = b ? b.url : "";
+  $("#f-title").value = b ? b.title || "" : "";
+  $("#f-desc").value = b ? b.description || "" : "";
+  $("#f-folder").value = b ? b.folder || "" : (view.type === "folder" ? view.value : "");
+  $("#f-tags").value = b ? (b.tags || []).join(", ") : (view.type === "tag" ? view.value : "");
+  $("#f-notes").value = b ? b.notes || "" : "";
+  $("#f-later").checked = b ? !!b.readLater : view.type === "later";
+  $("#btn-delete").hidden = !b;
+  $("#dup-warning").hidden = true;
+  dlgEdit.showModal();
+  if (!b) $("#f-url").focus();
+}
+
+$("#btn-add").addEventListener("click", () => openEdit());
+$("#btn-cancel").addEventListener("click", () => dlgEdit.close());
+
+function checkDuplicate() {
+  const n = normalizeUrl($("#f-url").value);
+  const w = $("#dup-warning");
+  const dup = n && pagemarks.find((b) => b.id !== editingId && (b.normUrl || normalizeUrl(b.url)) === n);
+  if (!dup) { w.hidden = true; return null; }
+  w.replaceChildren(
+    `You already saved this on ${fmtDate(dateOf(dup))}` + (dup.folder ? ` in “${dup.folder}”` : "") + ". ",
+    el("button", { type: "button", text: "Open the saved one", onclick: () => openEdit(dup) })
+  );
+  w.hidden = false;
+  return dup;
+}
+
+let lookupBusy = false;
+async function doLookup(force = false) {
+  const u = parseUrl($("#f-url").value);
+  if (!u || lookupBusy) return;
+  if (!force && $("#f-title").value.trim()) return;
+  lookupBusy = true;
+  const btn = $("#btn-lookup");
+  btn.textContent = "Looking…";
+  btn.disabled = true;
+  const info = await lookupPage(u.href);
+  if (info) {
+    if (info.title && (force || !$("#f-title").value.trim())) $("#f-title").value = info.title;
+    if (info.description && !$("#f-desc").value.trim()) $("#f-desc").value = info.description;
+  } else if (force) {
+    toast("Couldn't look up that page. Type a title instead.");
+  }
+  btn.textContent = "Look up";
+  btn.disabled = false;
+  lookupBusy = false;
+}
+
+$("#f-url").addEventListener("input", checkDuplicate);
+$("#f-url").addEventListener("change", () => { checkDuplicate(); doLookup(false); });
+$("#f-url").addEventListener("paste", () => setTimeout(() => { checkDuplicate(); doLookup(false); }, 0));
+$("#btn-lookup").addEventListener("click", () => doLookup(true));
+
+$("#form-edit").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const u = parseUrl($("#f-url").value);
+  if (!u) { toast("Please enter a valid web address."); $("#f-url").focus(); return; }
+
+  const data = {
+    url: u.href,
+    normUrl: normalizeUrl(u.href),
+    title: $("#f-title").value.trim() || hostOf(u.href),
+    description: $("#f-desc").value.trim(),
+    folder: cleanFolder($("#f-folder").value),
+    tags: parseTags($("#f-tags").value),
+    notes: $("#f-notes").value.trim(),
+    readLater: $("#f-later").checked,
+    updatedAt: serverTimestamp()
+  };
+
+  try {
+    if (editingId) {
+      const before = pagemarks.find((x) => x.id === editingId);
+      if (before && normalizeUrl(before.url) !== data.normUrl) data.link = { status: "pending" };
+      await updateDoc(doc(pmCol(), editingId), data);
+      toast("Saved");
+    } else {
+      const ref = doc(pmCol());
+      await setDoc(ref, { ...data, createdAt: serverTimestamp() });
+      toast("Pagemark added");
+    }
+    dlgEdit.close();
+  } catch (err) {
+    console.error(err);
+    toast("Could not save. Are you online?");
+  }
+});
+
+$("#btn-delete").addEventListener("click", async () => {
+  if (!editingId) return;
+  if (!confirm("Delete this Pagemark?")) return;
+  await deleteDoc(doc(pmCol(), editingId));
+  dlgEdit.close();
+  toast("Deleted");
+});
+
+// ---------- Settings ----------
+const dlgSettings = $("#dlg-settings");
+$("#btn-settings").addEventListener("click", () => { $("#import-status").textContent = ""; dlgSettings.showModal(); });
+$("#btn-close-settings").addEventListener("click", () => dlgSettings.close());
+
+// Import (Chrome / Edge / Firefox favorites HTML export)
+const GENERIC_ROOTS = new Set([
+  "bookmarks bar", "bookmarks toolbar", "favorites bar", "other bookmarks",
+  "other favorites", "mobile bookmarks", "bookmarks menu", "bookmarks", "favorites"
+]);
+
+function parseFavoritesHtml(html) {
+  const docu = new DOMParser().parseFromString(html, "text/html");
+  const out = [];
+  function walk(dl, path) {
+    for (const dt of dl.children) {
+      if (dt.tagName !== "DT") continue;
+      const h3 = dt.querySelector(":scope > h3");
+      const a = dt.querySelector(":scope > a");
+      if (h3) {
+        const sub = dt.querySelector(":scope > dl") || (dt.nextElementSibling && dt.nextElementSibling.tagName === "DL" ? dt.nextElementSibling : null);
+        const name = h3.textContent.trim();
+        const nextPath = path.length === 0 && GENERIC_ROOTS.has(name.toLowerCase()) ? path : [...path, name];
+        if (sub) walk(sub, nextPath);
+      } else if (a) {
+        out.push({
+          url: a.getAttribute("href") || "",
+          title: a.textContent.trim(),
+          addDate: parseInt(a.getAttribute("add_date") || "0", 10),
+          folder: nextFolder(path)
+        });
+      }
+    }
+  }
+  const nextFolder = (p) => p.join(" / ");
+  const root = docu.querySelector("dl");
+  if (root) walk(root, []);
+  return out;
+}
+
+$("#file-import").addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const status = $("#import-status");
+  status.textContent = "Reading file…";
+  try {
+    const items = parseFavoritesHtml(await file.text());
+    const seen = new Set(pagemarks.map((b) => b.normUrl || normalizeUrl(b.url)));
+    const toAdd = [];
+    let skipped = 0;
+    for (const it of items) {
+      const u = parseUrl(it.url);
+      if (!u) { skipped++; continue; }
+      const n = normalizeUrl(u.href);
+      if (seen.has(n)) { skipped++; continue; }
+      seen.add(n);
+      toAdd.push({
+        url: u.href,
+        normUrl: n,
+        title: it.title || hostOf(u.href),
+        description: "",
+        folder: cleanFolder(it.folder),
+        tags: [],
+        notes: "",
+        readLater: false,
+        createdAt: it.addDate > 0 ? Timestamp.fromMillis(it.addDate * 1000) : serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+    }
+    if (!toAdd.length) {
+      status.textContent = `Nothing new to import (${skipped} duplicates or unsupported links skipped).`;
+      return;
+    }
+    for (let i = 0; i < toAdd.length; i += 400) {
+      const batch = writeBatch(db);
+      for (const d of toAdd.slice(i, i + 400)) batch.set(doc(pmCol()), d);
+      await batch.commit();
+      status.textContent = `Imported ${Math.min(i + 400, toAdd.length)} of ${toAdd.length}…`;
+    }
+    status.textContent = `Done: ${toAdd.length} imported, ${skipped} skipped.`;
+  } catch (err) {
+    console.error(err);
+    status.textContent = "Import failed: " + (err.message || err);
+  } finally {
+    e.target.value = "";
+  }
+});
+
+// Export
+function download(name, text, type) {
+  const blob = new Blob([text], { type });
+  const a = el("a", { href: URL.createObjectURL(blob), download: name });
+  document.body.append(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+
+const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+const stamp = () => new Date().toISOString().slice(0, 10);
+
+$("#btn-export-html").addEventListener("click", () => {
+  // Build a folder tree
+  const tree = { folders: new Map(), items: [] };
+  for (const b of pagemarks) {
+    let node = tree;
+    for (const part of (b.folder ? b.folder.split(" / ") : [])) {
+      if (!node.folders.has(part)) node.folders.set(part, { folders: new Map(), items: [] });
+      node = node.folders.get(part);
+    }
+    node.items.push(b);
+  }
+  const lines = [];
+  const pad = (n) => "    ".repeat(n);
+  function emit(node, depth) {
+    for (const [name, child] of [...node.folders].sort(([a], [b]) => a.localeCompare(b))) {
+      lines.push(`${pad(depth)}<DT><H3>${esc(name)}</H3>`);
+      lines.push(`${pad(depth)}<DL><p>`);
+      emit(child, depth + 1);
+      lines.push(`${pad(depth)}</DL><p>`);
+    }
+    for (const b of node.items) {
+      const add = Math.floor(dateOf(b).getTime() / 1000);
+      const tags = (b.tags || []).length ? ` TAGS="${esc(b.tags.join(","))}"` : "";
+      lines.push(`${pad(depth)}<DT><A HREF="${esc(b.url)}" ADD_DATE="${add}"${tags}>${esc(b.title || b.url)}</A>`);
+      if (b.notes) lines.push(`${pad(depth)}<DD>${esc(b.notes)}`);
+    }
+  }
+  emit(tree, 1);
+  const html = `<!DOCTYPE NETSCAPE-Bookmark-file-1>
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">
+<TITLE>Pagemarks</TITLE>
+<H1>Pagemarks</H1>
+<DL><p>
+${lines.join("\n")}
+</DL><p>
+`;
+  download(`pagemarks-${stamp()}.html`, html, "text/html");
+});
+
+$("#btn-export-json").addEventListener("click", () => {
+  const data = pagemarks.map((b) => ({
+    url: b.url, title: b.title, description: b.description || "", folder: b.folder || "",
+    tags: b.tags || [], notes: b.notes || "", readLater: !!b.readLater,
+    created: dateOf(b).toISOString()
+  }));
+  download(`pagemarks-${stamp()}.json`, JSON.stringify(data, null, 2), "application/json");
+});
+
+// Invite list (admin only)
+function startInvites() {
+  unsubInvites = onSnapshot(collection(db, "allowlist"), (snap) => {
+    const ul = $("#invite-list");
+    const rows = snap.docs.map((d) => d.id).sort();
+    ul.replaceChildren(
+      el("li", {}, el("span", { text: user.email + " (you, owner)" })),
+      ...rows.map((email) => el("li", {},
+        el("span", { text: email }),
+        el("button", {
+          class: "btn small danger", text: "Remove",
+          onclick: async () => {
+            if (!confirm(`Remove ${email}? Their saved Pagemarks stay in the database but they can no longer sign in.`)) return;
+            await deleteDoc(doc(db, "allowlist", email));
+          }
+        })
+      ))
+    );
+  });
+}
+
+$("#form-invite").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const email = $("#invite-email").value.trim().toLowerCase();
+  if (!email) return;
+  try {
+    await setDoc(doc(db, "allowlist", email), { addedAt: serverTimestamp(), addedBy: user.email });
+    $("#invite-email").value = "";
+    toast(`${email} invited`);
+  } catch (err) {
+    console.error(err);
+    toast("Could not add. Check the Firestore rules.");
+  }
+});
