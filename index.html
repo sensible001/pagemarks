@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Gentium+Plus:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=17">
+  <link rel="stylesheet" href="styles.css?v=19">
 </head>
 <body>
 
@@ -269,6 +269,46 @@
       <p class="muted">Signed in as <strong id="me-email"></strong><br>Pagemarks version <span id="app-version"></span></p>
 
       <section>
+        <h3>How Pagemarks works</h3>
+        <details class="howto">
+          <summary>Link health colors</summary>
+          <ul>
+            <li><span class="dot dot-ok"></span><strong>Working:</strong> the page opened normally.</li>
+            <li><span class="dot dot-moved"></span><strong>Moved:</strong> the address now leads somewhere else. Use <em>Update link</em>, unless it lands on a home or sign-in page (then the page is probably gone).</li>
+            <li><span class="dot dot-broken"></span><strong>Broken:</strong> missing, server error, or refused to everyone. Or you marked it broken yourself.</li>
+            <li><span class="dot dot-unknown"></span><strong>Couldn't check:</strong> the site blocks automated checks or needs a sign-in. Usually fine. If it won't open for you either, use <em>Mark as broken</em>.</li>
+            <li><span class="dot dot-pending"></span><strong>Not checked yet:</strong> new, or its address was just changed.</li>
+          </ul>
+        </details>
+        <details class="howto">
+          <summary>The nightly link check</summary>
+          <ul>
+            <li>Runs every night around 2–3 AM. To run it now: GitHub → Actions → Check links → Run workflow.</li>
+            <li>A page must fail two checks in a row before it turns red, so a short outage isn't flagged.</li>
+            <li>A plain “403 Forbidden” counts as broken. Bot-protection screens stay gray.</li>
+            <li>Your <em>Mark as broken</em> always wins over the checker.</li>
+          </ul>
+        </details>
+        <details class="howto">
+          <summary>Organizing</summary>
+          <ul>
+            <li><strong>Organize</strong> shows the tools; <strong>Done</strong> (or Esc) returns to the calm view.</li>
+            <li>Folders stay until you delete them. <em>Delete folder</em> only appears when a folder is empty.</li>
+            <li>A folder shows its own Pagemarks, with sub-folders as rows on top. Sidebar counts include sub-folders.</li>
+            <li>Move things by dragging onto a folder, or with <em>Move to folder…</em></li>
+            <li><em>Tidy up</em> files Pagemarks with no folder, one at a time, with suggested folders first.</li>
+          </ul>
+        </details>
+        <details class="howto">
+          <summary>Updates</summary>
+          <ul>
+            <li>A notice appears when a newer version is online. Click <em>Reload now</em>.</li>
+            <li>To install a new version: unzip, select all files, drag them onto the GitHub upload page, then <em>Commit changes</em>.</li>
+          </ul>
+        </details>
+      </section>
+
+      <section>
         <h3>Import favorites</h3>
         <p class="muted">In Chrome or Edge, export your favorites as an HTML file, then choose it here. Each one becomes a Pagemark. Duplicates are skipped.</p>
         <input type="file" id="file-import" accept=".html,.htm,text/html">
@@ -314,6 +354,6 @@
 
   <div id="toast" class="toast" hidden></div>
 
-  <script type="module" src="app.js?v=17"></script>
+  <script type="module" src="app.js?v=19"></script>
 </body>
 </html>

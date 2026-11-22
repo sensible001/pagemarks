@@ -588,3 +588,12 @@ p.tidy-label { margin: 0 0 0.5rem; }
 .suggest-line { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; margin: -0.4rem 0 0.95rem; font-size: 0.9rem; }
 .suggest-line .suggest-btn { padding: 0.25rem 0.65rem; font-size: 0.88rem; }
 .tidy-suggest .tidy-label, p.tidy-label { font-weight: 700; font-size: 0.92rem; }
+
+/* ---------- v19: How Pagemarks works ---------- */
+.howto { border-bottom: 1px solid var(--line); padding: 0.45rem 0; }
+.howto summary { cursor: pointer; font-weight: 700; font-size: 0.95rem; color: var(--ink); }
+.howto summary::marker { color: var(--muted); }
+.howto ul { margin: 0.45rem 0 0.3rem; padding-left: 1.1rem; font-size: 0.9rem; color: #4a463f; }
+.howto li { margin: 0.25rem 0; }
+.howto li .dot { margin-right: 0.35rem; vertical-align: 0; }
+#dlg-settings { max-height: calc(100vh - 2rem); }

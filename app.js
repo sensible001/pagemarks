@@ -1,4 +1,4 @@
-// Pagemarks v17 — app logic
+// Pagemarks v19 — app logic
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-app.js";
 import {
   getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect,
@@ -273,7 +273,8 @@ let expanded = new Set();
 try { expanded = new Set(JSON.parse(localStorage.getItem("pm-expanded") || "[]")); } catch { /* ignore */ }
 const saveExpanded = () => { try { localStorage.setItem("pm-expanded", JSON.stringify([...expanded])); } catch { /* ignore */ } };
 
-const linkStatus = (b) => (b.link && b.link.status) || "pending";
+// "Mark as broken" (your own judgement) overrides the nightly checker
+const linkStatus = (b) => b.markedBroken ? "broken" : ((b.link && b.link.status) || "pending");
 
 function filtered() {
   let list = pagemarks;
@@ -471,6 +472,7 @@ function subfolderRows(tree, path) {
 function linkBadge(b) {
   const s = linkStatus(b);
   if (s === "pending") return el("span", { class: "dot dot-pending", title: "Not checked yet" });
+  if (b.markedBroken) return el("span", { class: "dot dot-broken", title: "Broken (marked by you)" });
   const when = b.link.checkedAt && b.link.checkedAt.toDate ? " · checked " + fmtDate(b.link.checkedAt.toDate()) : "";
   const why = b.link.reason ? ` (${b.link.reason})` : "";
   return el("span", { class: `dot dot-${s}`, title: LINK_LABEL[s] + why + when });
@@ -509,11 +511,21 @@ function renderItem(b) {
 
   const body = el("div", { class: "bm-body" }, titleLine, meta);
 
+  const archiveLink = () => (b.link && b.link.archiveUrl)
+    ? el("a", { href: b.link.archiveUrl, target: "_blank", rel: "noopener noreferrer", text: "Open the archived copy" })
+    : el("a", { href: "https://web.archive.org/web/*/" + b.url, target: "_blank", rel: "noopener noreferrer", text: "Look for an archived copy" });
   if (s === "broken") {
-    const fix = el("div", { class: "fix-row" }, el("span", { text: "This page no longer loads." }));
-    if (b.link.archiveUrl) fix.append(" ", el("a", { href: b.link.archiveUrl, target: "_blank", rel: "noopener noreferrer", text: "Open the archived copy" }));
-    else fix.append(" ", el("a", { href: "https://web.archive.org/web/*/" + b.url, target: "_blank", rel: "noopener noreferrer", text: "Search the Internet Archive" }));
+    const fix = el("div", { class: "fix-row" },
+      el("span", { text: b.markedBroken ? "You marked this page as broken." : "This page no longer loads." }), " ", archiveLink());
+    if (b.markedBroken) fix.append(" ", el("button", { class: "btn small", text: "Not broken", onclick: () => setMarkedBroken(b, false) }));
     body.append(fix);
+  }
+  if (s === "unknown") {
+    const why = b.link && b.link.reason ? ` (${b.link.reason})` : "";
+    body.append(el("div", { class: "fix-row" },
+      el("span", { text: "The checker couldn't verify this page" + why + ". If it doesn't open for you either:" }), " ",
+      archiveLink(), " ",
+      el("button", { class: "btn small", text: "Mark as broken", onclick: () => setMarkedBroken(b, true) })));
   }
   if (s === "moved" && b.link.finalUrl) {
     if (suspiciousMove(b.url, b.link.finalUrl)) body.append(el("div", { class: "fix-row warn-text", text: "Goes to a home or sign-in page, so the original may be gone." }));
@@ -558,6 +570,11 @@ function renderItem(b) {
   });
   li.addEventListener("dragend", endDrag);
   return li;
+}
+
+async function setMarkedBroken(b, on) {
+  await updateDoc(doc(pmCol(), b.id), { markedBroken: on, updatedAt: serverTimestamp() });
+  toast(on ? "Marked as broken. It's now listed under Broken." : "No longer marked as broken.");
 }
 
 async function updateLink(b) {
@@ -1263,7 +1280,7 @@ $("#form-edit").addEventListener("submit", async (e) => {
   try {
     if (editingId) {
       const before = pagemarks.find((x) => x.id === editingId);
-      if (before && normalizeUrl(before.url) !== data.normUrl) data.link = { status: "pending" };
+      if (before && normalizeUrl(before.url) !== data.normUrl) { data.link = { status: "pending" }; data.markedBroken = false; }
       await updateDoc(doc(pmCol(), editingId), data);
       toast("Saved");
     } else {
@@ -1480,7 +1497,7 @@ $("#btn-editmode").classList.toggle("primary", editing);
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "17";
+const APP_VERSION = "19";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {

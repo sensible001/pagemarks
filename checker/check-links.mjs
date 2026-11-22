@@ -36,14 +36,45 @@ async function request(url, method) {
       signal: ctrl.signal,
       headers: { "User-Agent": UA, "Accept": "text/html,application/xhtml+xml,*/*;q=0.8", "Accept-Language": "en-US,en;q=0.9" }
     });
-    try { await res.body?.cancel(); } catch { /* ignore */ }
-    return { code: res.status, finalUrl: res.url || url };
+    // For refusals, keep a little of the page so we can tell "bot protection" from a real refusal
+    let sample = "";
+    if (method === "GET" && (res.status === 401 || res.status === 403) && res.body) {
+      try {
+        const reader = res.body.getReader();
+        const dec = new TextDecoder();
+        while (sample.length < 32000) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          sample += dec.decode(value, { stream: true });
+        }
+        try { await reader.cancel(); } catch { /* ignore */ }
+      } catch { /* ignore */ }
+    } else {
+      try { await res.body?.cancel(); } catch { /* ignore */ }
+    }
+    const headers = {};
+    for (const k of ["server", "cf-mitigated", "x-datadome", "x-sucuri-id", "x-iinfo", "x-amz-cf-id", "set-cookie"]) {
+      const v = res.headers.get(k);
+      if (v) headers[k] = v;
+    }
+    return { code: res.status, finalUrl: res.url || url, sample, headers };
   } catch (e) {
     const cause = e.cause?.code || e.name || "ERROR";
     return { code: 0, error: String(cause) };
   } finally {
     clearTimeout(timer);
   }
+}
+
+// Signs that a 403 came from an anti-bot service rather than the page itself
+function looksLikeBotProtection(r) {
+  const h = r.headers || {};
+  const server = (h["server"] || "").toLowerCase();
+  if (h["cf-mitigated"] || h["x-datadome"] || h["x-sucuri-id"] || h["x-iinfo"]) return true;
+  if (/cloudflare|akamai|incapsula|imperva|sucuri|ddos-guard|datadome|perimeterx|kasada|cloudfront|varnish/.test(server)) return true;
+  if (/datadome|_px|incap_ses|visid_incap|ak_bmsc|bm_sv|__cf_bm/i.test(h["set-cookie"] || "")) return true;
+  const body = (r.sample || "").toLowerCase();
+  return /just a moment|checking your browser|verify you are human|are you a robot|captcha|cf-chl|challenge-platform|attention required|enable javascript and cookies|access denied|perimeterx|px-captcha|datadome|incapsula|request unsuccessful|bot detection|unusual traffic/.test(body);
 }
 
 // ok | moved | broken | unknown
@@ -64,8 +95,13 @@ async function check(url) {
   if (r.code === 404 || r.code === 410 || r.code >= 500) {
     return { status: "broken", code: r.code, finalUrl: "", reason: "HTTP " + r.code };
   }
-  // 401, 403, 429 and others: the site blocks automated checks. Not proof the page is gone.
-  return { status: "unknown", code: r.code, finalUrl: "", reason: "HTTP " + r.code };
+  // 403: either bot protection (page works for people) or a real refusal (page is closed to everyone)
+  if (r.code === 403 && !looksLikeBotProtection(r)) {
+    return { status: "broken", code: 403, finalUrl: "", reason: "HTTP 403, access refused" };
+  }
+  // 401 (sign-in needed), 429 (too many requests), bot screens and others: not proof the page is gone.
+  const why = r.code === 401 ? "needs sign-in" : r.code === 429 ? "site asked us to slow down" : r.code === 403 ? "site blocks automated checks" : "HTTP " + r.code;
+  return { status: "unknown", code: r.code, finalUrl: "", reason: why };
 }
 
 async function waybackCopy(url) {
