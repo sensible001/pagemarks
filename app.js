@@ -1,4 +1,4 @@
-// Pagemarks v15 — app logic
+// Pagemarks v16 — app logic
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-app.js";
 import {
   getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect,
@@ -688,8 +688,7 @@ function openFolderDialog(mode, parentForNew = "") {
   newFolderParent = parentForNew;
   const path = view.value;
   $("#folder-error").hidden = true;
-  $("#folder-move-wrap").hidden = mode !== "move";
-  $("#folder-rename-wrap").hidden = mode === "move";
+  $("#folder-rename-wrap").hidden = false;
   if (mode === "new") {
     $("#folder-heading").textContent = parentForNew ? `New folder inside “${nameOf(parentForNew)}”` : "New folder";
     $("#folder-sub").textContent = parentForNew ? parentForNew : "At the top level";
@@ -702,18 +701,8 @@ function openFolderDialog(mode, parentForNew = "") {
   }
   $("#folder-newname").placeholder = "";
   if (mode === "move") {
-    $("#folder-heading").textContent = `Move “${nameOf(path)}”`;
-    $("#folder-sub").textContent = "Choose where it should go. Everything inside moves with it.";
-    const sel = $("#folder-dest");
-    const opts = [el("option", { value: "", text: "Top level (no parent folder)" })];
-    for (const p of allFolderPaths()) {
-      if (isInside(p, path)) continue;            // not into itself
-      const depth = p.split(" / ").length - 1;
-      opts.push(el("option", { value: p, text: "\u00a0\u00a0\u00a0\u00a0".repeat(depth) + nameOf(p) }));
-    }
-    sel.replaceChildren(...opts);
-    sel.value = parentOf(path);
-    $("#folder-ok").textContent = "Move";
+    dlgFolderPickMove(path);
+    return;
   } else {
     $("#folder-heading").textContent = `Rename “${nameOf(path)}”`;
     $("#folder-sub").textContent = parentOf(path) ? `Inside “${parentOf(path)}”` : "";
@@ -721,7 +710,7 @@ function openFolderDialog(mode, parentForNew = "") {
     $("#folder-ok").textContent = "Rename";
   }
   dlgFolder.showModal();
-  (mode === "move" ? $("#folder-dest") : $("#folder-newname")).focus();
+  $("#folder-newname").focus();
 }
 
 let newFolderParent = "";
@@ -737,7 +726,6 @@ $("#folder-delete").addEventListener("click", async () => {
 });
 $("#folder-rename").addEventListener("click", () => openFolderDialog("rename"));
 $("#folder-cancel").addEventListener("click", () => dlgFolder.close());
-$("#folder-dest").addEventListener("dblclick", () => $("#form-folder").requestSubmit());
 
 $("#form-folder").addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -756,11 +744,7 @@ $("#form-folder").addEventListener("submit", async (e) => {
     toast(`Created “${name}”. Drag Pagemarks onto it, or use Move to folder…`);
     return;
   }
-  if (folderMode === "move") {
-    const dest = $("#folder-dest").value;
-    dlgFolder.close();
-    await moveFolder(path, dest);
-  } else {
+  {
     const name = $("#folder-newname").value.trim();
     const err = $("#folder-error");
     if (!name) { err.textContent = "Please type a name."; err.hidden = false; return; }
@@ -771,6 +755,141 @@ $("#form-folder").addEventListener("submit", async (e) => {
     const n = await relocateFolder(path, to);
     toast(`Renamed to “${name}” (${n} Pagemark${n === 1 ? "" : "s"})`);
   }
+});
+
+// ---------- Folder picker (used for every "choose a folder") ----------
+let pickState = null;
+
+function pickFolder({ title, ok = "Move here", current = null, here = null, allowNone = true, noneLabel = "No folder", exclude = () => false }) {
+  pickState = { selected: current ?? null, here, allowNone, noneLabel, exclude, resolve: null, created: [] };
+  $("#pick-title").textContent = title;
+  $("#pick-ok").textContent = ok;
+  $("#pick-search").value = "";
+  $("#pick-error").hidden = true;
+  $("#pick-new-row").hidden = true;
+  renderPickList();
+  const dlg = $("#dlg-pick");
+  dlg.showModal();
+  $("#pick-search").focus();
+  const sel = $("#pick-list .pick-row.selected");
+  if (sel) sel.scrollIntoView({ block: "center" });
+  return new Promise((resolve) => { pickState.resolve = resolve; });
+}
+
+function finishPick(value) {
+  const st = pickState;
+  if (!st) return;
+  pickState = null;
+  $("#dlg-pick").close();
+  st.resolve(value);
+}
+
+function renderPickList() {
+  const st = pickState;
+  const q = $("#pick-search").value.trim().toLowerCase();
+  const paths = [...new Set([...allFolderPaths(), ...st.created])].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
+  const rows = [];
+  const mk = (value, label, depth, sub) => {
+    const row = el("li", { class: "pick-row" + (st.selected === value ? " selected" : ""), role: "option", tabindex: "0", style: `padding-left:${0.8 + depth * 1.25}rem` },
+      value === "" ? el("span", { class: "pick-none-icon", "aria-hidden": "true" }) : folderIcon(),
+      el("span", { class: "pick-name", text: label }),
+      sub ? el("span", { class: "pick-sub", text: sub }) : null,
+      st.here !== null && st.here === value ? el("span", { class: "pick-sub", text: "current" }) : null,
+      el("span", { class: "pick-check", "aria-hidden": "true", text: st.selected === value ? "✓" : "" })
+    );
+    row.addEventListener("click", () => { st.selected = value; renderPickList(); });
+    row.addEventListener("dblclick", () => finishPick(value));
+    row.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); finishPick(value); } });
+    return row;
+  };
+  if (st.allowNone && (!q || st.noneLabel.toLowerCase().includes(q))) rows.push(mk("", st.noneLabel, 0));
+  for (const p of paths) {
+    if (st.exclude(p)) continue;
+    if (q) {
+      if (!p.toLowerCase().includes(q)) continue;
+      rows.push(mk(p, nameOf(p), 0, parentOf(p)));
+    } else {
+      rows.push(mk(p, nameOf(p), p.split(" / ").length - 1));
+    }
+  }
+  if (!rows.length) rows.push(el("li", { class: "pick-empty muted", text: "No folder matches. Use + New folder to make one." }));
+  $("#pick-list").replaceChildren(...rows);
+  $("#pick-ok").disabled = st.selected === null;
+}
+
+$("#pick-search").addEventListener("input", () => {
+  renderPickList();
+  // If the search leaves exactly one folder, select it so Enter moves there
+  const only = [...document.querySelectorAll("#pick-list .pick-row")];
+  if (only.length === 1) only[0].click();
+});
+$("#pick-search").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") { e.preventDefault(); if (pickState && pickState.selected !== null) finishPick(pickState.selected); }
+  if (e.key === "ArrowDown") { e.preventDefault(); document.querySelector("#pick-list .pick-row")?.focus(); }
+});
+$("#pick-list").addEventListener("keydown", (e) => {
+  const rows = [...document.querySelectorAll("#pick-list .pick-row")];
+  const i = rows.indexOf(document.activeElement);
+  if (e.key === "ArrowDown" && i < rows.length - 1) { e.preventDefault(); rows[i + 1].focus(); }
+  if (e.key === "ArrowUp") { e.preventDefault(); (i > 0 ? rows[i - 1] : $("#pick-search")).focus(); }
+});
+$("#form-pick").addEventListener("submit", (e) => { e.preventDefault(); if (pickState && pickState.selected !== null) finishPick(pickState.selected); });
+$("#pick-cancel").addEventListener("click", () => finishPick(null));
+$("#dlg-pick").addEventListener("cancel", (e) => { e.preventDefault(); finishPick(null); });
+
+// "+ New folder" inside the picker: creates it inside the highlighted folder (or at the top level)
+$("#pick-new").addEventListener("click", () => {
+  $("#pick-new-row").hidden = false;
+  const parent = pickState?.selected || "";
+  $("#pick-new-name").placeholder = parent ? `New folder inside “${nameOf(parent)}”` : "New folder at the top level";
+  $("#pick-new-name").value = "";
+  $("#pick-new-name").focus();
+});
+$("#pick-new-cancel").addEventListener("click", () => { $("#pick-new-row").hidden = true; $("#pick-error").hidden = true; });
+async function createInPicker() {
+  const st = pickState;
+  const name = $("#pick-new-name").value.trim();
+  const err = $("#pick-error");
+  if (!name) { err.textContent = "Please type a name."; err.hidden = false; return; }
+  if (name.includes("/")) { err.textContent = "Folder names can't contain “/”."; err.hidden = false; return; }
+  const parent = st.selected || "";
+  const full = parent ? parent + " / " + name : name;
+  if (allFolderPaths().some((p) => p.toLowerCase() === full.toLowerCase())) { err.textContent = "That folder already exists here."; err.hidden = false; return; }
+  err.hidden = true;
+  st.created.push(full);
+  st.selected = full;
+  $("#pick-new-row").hidden = true;
+  $("#pick-search").value = "";
+  renderPickList();
+  document.querySelector("#pick-list .pick-row.selected")?.scrollIntoView({ block: "center" });
+  saveExtraFolders([...extraFolders, full]);
+  if (parent) { expanded.add(parent); saveExpanded(); }
+}
+$("#pick-new-ok").addEventListener("click", createInPicker);
+$("#pick-new-name").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); createInPicker(); } });
+
+// Move a whole folder with the picker
+async function dlgFolderPickMove(path) {
+  const dest = await pickFolder({
+    title: `Move “${nameOf(path)}” into…`, ok: "Move here",
+    current: parentOf(path), noneLabel: "Top level (no parent folder)",
+    exclude: (p) => isInside(p, path)
+  });
+  if (dest === null) return;
+  await moveFolder(path, dest);
+}
+
+// Folder field in the Add / Edit dialog
+function syncFolderField() {
+  const v = $("#f-folder").value;
+  $("#f-folder-label").textContent = v ? v : "No folder";
+  $("#f-folder-btn").classList.toggle("empty", !v);
+}
+$("#f-folder-btn").addEventListener("click", async () => {
+  const f = await pickFolder({ title: "Choose a folder", ok: "Choose", current: $("#f-folder").value });
+  if (f === null) return;
+  $("#f-folder").value = f;
+  syncFolderField();
 });
 
 // ---------- Bulk actions ----------
@@ -857,7 +976,13 @@ function openBulk(mode) {
   dlgBulk.showModal();
   $("#bulk-input").focus();
 }
-$("#bulk-move").addEventListener("click", () => openBulk("move"));
+$("#bulk-move").addEventListener("click", async () => {
+  const n = selected.size;
+  const folder = await pickFolder({ title: `Move ${plural(n, "Pagemark")} to…`, ok: "Move here", here: view.type === "folder" ? view.value : null });
+  if (folder === null) return;
+  await bulkWrite((batch, ref) => batch.update(ref, { folder, updatedAt: serverTimestamp() }),
+    (k) => `${plural(k, "Pagemark")} moved to “${folder ? nameOf(folder) : "No folder"}”`);
+});
 $("#bulk-tag").addEventListener("click", () => openBulk("tag"));
 $("#bulk-cancel").addEventListener("click", () => dlgBulk.close());
 $("#form-bulk").addEventListener("submit", async (e) => {
@@ -907,7 +1032,6 @@ function nextTidy() {
     el("div", { class: "bm-meta", text: host + " · saved " + fmtDate(dateOf(b)) + (s !== "pending" ? " · " + LINK_LABEL[s] : "") })
   );
   $("#tidy-controls").hidden = false;
-  $("#tidy-folder").value = "";
   // Quick picks: recently used, then biggest folders
   const counts = new Map();
   for (const p of pagemarks) if (p.folder) counts.set(p.folder, (counts.get(p.folder) || 0) + 1);
@@ -918,7 +1042,7 @@ function nextTidy() {
 
 async function fileTidy(folderRaw) {
   const folder = cleanFolder(folderRaw);
-  if (!folder) { $("#tidy-folder").focus(); return; }
+  if (!folder) return;
   const id = tidyQueue.shift();
   tidyRecent = [folder, ...tidyRecent.filter((f) => f !== folder)].slice(0, 4);
   tidyDone++;
@@ -932,8 +1056,10 @@ $("#btn-tidy").addEventListener("click", () => {
   dlgTidy.showModal();
   nextTidy();
 });
-$("#tidy-file").addEventListener("click", () => fileTidy($("#tidy-folder").value));
-$("#tidy-folder").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); fileTidy($("#tidy-folder").value); } });
+$("#tidy-file").addEventListener("click", async () => {
+  const f = await pickFolder({ title: "File it in…", ok: "File here", allowNone: false });
+  if (f) fileTidy(f);
+});
 $("#tidy-skip").addEventListener("click", () => { tidyQueue.push(tidyQueue.shift()); nextTidy(); });
 $("#tidy-delete").addEventListener("click", async () => {
   const id = tidyQueue.shift();
@@ -953,6 +1079,7 @@ function openEdit(b = null) {
   $("#f-title").value = b ? b.title || "" : "";
   $("#f-desc").value = b ? b.description || "" : "";
   $("#f-folder").value = b ? b.folder || "" : (view.type === "folder" ? view.value : "");
+  syncFolderField();
   $("#f-tags").value = b ? (b.tags || []).join(", ") : (view.type === "tag" ? view.value : "");
   $("#f-notes").value = b ? b.notes || "" : "";
   $("#f-later").checked = b ? !!b.readLater : view.type === "later";
@@ -1241,7 +1368,7 @@ $("#btn-editmode").classList.toggle("primary", editing);
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "15";
+const APP_VERSION = "16";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {

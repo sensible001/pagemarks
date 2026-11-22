@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Gentium+Plus:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=15">
+  <link rel="stylesheet" href="styles.css?v=16">
 </head>
 <body>
 
@@ -139,7 +139,8 @@
 
       <div class="two-col">
         <label>Folder
-          <input id="f-folder" type="text" list="folder-options" placeholder="e.g. Recipes">
+          <input id="f-folder" type="hidden">
+          <button type="button" id="f-folder-btn" class="folder-field"><svg class="ff-icon" aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5V18a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9.5a2 2 0 0 0-2-2h-7.2l-1.7-2.2A2 2 0 0 0 8.5 4.5H5a2 2 0 0 0-2 2v1z"/></svg><span id="f-folder-label">No folder</span><span class="ff-change">Change…</span></button>
           <datalist id="folder-options"></datalist>
         </label>
         <label>Tags <span class="hint">separate with commas</span>
@@ -195,9 +196,6 @@
     <form id="form-folder" method="dialog">
       <h2 id="folder-heading">Move folder</h2>
       <p class="muted" id="folder-sub"></p>
-      <label id="folder-move-wrap">Move into
-        <select id="folder-dest" size="10" class="folder-dest"></select>
-      </label>
       <label id="folder-rename-wrap">New name
         <input id="folder-newname" type="text" autocomplete="off">
       </label>
@@ -206,6 +204,27 @@
         <span class="spacer"></span>
         <button type="button" id="folder-cancel" class="btn">Cancel</button>
         <button type="submit" id="folder-ok" class="btn primary">Move</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Folder picker -->
+  <dialog id="dlg-pick" class="dlg-pick">
+    <form id="form-pick" method="dialog">
+      <h2 id="pick-title">Move to folder</h2>
+      <input id="pick-search" type="search" placeholder="Find a folder…" autocomplete="off">
+      <ul id="pick-list" class="pick-list" role="listbox"></ul>
+      <div id="pick-new-row" class="pick-new" hidden>
+        <input id="pick-new-name" type="text" placeholder="New folder name" autocomplete="off">
+        <button type="button" id="pick-new-ok" class="btn small primary">Create</button>
+        <button type="button" id="pick-new-cancel" class="btn small">Cancel</button>
+      </div>
+      <p id="pick-error" class="error" hidden></p>
+      <div class="dlg-actions">
+        <button type="button" id="pick-new" class="btn">+ New folder</button>
+        <span class="spacer"></span>
+        <button type="button" id="pick-cancel" class="btn">Cancel</button>
+        <button type="submit" id="pick-ok" class="btn primary">Move here</button>
       </div>
     </form>
   </dialog>
@@ -220,13 +239,9 @@
       <p class="muted" id="tidy-progress"></p>
       <div id="tidy-card" class="tidy-card"></div>
       <div id="tidy-controls">
-        <label class="tidy-label">File in folder
-          <div class="row">
-            <input id="tidy-folder" type="text" list="folder-options" placeholder="Type or pick a folder" autocomplete="off">
-            <button type="button" id="tidy-file" class="btn primary">File it</button>
-          </div>
-        </label>
+        <p class="tidy-label">File it in</p>
         <div id="tidy-picks" class="tag-cloud"></div>
+        <button type="button" id="tidy-file" class="btn primary tidy-choose">Choose a folder…</button>
         <div class="dlg-actions">
           <button type="button" id="tidy-delete" class="btn danger">Delete</button>
           <span class="spacer"></span>
@@ -285,6 +300,6 @@
 
   <div id="toast" class="toast" hidden></div>
 
-  <script type="module" src="app.js?v=15"></script>
+  <script type="module" src="app.js?v=16"></script>
 </body>
 </html>

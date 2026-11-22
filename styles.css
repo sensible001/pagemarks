@@ -530,3 +530,45 @@ body:not(.editing) .sub-row { padding-left: 1.25rem; padding-right: 1.25rem; }
 /* Dots sit in the same 20px column as the folder arrows; words start where folder names start */
 .health-list .nav-item { padding-left: 0; }
 .health-list .dot { margin: 0 calc(0.65rem + 5px) 0 5px; vertical-align: 0; }
+
+/* ---------- v16: folder picker ---------- */
+.dlg-pick { width: min(520px, calc(100vw - 2rem)); }
+.dlg-pick form { padding: 1.5rem 1.75rem 1.4rem; }
+.dlg-pick h2 { margin-bottom: 0.85rem; }
+.pick-list {
+  list-style: none; margin: 0.75rem 0 0; padding: 0.3rem;
+  border: 1px solid var(--line); border-radius: 10px; background: var(--paper);
+  max-height: min(52vh, 420px); overflow-y: auto;
+}
+.pick-row {
+  display: flex; align-items: center; gap: 0.6rem;
+  padding: 0.32rem 0.8rem; border-radius: 8px; cursor: pointer; user-select: none;
+}
+.pick-row:hover { background: #f1ede4; }
+.pick-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.pick-row.selected { background: var(--accent-soft); color: var(--accent); font-weight: 700; }
+.pick-row .sub-icon { width: 28px; height: 28px; border-radius: 6px; background: transparent; }
+.pick-row .sub-icon svg { width: 18px; height: 18px; }
+.pick-row.selected .sub-icon { background: #d6e6dc; }
+.pick-none-icon { width: 28px; height: 28px; flex: none; border: 1.5px dashed #cfc8b8; border-radius: 6px; }
+.pick-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pick-sub { color: var(--muted); font-size: 0.82rem; font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 45%; }
+.pick-check { width: 1rem; text-align: center; color: var(--accent); }
+.pick-empty { padding: 0.8rem; font-style: italic; }
+.pick-new { display: flex; gap: 0.4rem; margin-top: 0.75rem; }
+.pick-new input { flex: 1; }
+.dlg-pick .dlg-actions { margin-top: 1.1rem; }
+
+.folder-field {
+  font: inherit; font-size: 1rem; font-weight: 400;
+  width: 100%; margin-top: 0.3rem; display: flex; align-items: center; gap: 0.55rem;
+  padding: 0.45rem 0.7rem; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--card); color: var(--ink); cursor: pointer; text-align: left;
+}
+.folder-field:hover { border-color: #cfc8b8; }
+.folder-field #f-folder-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.folder-field.empty #f-folder-label { color: var(--muted); }
+.ff-icon { flex: none; color: var(--accent); }
+.ff-change { color: var(--accent); font-size: 0.88rem; }
+.tidy-choose { margin-top: 0.75rem; }
+p.tidy-label { margin: 0 0 0.5rem; }
