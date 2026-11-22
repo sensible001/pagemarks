@@ -1,4 +1,4 @@
-// Pagemarks v11 — app logic
+// Pagemarks v12 — app logic
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-app.js";
 import {
   getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect,
@@ -279,7 +279,11 @@ function filtered() {
   let list = pagemarks;
   if (view.type === "later") list = list.filter((b) => b.readLater);
   else if (view.type === "unfiled") list = list.filter((b) => !b.folder);
-  else if (view.type === "folder") list = list.filter((b) => b.folder === view.value || (b.folder || "").startsWith(view.value + " / "));
+  else if (view.type === "folder") {
+    // Only this folder's own Pagemarks; sub-folders appear as rows. While searching, include sub-folders too.
+    const searching = $("#search").value.trim() !== "";
+    list = list.filter((b) => b.folder === view.value || (searching && (b.folder || "").startsWith(view.value + " / ")));
+  }
   else if (view.type === "tag") list = list.filter((b) => (b.tags || []).includes(view.value));
   else if (["broken", "moved", "unknown"].includes(view.type)) list = list.filter((b) => linkStatus(b) === view.type);
 
@@ -422,9 +426,10 @@ function render() {
   $("#folder-tools").hidden = view.type !== "folder";
   $("#folder-delete").hidden = !(view.type === "folder" && !pagemarks.some((b) => b.folder && isInside(b.folder, view.value)));
   const items = filtered();
-  $("#list").replaceChildren(...items.map(renderItem));
-  $("#empty").hidden = items.length > 0;
-  if (!items.length) {
+  const subRows = (view.type === "folder" && !$("#search").value.trim()) ? subfolderRows(tree, view.value) : [];
+  $("#list").replaceChildren(...subRows, ...items.map(renderItem));
+  $("#empty").hidden = items.length > 0 || subRows.length > 0;
+  if (!items.length && !subRows.length) {
     const inFolder = view.type === "folder";
     $("#empty-title").textContent = inFolder ? "This folder is empty." : "No Pagemarks here yet.";
     $("#empty-hint").textContent = inFolder
@@ -432,6 +437,27 @@ function render() {
       : "Click + Add to save a Pagemark, or import your favorites under ⚙ Settings.";
   }
   renderBulkBar(items);
+}
+
+// Rows for the sub-folders of the open folder, shown above its Pagemarks
+function subfolderRows(tree, path) {
+  let node = tree;
+  for (const part of path.split(" / ")) { node = node.children.get(part); if (!node) return []; }
+  return [...node.children.values()]
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }))
+    .map((k) => {
+      const row = el("li", { class: "sub-row", role: "button", tabindex: "0", title: "Open " + k.name },
+        el("span", { class: "sub-icon", "aria-hidden": "true" }),
+        el("span", { class: "sub-name", text: k.name }),
+        el("span", { class: "count", text: k.count === 1 ? "1 Pagemark" : `${k.count} Pagemarks` }),
+        el("span", { class: "sub-arrow", "aria-hidden": "true", text: "›" })
+      );
+      const open = () => { expanded.add(path); saveExpanded(); setView({ type: "folder", value: k.path }); };
+      row.addEventListener("click", open);
+      row.addEventListener("keydown", (e) => { if (e.key === "Enter") open(); });
+      if (editing) makeDropTarget(row, k.path);
+      return row;
+    });
 }
 
 function linkBadge(b) {
