@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Gentium+Plus:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=14">
+  <link rel="stylesheet" href="styles.css?v=15">
 </head>
 <body>
 
@@ -58,11 +58,12 @@
         <ul class="nav-list">
           <li><button class="nav-item" data-view="all">All Pagemarks <span class="count" id="count-all">0</span></button></li>
           <li><button class="nav-item" data-view="later">Read later <span class="count" id="count-later">0</span></button></li>
-          <li><button class="nav-item" data-view="unfiled">Unfiled <span class="count" id="count-unfiled">0</span></button></li>
+          <li><button class="nav-item" data-view="unfiled">No folder <span class="count" id="count-unfiled">0</span></button></li>
         </ul>
-        <button id="btn-tidy" class="btn tidy-btn edit-only" hidden>Tidy up Unfiled (<span id="tidy-count">0</span>)</button>
+        <button id="btn-tidy" class="btn tidy-btn edit-only" hidden>Tidy up “No folder” (<span id="tidy-count">0</span>)</button>
         <h3 class="edit-only">Link health</h3>
-        <ul class="nav-list edit-only">
+        <ul class="nav-list health-list edit-only">
+          <li><button class="nav-item" data-view="ok"><span class="label"><span class="dot dot-ok"></span>Working</span> <span class="count" id="count-ok">0</span></button></li>
           <li><button class="nav-item" data-view="broken"><span class="label"><span class="dot dot-broken"></span>Broken</span> <span class="count" id="count-broken">0</span></button></li>
           <li><button class="nav-item" data-view="moved"><span class="label"><span class="dot dot-moved"></span>Moved</span> <span class="count" id="count-moved">0</span></button></li>
           <li><button class="nav-item" data-view="unknown"><span class="label"><span class="dot dot-unknown"></span>Couldn't check</span> <span class="count" id="count-unknown">0</span></button></li>
@@ -284,6 +285,6 @@
 
   <div id="toast" class="toast" hidden></div>
 
-  <script type="module" src="app.js?v=14"></script>
+  <script type="module" src="app.js?v=15"></script>
 </body>
 </html>

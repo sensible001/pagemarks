@@ -1,4 +1,4 @@
-// Pagemarks v14 — app logic
+// Pagemarks v15 — app logic
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-app.js";
 import {
   getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect,
@@ -94,7 +94,7 @@ function setEditing(on) {
   const b = $("#btn-editmode");
   b.textContent = on ? "✓ Done" : "Organize";
   b.classList.toggle("primary", on);
-  if (!on && ["broken", "moved", "unknown"].includes(view.type)) view = { type: "all", value: null };
+  if (!on && ["ok", "broken", "moved", "unknown"].includes(view.type)) view = { type: "all", value: null };
   render();
 }
 
@@ -285,7 +285,7 @@ function filtered() {
     list = list.filter((b) => b.folder === view.value || (searching && (b.folder || "").startsWith(view.value + " / ")));
   }
   else if (view.type === "tag") list = list.filter((b) => (b.tags || []).includes(view.value));
-  else if (["broken", "moved", "unknown"].includes(view.type)) list = list.filter((b) => linkStatus(b) === view.type);
+  else if (["ok", "broken", "moved", "unknown"].includes(view.type)) list = list.filter((b) => linkStatus(b) === view.type);
 
   const terms = $("#search").value.trim().toLowerCase().split(/\s+/).filter(Boolean);
   if (terms.length) {
@@ -306,9 +306,10 @@ function filtered() {
 
 function viewTitle() {
   if (view.type === "later") return "Read later";
-  if (view.type === "unfiled") return "Unfiled";
+  if (view.type === "unfiled") return "No folder";
   if (view.type === "folder") return view.value;
   if (view.type === "tag") return "Tag: " + view.value;
+  if (view.type === "ok") return "Working links";
   if (view.type === "broken") return "Broken links";
   if (view.type === "moved") return "Moved pages";
   if (view.type === "unknown") return "Couldn't check";
@@ -391,7 +392,7 @@ function render() {
   $("#count-unfiled").textContent = unfiled;
   $("#tidy-count").textContent = unfiled;
   $("#btn-tidy").hidden = unfiled === 0;
-  for (const s of ["broken", "moved", "unknown"]) $(`#count-${s}`).textContent = count((b) => linkStatus(b) === s);
+  for (const s of ["ok", "broken", "moved", "unknown"]) $(`#count-${s}`).textContent = count((b) => linkStatus(b) === s);
   const checked = count((b) => linkStatus(b) !== "pending");
   $("#health-note").textContent = checked ? "" : "Links are checked every night.";
 
@@ -850,7 +851,7 @@ let bulkMode = null;
 function openBulk(mode) {
   bulkMode = mode;
   $("#bulk-heading").textContent = mode === "move" ? `Move ${selected.size} to folder` : `Add a tag to ${selected.size}`;
-  $("#bulk-label").textContent = mode === "move" ? "Folder (leave empty for Unfiled)" : "Tag";
+  $("#bulk-label").textContent = mode === "move" ? "Folder (leave empty for No folder)" : "Tag";
   $("#bulk-input").value = "";
   $("#bulk-input").setAttribute("list", mode === "move" ? "folder-options" : "");
   dlgBulk.showModal();
@@ -866,7 +867,7 @@ $("#form-bulk").addEventListener("submit", async (e) => {
   if (bulkMode === "move") {
     const folder = cleanFolder(val);
     await bulkWrite((batch, ref) => batch.update(ref, { folder, updatedAt: serverTimestamp() }),
-      (n) => `${n} moved to ${folder || "Unfiled"}`);
+      (n) => `${n} moved to ${folder || "No folder"}`);
   } else {
     const newTags = parseTags(val);
     if (!newTags.length) return;
@@ -892,7 +893,7 @@ function nextTidy() {
   const ids = new Set(pagemarks.filter((b) => !b.folder).map((b) => b.id));
   tidyQueue = tidyQueue.filter((id) => ids.has(id));
   if (!tidyQueue.length) {
-    $("#tidy-card").replaceChildren(el("p", { class: "tidy-finished", text: "All tidy. Nothing left in Unfiled." }));
+    $("#tidy-card").replaceChildren(el("p", { class: "tidy-finished", text: "All tidy. Every Pagemark is in a folder." }));
     $("#tidy-controls").hidden = true;
     return;
   }
@@ -1240,7 +1241,7 @@ $("#btn-editmode").classList.toggle("primary", editing);
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "14";
+const APP_VERSION = "15";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {

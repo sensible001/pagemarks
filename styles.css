@@ -525,3 +525,8 @@ body:not(.editing) .sub-row { padding-left: 1.25rem; padding-right: 1.25rem; }
   box-shadow: 0 6px 24px rgba(40, 30, 10, 0.15);
   padding: 0.65rem 0.75rem 0.65rem 1.1rem; font-size: 0.95rem;
 }
+
+/* ---------- v15: line Link health up with the folder list ---------- */
+/* Dots sit in the same 20px column as the folder arrows; words start where folder names start */
+.health-list .nav-item { padding-left: 0; }
+.health-list .dot { margin: 0 calc(0.65rem + 5px) 0 5px; vertical-align: 0; }
