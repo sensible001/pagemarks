@@ -658,3 +658,44 @@ p.tidy-label { margin: 0 0 0.5rem; }
 .invite-list li { font-size: 0.92rem; padding: 0.45rem 0; }
 .settings .howto:last-of-type summary { padding-bottom: 0; }
 .settings #form-invite { align-items: stretch; }
+
+/* ---------- v26: Star, Home and Pin ---------- */
+.bm-side { display: flex; align-items: flex-start; gap: 0.35rem; }
+body:not(.editing) .bm { grid-template-columns: 36px 1fr auto; }
+.star-btn {
+  font: inherit; font-size: 1.25rem; line-height: 1; width: 2rem; height: 2rem;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 0; border-radius: 7px; background: transparent; color: #b9b2a4; cursor: pointer;
+}
+.star-btn:hover { background: #f1ede4; color: #b8891a; }
+.star-btn.on { color: #c9971c; }
+.bm .star-btn { opacity: 0.55; }
+.bm:hover .star-btn, .bm .star-btn.on, .bm .star-btn:focus-visible { opacity: 1; }
+.home-star { color: #c9971c; margin-right: 0.35rem; }
+.pin-icon { display: inline-flex; vertical-align: -1px; margin-right: 0.35rem; color: var(--accent); }
+.bm.pinned { border-color: #cfe0d6; }
+
+.home { display: grid; gap: 1.6rem; }
+.home-group-title {
+  display: flex; align-items: center; gap: 0.5rem; margin: 0 0 0.7rem;
+  font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
+}
+.home-group-title .sub-icon { width: 22px; height: 22px; background: transparent; }
+.home-group-title .sub-icon svg { width: 16px; height: 16px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.6rem; }
+.tile {
+  position: relative; display: flex; align-items: center;
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+}
+.tile:hover { border-color: #cfc8b8; box-shadow: 0 2px 10px rgba(60, 50, 30, 0.06); }
+.tile-link { flex: 1; min-width: 0; display: flex; align-items: center; gap: 0.65rem; padding: 0.7rem 0.4rem 0.7rem 0.8rem; color: var(--ink); text-decoration: none; }
+.tile-fav { width: 30px; height: 30px; flex: none; }
+.tile-text { min-width: 0; display: flex; flex-direction: column; }
+.tile-title { font-weight: 700; font-size: 0.95rem; line-height: 1.3; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.tile-host { color: var(--muted); font-size: 0.8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tile .star-btn { margin-right: 0.35rem; font-size: 1.05rem; width: 1.7rem; height: 1.7rem; }
+@media (max-width: 760px) {
+  .tiles { grid-template-columns: 1fr 1fr; }
+  body:not(.editing) .bm { grid-template-columns: 32px 1fr auto; }
+  body.editing .bm-side { grid-column: 3; }
+}

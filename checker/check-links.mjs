@@ -122,6 +122,7 @@ console.log(`Checking ${docs.length} Pagemarks…`);
 
 const totals = { ok: 0, moved: 0, broken: 0, unknown: 0, skipped: 0 };
 let index = 0;
+let saved = 0;
 
 async function worker() {
   while (index < docs.length) {
@@ -148,11 +149,15 @@ async function worker() {
     };
     if (shown === "broken" && !link.archiveUrl) link.archiveUrl = await waybackCopy(url);
 
-    await d.ref.update({ link });
+    // Save only when something changed (or once a week to refresh "last checked"), to keep database use low
+    const lastChecked = prev.checkedAt && prev.checkedAt.toMillis ? prev.checkedAt.toMillis() : 0;
+    const changed = ["status", "code", "finalUrl", "reason", "fails", "archiveUrl"].some((k) => (prev[k] ?? "") !== (link[k] ?? ""));
+    if (changed || Date.now() - lastChecked > 7 * 24 * 3600 * 1000) { await d.ref.update({ link }); saved++; }
     totals[shown]++;
   }
 }
 
 await Promise.all(Array.from({ length: PARALLEL }, worker));
+console.log(`Saved ${saved} changes.`);
 console.log(`Done. Working: ${totals.ok}, moved: ${totals.moved}, broken: ${totals.broken}, couldn't check: ${totals.unknown}, skipped: ${totals.skipped}`);
 process.exit(0);

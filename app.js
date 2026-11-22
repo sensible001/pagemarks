@@ -1,4 +1,4 @@
-// Pagemarks v25 — app logic
+// Pagemarks v27 — app logic
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-app.js";
 import {
   getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect,
@@ -257,6 +257,7 @@ function startPagemarks() {
   }, (err) => console.error(err));
   unsubPagemarks = onSnapshot(pmCol(), (snap) => {
     pagemarks = snap.docs.map((d) => ({ id: d.id, ...d.data({ serverTimestamps: "estimate" }) }));
+    if (!pmLoaded && pagemarks.some((b) => b.starred) && view.type === "all") view = { type: "home", value: null };
     pmLoaded = true;
     render();
     syncFolders();
@@ -278,7 +279,9 @@ const linkStatus = (b) => b.markedBroken ? "broken" : ((b.link && b.link.status)
 
 function filtered() {
   let list = pagemarks;
-  if (view.type === "later") list = list.filter((b) => b.readLater);
+  const searchingAll = $("#search").value.trim() !== "";
+  if (view.type === "home" && !searchingAll) list = list.filter((b) => b.starred);
+  else if (view.type === "later") list = list.filter((b) => b.readLater);
   else if (view.type === "unfiled") list = list.filter((b) => !b.folder);
   else if (view.type === "folder") {
     // Only this folder's own Pagemarks; sub-folders appear as rows. While searching, include sub-folders too.
@@ -302,10 +305,13 @@ function filtered() {
   if (sort === "az") list.sort((a, b) => (a.title || a.url).localeCompare(b.title || b.url, undefined, { sensitivity: "base" }));
   else if (sort === "old") list.sort((a, b) => dateOf(a) - dateOf(b));
   else list.sort((a, b) => dateOf(b) - dateOf(a));
+  // Pinned Pagemarks stay at the top of their folder (sort still applies within each group)
+  if (view.type === "folder" || view.type === "unfiled") list.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
   return list;
 }
 
 function viewTitle() {
+  if (view.type === "home") return $("#search").value.trim() ? "Search results" : "Home";
   if (view.type === "later") return "Read later";
   if (view.type === "unfiled") return "No folder";
   if (view.type === "folder") return view.value;
@@ -388,6 +394,7 @@ function render() {
   // Counts
   const count = (fn) => pagemarks.filter(fn).length;
   $("#count-all").textContent = pagemarks.length;
+  $("#count-home").textContent = pagemarks.filter((b) => b.starred).length;
   $("#count-later").textContent = count((b) => b.readLater);
   const unfiled = count((b) => !b.folder);
   $("#count-unfiled").textContent = unfiled;
@@ -428,6 +435,16 @@ function render() {
   $("#folder-tools").hidden = view.type !== "folder";
   $("#folder-delete").hidden = !(view.type === "folder" && !pagemarks.some((b) => b.folder && isInside(b.folder, view.value)));
   const items = filtered();
+  const onHome = view.type === "home" && !$("#search").value.trim();
+  $("#home").hidden = !onHome;
+  $("#list").hidden = onHome;
+  $("#sort-wrap").hidden = onHome;
+  if (onHome) {
+    renderHome(items);
+    $("#empty").hidden = true;
+    $("#bulk-bar").hidden = true;
+    return;
+  }
   const subRows = (view.type === "folder" && !$("#search").value.trim()) ? subfolderRows(tree, view.value) : [];
   $("#list").replaceChildren(...subRows, ...items.map(renderItem));
   $("#empty").hidden = items.length > 0 || subRows.length > 0;
@@ -497,6 +514,7 @@ function renderItem(b) {
   const title = el("a", { class: "bm-title", href: safeHref, target: "_blank", rel: "noopener noreferrer", text: b.title || host || b.url });
   // The status dot sits in its own column, so a long title wraps beside it instead of below it
   const titleText = el("div", { class: "title-text" }, title);
+  if (b.pinned) titleText.prepend(pinIcon());
   if (s === "broken") titleText.append(el("span", { class: "pill pill-broken", text: "Broken" }));
   if (s === "moved") titleText.append(el("span", { class: "pill pill-moved", text: "Moved" }));
   if (b.readLater) titleText.append(el("span", { class: "later-badge", text: "Read later" }));
@@ -546,6 +564,11 @@ function renderItem(b) {
 
   const actions = el("div", { class: "bm-actions" },
     el("button", {
+      class: "btn small", title: b.pinned ? "Unpin from the top of its folder" : "Pin to the top of its folder",
+      text: b.pinned ? "Unpin" : "Pin",
+      onclick: () => updateDoc(doc(pmCol(), b.id), { pinned: !b.pinned, updatedAt: serverTimestamp() })
+    }),
+    el("button", {
       class: "btn small",
       title: b.readLater ? "Mark as read" : "Read later",
       text: b.readLater ? "✓ Read" : "Later",
@@ -554,7 +577,8 @@ function renderItem(b) {
     el("button", { class: "btn small", text: "Edit", onclick: () => openEdit(b) })
   );
 
-  const li = el("li", { class: "bm" + (selected.has(b.id) ? " picked" : ""), draggable: editing ? "true" : "false" }, box, fav, body, actions);
+  const side = el("div", { class: "bm-side" }, starButton(b), actions);
+  const li = el("li", { class: "bm" + (selected.has(b.id) ? " picked" : "") + (b.pinned ? " pinned" : ""), draggable: editing ? "true" : "false" }, box, fav, body, side);
   li.addEventListener("dragstart", (e) => {
     if (e.target !== li) return;
     const ids = selected.has(b.id) ? [...selected] : [b.id];
@@ -909,6 +933,67 @@ $("#f-folder-btn").addEventListener("click", async () => {
   syncFolderField();
   setTimeout(refreshEditSuggest, 0);
 });
+
+// ---------- Star (Home) and Pin ----------
+function starButton(b) {
+  return el("button", {
+    type: "button", class: "star-btn" + (b.starred ? " on" : ""),
+    title: b.starred ? "Remove from Home" : "Add to Home", "aria-label": b.starred ? "Remove from Home" : "Add to Home",
+    "aria-pressed": b.starred ? "true" : "false", text: b.starred ? "★" : "☆",
+    onclick: (e) => { e.preventDefault(); e.stopPropagation(); toggleStar(b); }
+  });
+}
+async function toggleStar(b) {
+  await updateDoc(doc(pmCol(), b.id), { starred: !b.starred, updatedAt: serverTimestamp() });
+  toast(b.starred ? "Removed from Home" : "Added to Home");
+}
+function pinIcon() {
+  const s = el("span", { class: "pin-icon", title: "Pinned to the top of this folder", "aria-label": "Pinned" });
+  s.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></svg>';
+  return s;
+}
+
+// Home: starred Pagemarks as tiles, grouped by their folder
+function renderHome(items) {
+  const box = $("#home");
+  if (!items.length) {
+    box.replaceChildren(el("div", { class: "empty" },
+      el("p", { text: "Your Home page is empty." }),
+      el("p", { class: "muted", text: "Click the ☆ on any Pagemark you visit often, and it will appear here, grouped by folder." })));
+    return;
+  }
+  const groups = new Map();
+  for (const b of items) {
+    const g = b.folder || "";
+    if (!groups.has(g)) groups.set(g, []);
+    groups.get(g).push(b);
+  }
+  const names = [...groups.keys()].sort((a, b) => (a === "" ? 1 : b === "" ? -1 : a.localeCompare(b, undefined, { sensitivity: "base" })));
+  box.replaceChildren(...names.map((g) => {
+    const list = groups.get(g).sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || (a.title || a.url).localeCompare(b.title || b.url, undefined, { sensitivity: "base" }));
+    return el("section", { class: "home-group" },
+      el("h3", { class: "home-group-title" }, folderIcon(), el("span", { text: g ? g : "No folder" })),
+      el("div", { class: "tiles" }, ...list.map(homeTile)));
+  }));
+}
+
+function homeTile(b) {
+  const host = hostOf(b.url);
+  const href = parseUrl(b.url) ? parseUrl(b.url).href : "#";
+  const fav = el("span", { class: "fav tile-fav" });
+  if (host) {
+    const img = el("img", { alt: "", loading: "lazy", src: `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=64` });
+    img.addEventListener("error", () => { fav.textContent = host[0].toUpperCase(); });
+    fav.append(img);
+  }
+  return el("div", { class: "tile" },
+    el("a", { class: "tile-link", href, target: "_blank", rel: "noopener noreferrer", title: b.title || host },
+      fav,
+      el("span", { class: "tile-text" },
+        el("span", { class: "tile-title", text: b.title || host || b.url }),
+        el("span", { class: "tile-host", text: host }))),
+    starButton(b));
+}
 
 // ---------- Bulk actions ----------
 function renderBulkBar(shown) {
@@ -1328,11 +1413,18 @@ function parseFavoritesHtml(html) {
         const nextPath = path.length === 0 && GENERIC_ROOTS.has(name.toLowerCase()) ? path : [...path, name];
         if (sub) walk(sub, nextPath);
       } else if (a) {
+        const dd = dt.nextElementSibling && dt.nextElementSibling.tagName === "DD" ? dt.nextElementSibling : dt.querySelector(":scope > dd");
+        const tags = (a.getAttribute("tags") || "").split(",").map((t) => t.trim().toLowerCase()).filter(Boolean);
+        const inHome = path[0] === HOME_EXPORT_FOLDER;
         out.push({
           url: a.getAttribute("href") || "",
           title: a.textContent.trim(),
           addDate: parseInt(a.getAttribute("add_date") || "0", 10),
-          folder: nextFolder(path)
+          folder: inHome ? "" : nextFolder(path),
+          tags: tags.filter((t) => t !== "read-later"),
+          readLater: tags.includes("read-later"),
+          notes: dd ? dd.textContent.trim() : "",
+          homeOnly: inHome
         });
       }
     }
@@ -1352,12 +1444,14 @@ $("#file-import").addEventListener("change", async (e) => {
     const items = parseFavoritesHtml(await file.text());
     const seen = new Set(pagemarks.map((b) => b.normUrl || normalizeUrl(b.url)));
     const toAdd = [];
+    const starUrls = new Set();              // from a "★ Home" folder in a Pagemarks export
     let skipped = 0;
     for (const it of items) {
       const u = parseUrl(it.url);
       if (!u) { skipped++; continue; }
       const n = normalizeUrl(u.href);
-      if (seen.has(n)) { skipped++; continue; }
+      if (it.homeOnly) starUrls.add(n);
+      if (seen.has(n)) { if (!it.homeOnly) skipped++; continue; }
       seen.add(n);
       toAdd.push({
         url: u.href,
@@ -1365,14 +1459,16 @@ $("#file-import").addEventListener("change", async (e) => {
         title: it.title || hostOf(u.href),
         description: "",
         folder: cleanFolder(it.folder),
-        tags: [],
-        notes: "",
-        readLater: false,
+        tags: it.tags || [],
+        notes: it.notes || "",
+        readLater: !!it.readLater,
         createdAt: it.addDate > 0 ? Timestamp.fromMillis(it.addDate * 1000) : serverTimestamp(),
         updatedAt: serverTimestamp()
       });
     }
-    if (!toAdd.length) {
+    for (const d of toAdd) if (starUrls.has(d.normUrl)) d.starred = true;
+    const toStar = pagemarks.filter((b) => !b.starred && starUrls.has(b.normUrl || normalizeUrl(b.url)));
+    if (!toAdd.length && !toStar.length) {
       status.textContent = `Nothing new to import (${skipped} duplicates or unsupported links skipped).`;
       return;
     }
@@ -1381,6 +1477,11 @@ $("#file-import").addEventListener("change", async (e) => {
       for (const d of toAdd.slice(i, i + 400)) batch.set(doc(pmCol()), d);
       await batch.commit();
       status.textContent = `Imported ${Math.min(i + 400, toAdd.length)} of ${toAdd.length}…`;
+    }
+    for (let i = 0; i < toStar.length; i += 400) {
+      const batch = writeBatch(db);
+      for (const b of toStar.slice(i, i + 400)) batch.update(doc(pmCol(), b.id), { starred: true });
+      await batch.commit();
     }
     status.textContent = `Done: ${toAdd.length} imported, ${skipped} skipped.`;
   } catch (err) {
@@ -1403,38 +1504,54 @@ function download(name, text, type) {
 const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const stamp = () => new Date().toISOString().slice(0, 10);
 
+// HTML export: the standard bookmark-file format every browser can import.
+// Folders (including empty ones) and order come along everywhere; Firefox also keeps tags and notes.
+const HOME_EXPORT_FOLDER = "★ Home";
 $("#btn-export-html").addEventListener("click", () => {
-  // Build a folder tree
   const tree = { folders: new Map(), items: [] };
-  for (const b of pagemarks) {
+  const nodeFor = (path) => {
     let node = tree;
-    for (const part of (b.folder ? b.folder.split(" / ") : [])) {
+    for (const part of (path ? path.split(" / ") : [])) {
       if (!node.folders.has(part)) node.folders.set(part, { folders: new Map(), items: [] });
       node = node.folders.get(part);
     }
-    node.items.push(b);
-  }
+    return node;
+  };
+  for (const f of allFolderPaths()) nodeFor(f);           // keeps empty folders too
+  for (const b of pagemarks) nodeFor(b.folder).items.push(b);
+
+  const byName = (a, b) => (a.title || a.url).localeCompare(b.title || b.url, undefined, { sensitivity: "base" });
   const lines = [];
   const pad = (n) => "    ".repeat(n);
+  const secs = (d) => Math.floor(d.getTime() / 1000);
+  const link = (b, depth) => {
+    const tags = [...(b.tags || [])];
+    if (b.readLater) tags.push("read-later");
+    const tagAttr = tags.length ? ` TAGS="${esc(tags.join(","))}"` : "";
+    const mod = b.updatedAt && b.updatedAt.toDate ? ` LAST_MODIFIED="${secs(b.updatedAt.toDate())}"` : "";
+    lines.push(`${pad(depth)}<DT><A HREF="${esc(b.url)}" ADD_DATE="${secs(dateOf(b))}"${mod}${tagAttr}>${esc(b.title || b.url)}</A>`);
+    const note = [b.description, b.notes].filter(Boolean).join("\n\n");
+    if (note) lines.push(`${pad(depth)}<DD>${esc(note)}`);
+  };
+  const folderOpen = (name, depth) => { lines.push(`${pad(depth)}<DT><H3>${esc(name)}</H3>`); lines.push(`${pad(depth)}<DL><p>`); };
+  const folderClose = (depth) => lines.push(`${pad(depth)}</DL><p>`);
   function emit(node, depth) {
-    for (const [name, child] of [...node.folders].sort(([a], [b]) => a.localeCompare(b))) {
-      lines.push(`${pad(depth)}<DT><H3>${esc(name)}</H3>`);
-      lines.push(`${pad(depth)}<DL><p>`);
-      emit(child, depth + 1);
-      lines.push(`${pad(depth)}</DL><p>`);
+    for (const [name, child] of [...node.folders].sort(([a], [b]) => a.localeCompare(b, undefined, { sensitivity: "base" }))) {
+      folderOpen(name, depth); emit(child, depth + 1); folderClose(depth);
     }
-    for (const b of node.items) {
-      const add = Math.floor(dateOf(b).getTime() / 1000);
-      const tags = (b.tags || []).length ? ` TAGS="${esc(b.tags.join(","))}"` : "";
-      lines.push(`${pad(depth)}<DT><A HREF="${esc(b.url)}" ADD_DATE="${add}"${tags}>${esc(b.title || b.url)}</A>`);
-      if (b.notes) lines.push(`${pad(depth)}<DD>${esc(b.notes)}`);
-    }
+    // Pinned first, then A–Z, so the browser shows them in the same order
+    for (const b of [...node.items].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || byName(a, b))) link(b, depth);
   }
   emit(tree, 1);
+  // Starred Pagemarks also go in a "★ Home" folder at the end, so daily sites land together in the browser
+  const starred = pagemarks.filter((b) => b.starred).sort(byName);
+  if (starred.length) { folderOpen(HOME_EXPORT_FOLDER, 1); for (const b of starred) link(b, 2); folderClose(1); }
+
   const html = `<!DOCTYPE NETSCAPE-Bookmark-file-1>
+<!-- Exported from Pagemarks. Import this file into any web browser's bookmarks or favorites. -->
 <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">
-<TITLE>Pagemarks</TITLE>
-<H1>Pagemarks</H1>
+<TITLE>Bookmarks</TITLE>
+<H1>Bookmarks</H1>
 <DL><p>
 ${lines.join("\n")}
 </DL><p>
@@ -1446,6 +1563,7 @@ $("#btn-export-json").addEventListener("click", () => {
   const data = pagemarks.map((b) => ({
     url: b.url, title: b.title, description: b.description || "", folder: b.folder || "",
     tags: b.tags || [], notes: b.notes || "", readLater: !!b.readLater,
+    starred: !!b.starred, pinned: !!b.pinned,
     created: dateOf(b).toISOString()
   }));
   download(`pagemarks-${stamp()}.json`, JSON.stringify(data, null, 2), "application/json");
@@ -1497,7 +1615,7 @@ $("#btn-editmode").classList.toggle("primary", editing);
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "25";
+const APP_VERSION = "27";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {
