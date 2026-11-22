@@ -1,4 +1,4 @@
-// Pagemarks v12 — app logic
+// Pagemarks v13 — app logic
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-app.js";
 import {
   getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect,
@@ -439,6 +439,13 @@ function render() {
   renderBulkBar(items);
 }
 
+// Simple outline folder icon (drawn in the site's green)
+function folderIcon() {
+  const box = el("span", { class: "sub-icon", "aria-hidden": "true" });
+  box.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5V18a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9.5a2 2 0 0 0-2-2h-7.2l-1.7-2.2A2 2 0 0 0 8.5 4.5H5a2 2 0 0 0-2 2v1z"/></svg>';
+  return box;
+}
+
 // Rows for the sub-folders of the open folder, shown above its Pagemarks
 function subfolderRows(tree, path) {
   let node = tree;
@@ -447,7 +454,7 @@ function subfolderRows(tree, path) {
     .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }))
     .map((k) => {
       const row = el("li", { class: "sub-row", role: "button", tabindex: "0", title: "Open " + k.name },
-        el("span", { class: "sub-icon", "aria-hidden": "true" }),
+        folderIcon(),
         el("span", { class: "sub-name", text: k.name }),
         el("span", { class: "count", text: k.count === 1 ? "1 Pagemark" : `${k.count} Pagemarks` }),
         el("span", { class: "sub-arrow", "aria-hidden": "true", text: "›" })
@@ -485,10 +492,12 @@ function renderItem(b) {
   } else fav.textContent = "?";
 
   const title = el("a", { class: "bm-title", href: safeHref, target: "_blank", rel: "noopener noreferrer", text: b.title || host || b.url });
-  const titleLine = el("div", { class: "title-line" }, linkBadge(b), title);
-  if (s === "broken") titleLine.append(el("span", { class: "pill pill-broken", text: "Broken" }));
-  if (s === "moved") titleLine.append(el("span", { class: "pill pill-moved", text: "Moved" }));
-  if (b.readLater) titleLine.append(el("span", { class: "later-badge", text: "Read later" }));
+  // The status dot sits in its own column, so a long title wraps beside it instead of below it
+  const titleText = el("div", { class: "title-text" }, title);
+  if (s === "broken") titleText.append(el("span", { class: "pill pill-broken", text: "Broken" }));
+  if (s === "moved") titleText.append(el("span", { class: "pill pill-moved", text: "Moved" }));
+  if (b.readLater) titleText.append(el("span", { class: "later-badge", text: "Read later" }));
+  const titleLine = el("div", { class: "title-line" }, linkBadge(b), titleText);
 
   const meta = el("div", { class: "bm-meta" });
   meta.append(host + " · " + fmtDate(dateOf(b)));
@@ -893,7 +902,7 @@ function nextTidy() {
   $("#tidy-progress").textContent = `${tidyDone} tidied · ${tidyQueue.length} to go`;
   $("#tidy-card").replaceChildren(
     el("div", { class: "title-line" }, linkBadge(b),
-      el("a", { class: "bm-title", href: parseUrl(b.url)?.href || "#", target: "_blank", rel: "noopener noreferrer", text: b.title || host })),
+      el("div", { class: "title-text" }, el("a", { class: "bm-title", href: parseUrl(b.url)?.href || "#", target: "_blank", rel: "noopener noreferrer", text: b.title || host }))),
     el("div", { class: "bm-meta", text: host + " · saved " + fmtDate(dateOf(b)) + (s !== "pending" ? " · " + LINK_LABEL[s] : "") })
   );
   $("#tidy-controls").hidden = false;

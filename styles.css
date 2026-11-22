@@ -501,12 +501,17 @@ body.editing .bm-list { gap: 0.75rem; }
 }
 .sub-row:hover, .sub-row:focus-visible { border-color: #cfc8b8; background: #f3efe6; outline: none; }
 .sub-icon {
-  width: 22px; height: 16px; flex: none; position: relative;
-  background: #d9cfb8; border-radius: 2px 4px 4px 4px;
-}
-.sub-icon::before {
-  content: ""; position: absolute; left: 0; top: -4px; width: 10px; height: 5px;
-  background: #d9cfb8; border-radius: 3px 3px 0 0;
+  width: 36px; height: 36px; flex: none;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 7px; background: var(--accent-soft); color: var(--accent);
 }
 .sub-name { font-weight: 700; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sub-arrow { color: var(--muted); font-size: 1.3rem; line-height: 1; }
+
+/* ---------- v13: title wrapping ---------- */
+.title-line { display: flex; flex-wrap: nowrap; align-items: flex-start; gap: 0.55rem; }
+.title-line .dot { margin: 0.5em 0 0; align-self: flex-start; }
+.title-text { flex: 1; min-width: 0; }
+.title-text .pill, .title-text .later-badge { white-space: nowrap; }
+.sub-row { padding: 0.55rem 1.1rem; }
+body:not(.editing) .sub-row { padding-left: 1.25rem; padding-right: 1.25rem; }
