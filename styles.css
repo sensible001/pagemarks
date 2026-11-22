@@ -597,3 +597,6 @@ p.tidy-label { margin: 0 0 0.5rem; }
 .howto li { margin: 0.25rem 0; }
 .howto li .dot { margin-right: 0.35rem; vertical-align: 0; }
 #dlg-settings { max-height: calc(100vh - 2rem); }
+
+/* v20: no double line under the last topic */
+.howto:last-of-type { border-bottom: 0; padding-bottom: 0.2rem; }
