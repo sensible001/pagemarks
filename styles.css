@@ -699,3 +699,37 @@ body:not(.editing) .bm { grid-template-columns: 36px 1fr auto; }
   body:not(.editing) .bm { grid-template-columns: 32px 1fr auto; }
   body.editing .bm-side { grid-column: 3; }
 }
+
+/* ---------- v28: Home as masonry cards, one per folder ---------- */
+.home { display: block; columns: 3 250px; column-gap: 1rem; }
+.home > .empty { column-span: all; }
+.home-group {
+  break-inside: avoid; display: inline-block; width: 100%;
+  margin: 0 0 1rem; padding: 0.85rem 0.6rem 0.5rem;
+  background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+}
+.home-group-title {
+  display: flex; align-items: center; gap: 0.45rem;
+  margin: 0 0.4rem 0.45rem; padding-bottom: 0.55rem; border-bottom: 1px solid var(--line);
+  font-size: 0.95rem; letter-spacing: 0; text-transform: none; color: var(--ink); font-weight: 700;
+}
+.home-group.linked .home-group-title { cursor: pointer; }
+.home-group.linked .home-group-title:hover .hg-name { color: var(--accent); }
+.hg-name { min-width: 0; }
+.hg-parent { color: var(--muted); font-weight: 400; font-size: 0.85rem; }
+.home-group-title .sub-icon { width: 22px; height: 22px; background: transparent; flex: none; }
+.home-group-title .sub-icon svg { width: 16px; height: 16px; }
+.home-list { list-style: none; margin: 0; padding: 0; }
+.home-row { display: flex; align-items: center; border-radius: 8px; }
+.home-row:hover { background: #f4f1ea; }
+.home-link {
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: 0.6rem;
+  padding: 0.42rem 0.3rem 0.42rem 0.4rem; color: var(--ink); text-decoration: none;
+}
+.home-link .tile-fav { width: 24px; height: 24px; border-radius: 6px; }
+.home-link .tile-fav img { width: 16px; height: 16px; }
+.home-title { font-size: 0.95rem; line-height: 1.35; overflow-wrap: anywhere; }
+.home-row .star-btn { flex: none; width: 1.7rem; height: 1.7rem; font-size: 1rem; opacity: 0; }
+.home-row:hover .star-btn, .home-row .star-btn:focus-visible { opacity: 1; }
+@media (pointer: coarse) { .home-row .star-btn { opacity: 1; } }
+@media (max-width: 760px) { .home { columns: 1; } }

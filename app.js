@@ -1,4 +1,4 @@
-// Pagemarks v27 — app logic
+// Pagemarks v28 — app logic
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-app.js";
 import {
   getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect,
@@ -971,9 +971,14 @@ function renderHome(items) {
   const names = [...groups.keys()].sort((a, b) => (a === "" ? 1 : b === "" ? -1 : a.localeCompare(b, undefined, { sensitivity: "base" })));
   box.replaceChildren(...names.map((g) => {
     const list = groups.get(g).sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || (a.title || a.url).localeCompare(b.title || b.url, undefined, { sensitivity: "base" }));
-    return el("section", { class: "home-group" },
-      el("h3", { class: "home-group-title" }, folderIcon(), el("span", { text: g ? g : "No folder" })),
-      el("div", { class: "tiles" }, ...list.map(homeTile)));
+    const parts = g ? g.split(" / ") : ["No folder"];
+    const heading = el("h3", { class: "home-group-title", title: g || "No folder" }, folderIcon(),
+      el("span", { class: "hg-name" },
+        parts.length > 1 ? el("span", { class: "hg-parent", text: parts.slice(0, -1).join(" / ") + " / " }) : null,
+        parts[parts.length - 1]));
+    if (g) heading.addEventListener("click", () => setView({ type: "folder", value: g }));
+    return el("section", { class: "home-group" + (g ? " linked" : "") }, heading,
+      el("ul", { class: "home-list" }, ...list.map(homeTile)));
   }));
 }
 
@@ -986,12 +991,10 @@ function homeTile(b) {
     img.addEventListener("error", () => { fav.textContent = host[0].toUpperCase(); });
     fav.append(img);
   }
-  return el("div", { class: "tile" },
-    el("a", { class: "tile-link", href, target: "_blank", rel: "noopener noreferrer", title: b.title || host },
+  return el("li", { class: "home-row" },
+    el("a", { class: "home-link", href, target: "_blank", rel: "noopener noreferrer", title: host },
       fav,
-      el("span", { class: "tile-text" },
-        el("span", { class: "tile-title", text: b.title || host || b.url }),
-        el("span", { class: "tile-host", text: host }))),
+      el("span", { class: "home-title", text: b.title || host || b.url })),
     starButton(b));
 }
 
@@ -1615,7 +1618,7 @@ $("#btn-editmode").classList.toggle("primary", editing);
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "27";
+const APP_VERSION = "28";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {
