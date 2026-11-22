@@ -604,3 +604,27 @@ p.tidy-label { margin: 0 0 0.5rem; }
 /* v21: privacy link on the sign-in card */
 .signin-foot { margin: 1.25rem 0 0 !important; font-size: 0.9rem; }
 .signin-foot a { color: var(--muted); }
+
+/* ---------- v24: header lines up with the page columns ---------- */
+.topbar { display: block; padding: 0.8rem 0; }
+.topbar-inner {
+  max-width: 1180px; margin: 0 auto; padding: 0 1.5rem;
+  display: grid; grid-template-columns: 240px 1fr; gap: 2rem; align-items: center;
+}
+.topbar-inner .brand { margin-right: 0; }
+.topbar-main { display: flex; align-items: center; gap: 0.6rem; min-width: 0; }
+.topbar-main .search-wrap { flex: 1; max-width: none; margin-right: 0.4rem; }
+
+@media (max-width: 760px) {
+  .topbar { padding: 0.7rem 0; }
+  .topbar-inner { display: flex; flex-wrap: wrap; gap: 0.6rem; padding: 0 1rem; }
+  .topbar-inner .brand { margin-right: auto; }
+  .topbar-main { display: contents; }
+  .topbar-main .search-wrap { order: 3; flex-basis: 100%; margin-right: 0; }
+}
+@media (max-width: 760px) {
+  .topbar-inner { gap: 0.6rem 0.4rem; }
+  .topbar-inner .brand { font-size: 1.12rem; gap: 0.45rem; }
+  .topbar-main > .btn { padding: 0.42rem 0.7rem; }
+  .topbar-main > .icon-btn { padding: 0.42rem 0.6rem; }
+}
