@@ -600,3 +600,7 @@ p.tidy-label { margin: 0 0 0.5rem; }
 
 /* v20: no double line under the last topic */
 .howto:last-of-type { border-bottom: 0; padding-bottom: 0.2rem; }
+
+/* v21: privacy link on the sign-in card */
+.signin-foot { margin: 1.25rem 0 0 !important; font-size: 0.9rem; }
+.signin-foot a { color: var(--muted); }
