@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Gentium+Plus:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=14">
 </head>
 <body>
 
@@ -243,7 +243,7 @@
         <button type="button" class="btn icon-btn" id="btn-close-settings" aria-label="Close">✕</button>
       </div>
 
-      <p class="muted">Signed in as <strong id="me-email"></strong></p>
+      <p class="muted">Signed in as <strong id="me-email"></strong><br>Pagemarks version <span id="app-version"></span></p>
 
       <section>
         <h3>Import favorites</h3>
@@ -277,8 +277,13 @@
     </div>
   </dialog>
 
+  <div id="update-bar" class="update-bar" hidden>
+    <span>A newer version of Pagemarks is ready.</span>
+    <button type="button" class="btn small primary" id="btn-reload">Reload now</button>
+  </div>
+
   <div id="toast" class="toast" hidden></div>
 
-  <script type="module" src="app.js"></script>
+  <script type="module" src="app.js?v=14"></script>
 </body>
 </html>

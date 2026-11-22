@@ -515,3 +515,13 @@ body.editing .bm-list { gap: 0.75rem; }
 .title-text .pill, .title-text .later-badge { white-space: nowrap; }
 .sub-row { padding: 0.55rem 1.1rem; }
 body:not(.editing) .sub-row { padding-left: 1.25rem; padding-right: 1.25rem; }
+
+/* ---------- v14: update notice ---------- */
+.update-bar {
+  position: fixed; left: 50%; bottom: 1.25rem; transform: translateX(-50%); z-index: 60;
+  display: flex; align-items: center; gap: 0.9rem;
+  background: var(--card); color: var(--ink);
+  border: 1px solid #cfe0d6; border-radius: 10px;
+  box-shadow: 0 6px 24px rgba(40, 30, 10, 0.15);
+  padding: 0.65rem 0.75rem 0.65rem 1.1rem; font-size: 0.95rem;
+}

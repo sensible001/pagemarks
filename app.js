@@ -1,4 +1,4 @@
-// Pagemarks v13 — app logic
+// Pagemarks v14 — app logic
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-app.js";
 import {
   getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect,
@@ -1237,3 +1237,20 @@ document.addEventListener("keydown", (e) => {
 document.body.classList.toggle("editing", editing);
 $("#btn-editmode").textContent = editing ? "✓ Done" : "Organize";
 $("#btn-editmode").classList.toggle("primary", editing);
+
+// ---------- Version check ----------
+// Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
+const APP_VERSION = "14";
+$("#app-version").textContent = APP_VERSION;
+async function checkForUpdate() {
+  try {
+    const r = await fetch("version.json?t=" + Date.now(), { cache: "no-store" });
+    if (!r.ok) return;
+    const { version } = await r.json();
+    if (version && String(version) !== APP_VERSION) $("#update-bar").hidden = false;
+  } catch { /* offline: ignore */ }
+}
+$("#btn-reload").addEventListener("click", () => location.reload());
+checkForUpdate();
+setInterval(checkForUpdate, 15 * 60 * 1000);
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") checkForUpdate(); });
