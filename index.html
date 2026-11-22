@@ -67,7 +67,8 @@
           <li><button class="nav-item" data-view="unknown"><span class="label"><span class="dot dot-unknown"></span>Couldn't check</span> <span class="count" id="count-unknown">0</span></button></li>
         </ul>
         <p class="muted small-note" id="health-note"></p>
-        <h3>Folders</h3>
+        <h3 id="folders-heading" class="drop-root" title="Drop a folder here to move it to the top level">Folders</h3>
+        <p class="muted small-note drag-tip">Tip: drag a folder or Pagemark onto a folder to move it.</p>
         <ul class="nav-list" id="folder-list"></ul>
         <h3>Tags</h3>
         <div class="tag-cloud" id="tag-list"></div>
@@ -76,6 +77,10 @@
       <main class="main">
         <div class="main-head">
           <h2 id="view-title">All Pagemarks</h2>
+          <span id="folder-tools" class="folder-tools" hidden>
+            <button type="button" class="btn small" id="folder-rename">Rename</button>
+            <button type="button" class="btn small" id="folder-move">Move folder…</button>
+          </span>
           <button id="btn-filters" class="btn small filters-btn">Folders &amp; tags</button>
           <label class="sort">Sort
             <select id="sort">
@@ -163,6 +168,26 @@
         <span class="spacer"></span>
         <button type="button" id="bulk-cancel" class="btn">Cancel</button>
         <button type="submit" class="btn primary">Apply</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Folder dialog (move / rename) -->
+  <dialog id="dlg-folder">
+    <form id="form-folder" method="dialog">
+      <h2 id="folder-heading">Move folder</h2>
+      <p class="muted" id="folder-sub"></p>
+      <label id="folder-move-wrap">Move into
+        <select id="folder-dest" size="10" class="folder-dest"></select>
+      </label>
+      <label id="folder-rename-wrap">New name
+        <input id="folder-newname" type="text" autocomplete="off">
+      </label>
+      <p id="folder-error" class="error" hidden></p>
+      <div class="dlg-actions">
+        <span class="spacer"></span>
+        <button type="button" id="folder-cancel" class="btn">Cancel</button>
+        <button type="submit" id="folder-ok" class="btn primary">Move</button>
       </div>
     </form>
   </dialog>

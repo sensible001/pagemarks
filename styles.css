@@ -441,3 +441,22 @@ dialog label.check input { width: auto; margin: 0; }
 }
 
 .warn-text { color: var(--warn-ink); font-style: italic; }
+
+/* ---------- v8: folder moving ---------- */
+.main-head { flex-wrap: wrap; }
+.folder-tools { display: flex; gap: 0.4rem; margin-right: auto; }
+.main-head h2 { margin-right: 0.5rem; }
+.drop-over { outline: 2px dashed var(--accent); outline-offset: -2px; background: var(--accent-soft) !important; }
+.drop-root { padding: 0.25rem 0.4rem; margin-left: -0.4rem; border-radius: 6px; }
+body.dragging .drop-root { outline: 1px dashed #cfc8b8; }
+body.dragging .drop-root::after { content: "  ← drop here for top level"; text-transform: none; letter-spacing: 0; font-weight: 400; }
+.drag-tip { margin: -0.2rem 0 0.5rem; }
+@media (pointer: coarse) { .drag-tip { display: none; } }
+.bm[draggable="true"] { cursor: grab; }
+.bm a, .bm button, .bm input { cursor: pointer; }
+.drag-ghost {
+  position: fixed; top: -100px; left: -100px;
+  background: var(--accent); color: #fff; padding: 0.35rem 0.8rem; border-radius: 8px; font-size: 0.9rem;
+}
+.folder-dest { width: 100%; font: inherit; font-size: 1rem; padding: 0.3rem; border: 1px solid var(--line); border-radius: 8px; margin-top: 0.3rem; }
+.folder-dest option { padding: 0.25rem 0.4rem; }

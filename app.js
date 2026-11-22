@@ -1,4 +1,4 @@
-// Pagemarks v7 — app logic
+// Pagemarks v8 — app logic
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-app.js";
 import {
   getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect,
@@ -277,10 +277,19 @@ function renderTree(node, depth) {
         toggle,
         el("button", {
           class: "nav-item" + (active ? " active" : ""), title: k.path,
+          draggable: "true", "data-folder": k.path,
           onclick: () => setView({ type: "folder", value: k.path })
         }, el("span", { class: "label", text: k.name }), el("span", { class: "count", text: String(k.count) }))
       )
     );
+    const btn = li.querySelector(".nav-item");
+    btn.addEventListener("dragstart", (e) => {
+      e.dataTransfer.setData("application/x-pm-folder", k.path);
+      e.dataTransfer.effectAllowed = "move";
+      document.body.classList.add("dragging");
+    });
+    btn.addEventListener("dragend", endDrag);
+    makeDropTarget(btn, k.path);
     items.push(li);
     if (hasKids && open) items.push(...renderTree(k, depth + 1));
   }
@@ -332,6 +341,7 @@ function render() {
 
   // List
   $("#view-title").textContent = viewTitle();
+  $("#folder-tools").hidden = view.type !== "folder";
   const items = filtered();
   $("#list").replaceChildren(...items.map(renderItem));
   $("#empty").hidden = items.length > 0;
@@ -410,7 +420,22 @@ function renderItem(b) {
     el("button", { class: "btn small", text: "Edit", onclick: () => openEdit(b) })
   );
 
-  return el("li", { class: "bm" + (selected.has(b.id) ? " picked" : "") }, box, fav, body, actions);
+  const li = el("li", { class: "bm" + (selected.has(b.id) ? " picked" : ""), draggable: "true" }, box, fav, body, actions);
+  li.addEventListener("dragstart", (e) => {
+    if (e.target !== li) return;
+    const ids = selected.has(b.id) ? [...selected] : [b.id];
+    e.dataTransfer.setData("application/x-pm-ids", JSON.stringify(ids));
+    e.dataTransfer.effectAllowed = "move";
+    document.body.classList.add("dragging");
+    if (ids.length > 1) {
+      const ghost = el("div", { class: "drag-ghost", text: `${ids.length} Pagemarks` });
+      document.body.append(ghost);
+      e.dataTransfer.setDragImage(ghost, 10, 10);
+      setTimeout(() => ghost.remove(), 0);
+    }
+  });
+  li.addEventListener("dragend", endDrag);
+  return li;
 }
 
 async function updateLink(b) {
@@ -439,6 +464,146 @@ $("#brand-home").addEventListener("click", (e) => { e.preventDefault(); $("#sear
 $("#search").addEventListener("input", () => { selected.clear(); render(); });
 $("#btn-filters").addEventListener("click", () => document.querySelector(".sidebar").classList.toggle("open"));
 $("#sort").addEventListener("change", render);
+
+// ---------- Folders: move, rename, drag and drop ----------
+const parentOf = (path) => path.includes(" / ") ? path.slice(0, path.lastIndexOf(" / ")) : "";
+const nameOf = (path) => path.split(" / ").pop();
+const isInside = (path, folder) => path === folder || path.startsWith(folder + " / ");
+
+function endDrag() {
+  document.body.classList.remove("dragging");
+  document.querySelectorAll(".drop-over").forEach((n) => n.classList.remove("drop-over"));
+}
+
+// Rewrites every Pagemark under `from` so it sits under `to` instead (merges if `to` exists).
+async function relocateFolder(from, to) {
+  if (from === to) return 0;
+  const affected = pagemarks.filter((b) => b.folder && isInside(b.folder, from));
+  for (let i = 0; i < affected.length; i += 400) {
+    const batch = writeBatch(db);
+    for (const b of affected.slice(i, i + 400)) {
+      batch.update(doc(pmCol(), b.id), { folder: to + b.folder.slice(from.length), updatedAt: serverTimestamp() });
+    }
+    await batch.commit();
+  }
+  // Keep open/closed state and the current view pointing at the new place
+  expanded = new Set([...expanded].map((p) => (isInside(p, from) ? to + p.slice(from.length) : p)));
+  const parent = parentOf(to);
+  if (parent) expanded.add(parent);
+  saveExpanded();
+  if (view.type === "folder" && isInside(view.value, from)) view = { type: "folder", value: to + view.value.slice(from.length) };
+  render();
+  return affected.length;
+}
+
+async function moveFolder(from, destParent) {
+  if (destParent && isInside(destParent, from)) { toast("A folder can't go inside itself."); return; }
+  if (parentOf(from) === destParent) return;
+  const to = destParent ? destParent + " / " + nameOf(from) : nameOf(from);
+  const n = await relocateFolder(from, to);
+  toast(`Moved “${nameOf(from)}” ${destParent ? "into “" + nameOf(destParent) + "”" : "to the top level"} (${n} Pagemark${n === 1 ? "" : "s"})`);
+}
+
+async function movePagemarksTo(ids, folder) {
+  for (let i = 0; i < ids.length; i += 400) {
+    const batch = writeBatch(db);
+    for (const id of ids.slice(i, i + 400)) batch.update(doc(pmCol(), id), { folder, updatedAt: serverTimestamp() });
+    await batch.commit();
+  }
+  for (const id of ids) selected.delete(id);
+  const parent = parentOf(folder);
+  if (parent) { expanded.add(parent); saveExpanded(); }
+  toast(`Moved ${ids.length} Pagemark${ids.length === 1 ? "" : "s"} to “${nameOf(folder)}”`);
+}
+
+function makeDropTarget(node, folderPath) {
+  node.addEventListener("dragover", (e) => {
+    const types = [...e.dataTransfer.types];
+    if (!types.includes("application/x-pm-folder") && !types.includes("application/x-pm-ids")) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    node.classList.add("drop-over");
+  });
+  node.addEventListener("dragleave", () => node.classList.remove("drop-over"));
+  node.addEventListener("drop", async (e) => {
+    e.preventDefault();
+    endDrag();
+    const folder = e.dataTransfer.getData("application/x-pm-folder");
+    const ids = e.dataTransfer.getData("application/x-pm-ids");
+    if (folder) await moveFolder(folder, folderPath);
+    else if (ids && folderPath) await movePagemarksTo(JSON.parse(ids), folderPath);
+  });
+}
+makeDropTarget($("#folders-heading"), "");
+
+// Move / rename dialog
+const dlgFolder = $("#dlg-folder");
+let folderMode = null;
+
+function allFolderPaths() {
+  const set = new Set();
+  for (const b of pagemarks) {
+    if (!b.folder) continue;
+    const parts = b.folder.split(" / ");
+    for (let i = 1; i <= parts.length; i++) set.add(parts.slice(0, i).join(" / "));
+  }
+  return [...set].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
+}
+
+function openFolderDialog(mode) {
+  if (view.type !== "folder") return;
+  folderMode = mode;
+  const path = view.value;
+  $("#folder-error").hidden = true;
+  $("#folder-move-wrap").hidden = mode !== "move";
+  $("#folder-rename-wrap").hidden = mode !== "rename";
+  if (mode === "move") {
+    $("#folder-heading").textContent = `Move “${nameOf(path)}”`;
+    $("#folder-sub").textContent = "Choose where it should go. Everything inside moves with it.";
+    const sel = $("#folder-dest");
+    const opts = [el("option", { value: "", text: "Top level (no parent folder)" })];
+    for (const p of allFolderPaths()) {
+      if (isInside(p, path)) continue;            // not into itself
+      const depth = p.split(" / ").length - 1;
+      opts.push(el("option", { value: p, text: "\u00a0\u00a0\u00a0\u00a0".repeat(depth) + nameOf(p) }));
+    }
+    sel.replaceChildren(...opts);
+    sel.value = parentOf(path);
+    $("#folder-ok").textContent = "Move";
+  } else {
+    $("#folder-heading").textContent = `Rename “${nameOf(path)}”`;
+    $("#folder-sub").textContent = parentOf(path) ? `Inside “${parentOf(path)}”` : "";
+    $("#folder-newname").value = nameOf(path);
+    $("#folder-ok").textContent = "Rename";
+  }
+  dlgFolder.showModal();
+  (mode === "move" ? $("#folder-dest") : $("#folder-newname")).focus();
+}
+
+$("#folder-move").addEventListener("click", () => openFolderDialog("move"));
+$("#folder-rename").addEventListener("click", () => openFolderDialog("rename"));
+$("#folder-cancel").addEventListener("click", () => dlgFolder.close());
+$("#folder-dest").addEventListener("dblclick", () => $("#form-folder").requestSubmit());
+
+$("#form-folder").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const path = view.value;
+  if (folderMode === "move") {
+    const dest = $("#folder-dest").value;
+    dlgFolder.close();
+    await moveFolder(path, dest);
+  } else {
+    const name = $("#folder-newname").value.trim();
+    const err = $("#folder-error");
+    if (!name) { err.textContent = "Please type a name."; err.hidden = false; return; }
+    if (name.includes("/")) { err.textContent = "Folder names can't contain “/”. Use Move folder to put it inside another folder."; err.hidden = false; return; }
+    dlgFolder.close();
+    const parent = parentOf(path);
+    const to = parent ? parent + " / " + name : name;
+    const n = await relocateFolder(path, to);
+    toast(`Renamed to “${name}” (${n} Pagemark${n === 1 ? "" : "s"})`);
+  }
+});
 
 // ---------- Bulk actions ----------
 function renderBulkBar(shown) {
