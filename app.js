@@ -1,4 +1,4 @@
-// Pagemarks v9 — app logic
+// Pagemarks v10 — app logic
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-app.js";
 import {
   getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect,
@@ -31,6 +31,8 @@ let unsubPagemarks = null;
 let unsubInvites = null;
 let view = { type: "all", value: null };   // all | later | unfiled | folder | tag | broken | moved | unknown
 let editingId = null;
+let extraFolders = [];       // folders you created that may still be empty (synced in Firestore)
+let unsubMeta = null;
 
 // ---------- Helpers ----------
 const $ = (sel) => document.querySelector(sel);
@@ -189,6 +191,8 @@ $("#btn-signout-ni").addEventListener("click", doSignOut);
 onAuthStateChanged(auth, async (u) => {
   if (unsubPagemarks) { unsubPagemarks(); unsubPagemarks = null; }
   if (unsubInvites) { unsubInvites(); unsubInvites = null; }
+  if (unsubMeta) { unsubMeta(); unsubMeta = null; }
+  extraFolders = [];
   user = u;
   pagemarks = [];
   if (!u) { showScreen("signin"); return; }
@@ -222,10 +226,39 @@ onAuthStateChanged(auth, async (u) => {
 });
 
 // ---------- Live data ----------
+const metaRef = () => doc(db, "users", user.uid, "meta", "folders");
+function saveExtraFolders(list) {
+  extraFolders = [...new Set(list)].sort((a, b) => a.localeCompare(b));
+  render();
+  return setDoc(metaRef(), { paths: extraFolders, updatedAt: serverTimestamp() });
+}
+
+// Every folder stays until you delete it: any folder in use is also recorded in the folder list,
+// so it remains (with a count of 0) after its last Pagemark is deleted or moved out.
+let metaLoaded = false, pmLoaded = false, syncing = false;
+async function syncFolders() {
+  if (!metaLoaded || !pmLoaded || syncing) return;
+  const known = new Set(extraFolders);
+  const missing = [...new Set(pagemarks.map((b) => b.folder).filter(Boolean))].filter((f) => !known.has(f));
+  if (!missing.length) return;
+  syncing = true;
+  try { await saveExtraFolders([...extraFolders, ...missing]); } catch (e) { console.error(e); }
+  finally { syncing = false; }
+}
+
 function startPagemarks() {
+  metaLoaded = false; pmLoaded = false;
+  unsubMeta = onSnapshot(metaRef(), (s) => {
+    extraFolders = s.exists() ? (s.data().paths || []) : [];
+    metaLoaded = true;
+    render();
+    syncFolders();
+  }, (err) => console.error(err));
   unsubPagemarks = onSnapshot(pmCol(), (snap) => {
     pagemarks = snap.docs.map((d) => ({ id: d.id, ...d.data({ serverTimestamps: "estimate" }) }));
+    pmLoaded = true;
     render();
+    syncFolders();
   }, (err) => {
     console.error(err);
     toast("Could not load Pagemarks. Check the Firestore rules.");
@@ -280,6 +313,15 @@ function viewTitle() {
 // Build a nested folder tree with counts that include subfolders.
 function buildTree() {
   const root = { children: new Map(), count: 0 };
+  for (const p of extraFolders) {
+    let node = root;
+    let path = "";
+    for (const part of p.split(" / ")) {
+      path = path ? path + " / " + part : part;
+      if (!node.children.has(part)) node.children.set(part, { name: part, path, children: new Map(), count: 0 });
+      node = node.children.get(part);
+    }
+  }
   for (const b of pagemarks) {
     if (!b.folder) continue;
     let node = root;
@@ -358,7 +400,7 @@ function render() {
   const fl = $("#folder-list");
   fl.replaceChildren(...renderTree(tree, 0));
   if (!tree.children.size) fl.append(el("li", { class: "muted", text: "None yet" }));
-  const allFolders = [...new Set(pagemarks.map((b) => b.folder).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  const allFolders = allFolderPaths();
   const opts = () => allFolders.map((f) => el("option", { value: f }));
   $("#folder-options").replaceChildren(...opts());
 
@@ -377,9 +419,17 @@ function render() {
   // List
   $("#view-title").textContent = viewTitle();
   $("#folder-tools").hidden = view.type !== "folder";
+  $("#folder-delete").hidden = !(view.type === "folder" && !pagemarks.some((b) => b.folder && isInside(b.folder, view.value)));
   const items = filtered();
   $("#list").replaceChildren(...items.map(renderItem));
   $("#empty").hidden = items.length > 0;
+  if (!items.length) {
+    const inFolder = view.type === "folder";
+    $("#empty-title").textContent = inFolder ? "This folder is empty." : "No Pagemarks here yet.";
+    $("#empty-hint").textContent = inFolder
+      ? (editing ? "Drag Pagemarks onto it in the sidebar, or tick them elsewhere and use Move to folder…" : "Click Organize to move Pagemarks here.")
+      : "Click + Add to save a Pagemark, or import your favorites under ⚙ Settings.";
+  }
   renderBulkBar(items);
 }
 
@@ -514,6 +564,10 @@ function endDrag() {
 async function relocateFolder(from, to) {
   if (from === to) return 0;
   const affected = pagemarks.filter((b) => b.folder && isInside(b.folder, from));
+  // Update the folder list first so the old folder doesn't linger as an empty copy
+  if (extraFolders.some((p) => isInside(p, from))) {
+    await saveExtraFolders(extraFolders.map((p) => (isInside(p, from) ? to + p.slice(from.length) : p)));
+  }
   for (let i = 0; i < affected.length; i += 400) {
     const batch = writeBatch(db);
     for (const b of affected.slice(i, i + 400)) {
@@ -577,21 +631,33 @@ let folderMode = null;
 
 function allFolderPaths() {
   const set = new Set();
-  for (const b of pagemarks) {
-    if (!b.folder) continue;
-    const parts = b.folder.split(" / ");
+  for (const f of [...pagemarks.map((b) => b.folder), ...extraFolders]) {
+    if (!f) continue;
+    const parts = f.split(" / ");
     for (let i = 1; i <= parts.length; i++) set.add(parts.slice(0, i).join(" / "));
   }
   return [...set].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
 }
 
-function openFolderDialog(mode) {
-  if (view.type !== "folder") return;
+function openFolderDialog(mode, parentForNew = "") {
+  if (mode !== "new" && view.type !== "folder") return;
   folderMode = mode;
+  newFolderParent = parentForNew;
   const path = view.value;
   $("#folder-error").hidden = true;
   $("#folder-move-wrap").hidden = mode !== "move";
-  $("#folder-rename-wrap").hidden = mode !== "rename";
+  $("#folder-rename-wrap").hidden = mode === "move";
+  if (mode === "new") {
+    $("#folder-heading").textContent = parentForNew ? `New folder inside “${nameOf(parentForNew)}”` : "New folder";
+    $("#folder-sub").textContent = parentForNew ? parentForNew : "At the top level";
+    $("#folder-newname").value = "";
+    $("#folder-newname").placeholder = "e.g. Blockchain";
+    $("#folder-ok").textContent = "Create";
+    dlgFolder.showModal();
+    $("#folder-newname").focus();
+    return;
+  }
+  $("#folder-newname").placeholder = "";
   if (mode === "move") {
     $("#folder-heading").textContent = `Move “${nameOf(path)}”`;
     $("#folder-sub").textContent = "Choose where it should go. Everything inside moves with it.";
@@ -615,7 +681,17 @@ function openFolderDialog(mode) {
   (mode === "move" ? $("#folder-dest") : $("#folder-newname")).focus();
 }
 
+let newFolderParent = "";
 $("#folder-move").addEventListener("click", () => openFolderDialog("move"));
+$("#folder-new").addEventListener("click", () => openFolderDialog("new", view.value));
+$("#folder-new-top").addEventListener("click", () => openFolderDialog("new", ""));
+$("#folder-delete").addEventListener("click", async () => {
+  const path = view.value;
+  if (!(await ask({ title: `Delete the folder “${nameOf(path)}”?`, text: "It's empty, so nothing else is deleted.", ok: "Delete", danger: true }))) return;
+  await saveExtraFolders(extraFolders.filter((p) => !isInside(p, path)));
+  setView(parentOf(path) ? { type: "folder", value: parentOf(path) } : { type: "all", value: null });
+  toast("Folder deleted");
+});
 $("#folder-rename").addEventListener("click", () => openFolderDialog("rename"));
 $("#folder-cancel").addEventListener("click", () => dlgFolder.close());
 $("#folder-dest").addEventListener("dblclick", () => $("#form-folder").requestSubmit());
@@ -623,6 +699,20 @@ $("#folder-dest").addEventListener("dblclick", () => $("#form-folder").requestSu
 $("#form-folder").addEventListener("submit", async (e) => {
   e.preventDefault();
   const path = view.value;
+  if (folderMode === "new") {
+    const name = $("#folder-newname").value.trim();
+    const err = $("#folder-error");
+    if (!name) { err.textContent = "Please type a name."; err.hidden = false; return; }
+    if (name.includes("/")) { err.textContent = "Folder names can't contain “/”."; err.hidden = false; return; }
+    const full = newFolderParent ? newFolderParent + " / " + name : name;
+    if (allFolderPaths().some((p) => p.toLowerCase() === full.toLowerCase())) { err.textContent = "A folder with that name is already here."; err.hidden = false; return; }
+    dlgFolder.close();
+    await saveExtraFolders([...extraFolders, full]);
+    if (newFolderParent) { expanded.add(newFolderParent); saveExpanded(); }
+    setView({ type: "folder", value: full });
+    toast(`Created “${name}”. Drag Pagemarks onto it, or use Move to folder…`);
+    return;
+  }
   if (folderMode === "move") {
     const dest = $("#folder-dest").value;
     dlgFolder.close();

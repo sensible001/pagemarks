@@ -70,6 +70,7 @@
         <p class="muted small-note edit-only" id="health-note"></p>
         <h3 id="folders-heading" class="drop-root" title="Drop a folder here to move it to the top level">Folders</h3>
         <p class="muted small-note drag-tip edit-only">Tip: drag a folder or Pagemark onto a folder to move it.</p>
+        <button type="button" class="btn small new-folder-btn edit-only" id="folder-new-top">+ New folder</button>
         <ul class="nav-list" id="folder-list"></ul>
         <h3>Tags</h3>
         <div class="tag-cloud" id="tag-list"></div>
@@ -81,6 +82,8 @@
           <span id="folder-tools" class="folder-tools edit-only" hidden>
             <button type="button" class="btn small" id="folder-rename">Rename</button>
             <button type="button" class="btn small" id="folder-move">Move folder…</button>
+            <button type="button" class="btn small" id="folder-new">+ New folder inside</button>
+            <button type="button" class="btn small danger" id="folder-delete" hidden>Delete folder</button>
           </span>
           <button id="btn-filters" class="btn small filters-btn">Folders &amp; tags</button>
           <label class="sort">Sort
@@ -105,8 +108,8 @@
         </div>
         <ul id="list" class="bm-list"></ul>
         <div id="empty" class="empty" hidden>
-          <p>No Pagemarks here yet.</p>
-          <p class="muted">Click <strong>+ Add</strong> to save a Pagemark, or import your favorites under ⚙ Settings.</p>
+          <p id="empty-title">No Pagemarks here yet.</p>
+          <p class="muted" id="empty-hint">Click <strong>+ Add</strong> to save a Pagemark, or import your favorites under ⚙ Settings.</p>
         </div>
       </main>
     </div>
