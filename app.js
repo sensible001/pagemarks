@@ -1,4 +1,4 @@
-// Pagemarks v10 — app logic
+// Pagemarks v11 — app logic
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-app.js";
 import {
   getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect,
@@ -235,9 +235,10 @@ function saveExtraFolders(list) {
 
 // Every folder stays until you delete it: any folder in use is also recorded in the folder list,
 // so it remains (with a count of 0) after its last Pagemark is deleted or moved out.
-let metaLoaded = false, pmLoaded = false, syncing = false;
+let metaLoaded = false, pmLoaded = false, syncing = false, relocating = 0;
 async function syncFolders() {
-  if (!metaLoaded || !pmLoaded || syncing) return;
+  // Paused while a folder is being moved/renamed, so the old name isn't re-recorded mid-move
+  if (!metaLoaded || !pmLoaded || syncing || relocating) return;
   const known = new Set(extraFolders);
   const missing = [...new Set(pagemarks.map((b) => b.folder).filter(Boolean))].filter((f) => !known.has(f));
   if (!missing.length) return;
@@ -563,6 +564,12 @@ function endDrag() {
 // Rewrites every Pagemark under `from` so it sits under `to` instead (merges if `to` exists).
 async function relocateFolder(from, to) {
   if (from === to) return 0;
+  relocating++;
+  try { return await relocateFolderNow(from, to); }
+  finally { relocating--; syncFolders(); }
+}
+
+async function relocateFolderNow(from, to) {
   const affected = pagemarks.filter((b) => b.folder && isInside(b.folder, from));
   // Update the folder list first so the old folder doesn't linger as an empty copy
   if (extraFolders.some((p) => isInside(p, from))) {
