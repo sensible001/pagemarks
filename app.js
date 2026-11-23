@@ -10,7 +10,7 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=46";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=48";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -63,7 +63,7 @@ if (QUICK) document.body.classList.add("quick");
 let quickOpened = false, quickSaved = false, quickFinished = false;
 
 function showScreen(name) {
-  for (const s of ["loading", "signin", "notinvited", "app", "saved"]) {
+  for (const s of ["loading", "signin", "notinvited", "offline", "app", "saved"]) {
     $(`#screen-${s}`).hidden = s !== name;
   }
 }
@@ -211,6 +211,7 @@ $("#btn-signin").addEventListener("click", async () => {
 });
 
 const doSignOut = () => signOut(auth);
+$("#btn-retry-offline").addEventListener("click", () => location.reload());
 $("#btn-signout").addEventListener("click", () => { $("#dlg-settings").close(); doSignOut(); });
 $("#btn-signout-ni").addEventListener("click", doSignOut);
 
@@ -227,17 +228,33 @@ onAuthStateChanged(auth, async (u) => {
   showScreen("loading");
   const email = (u.email || "").toLowerCase();
   // Only the owner is allowed to list the invite list, so a successful read means "owner".
-  try {
-    await getDocsFromServer(query(collection(db, "allowlist"), limit(1)));
-    isAdmin = true;
-  } catch { isAdmin = false; }
+  // A "permission denied" answer is a real no. Anything else (a slow or dropped connection
+  // right after signing in) is retried, so a hiccup never looks like "not invited".
+  const ask = async (fn) => {
+    for (let attempt = 0; attempt < 4; attempt++) {
+      try { return { ok: true, value: await fn() }; }
+      catch (err) {
+        if (err && err.code === "permission-denied") return { ok: false, denied: true };
+        await new Promise((r) => setTimeout(r, 700 * (attempt + 1)));
+      }
+    }
+    return { ok: false, denied: false };
+  };
+
+  const adminCheck = await ask(() => getDocsFromServer(query(collection(db, "allowlist"), limit(1))));
+  isAdmin = adminCheck.ok;
 
   let invited = isAdmin;
+  let unreachable = !adminCheck.ok && !adminCheck.denied;
   if (!invited) {
-    try {
-      const snap = await getDoc(doc(db, "allowlist", email));
-      invited = snap.exists();
-    } catch { invited = false; }
+    const inviteCheck = await ask(async () => (await getDoc(doc(db, "allowlist", email))).exists());
+    if (inviteCheck.ok) { invited = inviteCheck.value; unreachable = false; }
+    else unreachable = unreachable || !inviteCheck.denied;
+  }
+  if (!invited && unreachable) {
+    $("#offline-email").textContent = u.email;
+    showScreen("offline");
+    return;
   }
   if (!invited) {
     $("#notinvited-email").textContent = u.email;
@@ -1414,7 +1431,7 @@ $("#btn-add").addEventListener("click", () => openEdit());
 function openQuick() {
   history.replaceState(null, "", location.pathname + location.search);
   openEdit();
-  $("#edit-heading").textContent = "Save this page";
+  $("#edit-heading").textContent = "Save a Pagemark";
   $("#f-url").value = QUICK.url;
   $("#f-title").value = QUICK.title;
   checkDuplicate();
@@ -1795,7 +1812,7 @@ $("#btn-editmode").classList.toggle("primary", editing);
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "46";
+const APP_VERSION = "48";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {

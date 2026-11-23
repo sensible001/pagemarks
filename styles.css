@@ -842,3 +842,12 @@ body.quick #dlg-edit .dlg-actions { margin-top: 0.9rem; }
 .ext-installed { color: var(--accent); font-weight: 700; }
 #ext-get a.btn { text-decoration: none; }
 @media (max-width: 700px) { .ext-card { flex-wrap: wrap; } .ext-card .btn { margin-left: calc(36px + 0.9rem); } }
+
+/* v48: the Pagemarks logo above the heading in the browser button's save window */
+.quick-brand { display: none; }
+body.quick .quick-brand {
+  display: flex; align-items: center; gap: 0.35rem;
+  margin: 0 0 0.9rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--line);
+  font-size: 1.12rem; font-weight: 700; color: var(--ink);
+}
+body.quick .quick-brand img { flex: none; }

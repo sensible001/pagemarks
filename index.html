@@ -8,14 +8,14 @@
   <meta name="description" content="Pagemarks is a private, invitation-only app for saving and organizing web pages.">
   <meta name="application-name" content="Pagemarks">
   <meta property="og:site_name" content="Pagemarks">
-  <link rel="icon" href="favicon.ico?v=46" sizes="any">
-  <link rel="icon" href="favicon.svg?v=46" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=46">
+  <link rel="icon" href="favicon.ico?v=48" sizes="any">
+  <link rel="icon" href="favicon.svg?v=48" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=48">
   <meta name="apple-mobile-web-app-title" content="Pagemarks">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Gentium+Plus:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=46">
+  <link rel="stylesheet" href="styles.css?v=48">
 </head>
 <body>
 
@@ -27,7 +27,7 @@
   <!-- Sign in -->
   <section id="screen-signin" class="screen center" hidden>
     <div class="card welcome">
-      <img src="icon.svg?v=46" alt="" class="welcome-icon">
+      <img src="icon.svg?v=48" alt="" class="welcome-icon">
       <h1>Pagemarks</h1>
       <p class="muted">A private, invitation-only app for saving and organizing web pages.</p>
       <button id="btn-signin" class="btn primary large">Sign in with Google</button>
@@ -46,6 +46,15 @@
     </div>
   </section>
 
+  <section id="screen-offline" class="screen center" hidden>
+    <div class="card welcome">
+      <h1>Couldn't connect</h1>
+      <p>You're signed in as <strong id="offline-email"></strong>, but Pagemarks couldn't reach its database just now.</p>
+      <p class="muted">Check your internet connection, then try again.</p>
+      <button id="btn-retry-offline" class="btn primary">Try again</button>
+    </div>
+  </section>
+
   <!-- After a quick save, if the window couldn't close itself -->
   <section id="screen-saved" class="screen center" hidden>
     <div class="card welcome">
@@ -61,7 +70,7 @@
     <header class="topbar">
       <div class="topbar-inner">
         <a class="brand" href="#" id="brand-home">
-          <img src="icon.svg?v=46" alt="" width="28" height="28"><span>Pagemarks</span>
+          <img src="icon.svg?v=48" alt="" width="28" height="28"><span>Pagemarks</span>
         </a>
         <div class="topbar-main">
           <div class="search-wrap">
@@ -131,9 +140,9 @@
           </span>
         </div>
         <div id="ext-card" class="ext-card" hidden>
-          <img src="favicon.svg?v=46" alt="" width="36" height="36">
+          <img src="favicon.svg?v=48" alt="" width="36" height="36">
           <div class="ext-card-text">
-            <strong>Save pages in one click</strong>
+            <strong>Save Pagemarks in one click</strong>
             <span class="muted">Add the Pagemarks button to your browser, then click it on any page you want to keep.</span>
           </div>
           <a id="ext-card-add" class="btn primary" target="_blank" rel="noopener">Add to browser</a>
@@ -152,6 +161,7 @@
   <!-- Add / edit dialog -->
   <dialog id="dlg-edit">
     <form id="form-edit" method="dialog">
+      <p class="quick-brand" aria-hidden="true"><img src="icon.svg?v=48" alt="" width="28" height="28"><span>Pagemarks</span></p>
       <h2 id="edit-heading">Add Pagemark</h2>
 
       <label>Web address
@@ -438,6 +448,6 @@
 
   <div id="toast" class="toast" hidden></div>
 
-  <script type="module" src="app.js?v=46"></script>
+  <script type="module" src="app.js?v=48"></script>
 </body>
 </html>
