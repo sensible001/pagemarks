@@ -10,7 +10,7 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=45";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=46";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -248,6 +248,7 @@ onAuthStateChanged(auth, async (u) => {
   $("#me-email").textContent = u.email;
   $("#invite-section").hidden = !isAdmin;
   document.querySelectorAll(".owner-only").forEach(el => { el.hidden = !isAdmin; });
+  checkPreviewCard();
   showScreen("app");
   startPagemarks();
   if (isAdmin) startInvites();
@@ -1019,14 +1020,31 @@ const extInstalled = () => document.documentElement.hasAttribute("data-pagemarks
 const extSupported = () => /Chrome\//.test(navigator.userAgent) && !/Mobile|Android|CriOS/.test(navigator.userAgent);
 function extCardDismissed() { try { return localStorage.getItem("pm-ext-card") === "dismissed"; } catch { return false; } }
 
-function renderExtCard(onHome) {
-  const show = onHome && !!EXTENSION_URL && extSupported() && !extInstalled() && !extCardDismissed();
-  $("#ext-card").hidden = !show;
-  if (show) $("#ext-card-add").href = EXTENSION_URL;
+// Owner-only preview: www.pagemarks.com/#preview-card shows the card even when it would normally be hidden
+let previewCard = false;
+function checkPreviewCard() {
+  if (location.hash !== "#preview-card") return;
+  history.replaceState(null, "", location.pathname + location.search);
+  if (!isAdmin) return;
+  previewCard = true;
+  clearSearch();
+  setView({ type: "home", value: null });
 }
+window.addEventListener("hashchange", checkPreviewCard);
+
+function renderExtCard(onHome) {
+  const normal = !!EXTENSION_URL && extSupported() && !extInstalled() && !extCardDismissed();
+  const show = onHome && (normal || previewCard);
+  $("#ext-card").hidden = !show;
+  if (show) $("#ext-card-add").href = EXTENSION_URL || "#";
+}
+$("#ext-card-add").addEventListener("click", (e) => {
+  if (!EXTENSION_URL) { e.preventDefault(); toast("Preview: this will open the Chrome Web Store once the button is published"); }
+});
 $("#ext-card-close").addEventListener("click", () => {
-  try { localStorage.setItem("pm-ext-card", "dismissed"); } catch { /* ignore */ }
   $("#ext-card").hidden = true;
+  if (previewCard) { previewCard = false; return; }   // a preview never hides the real card
+  try { localStorage.setItem("pm-ext-card", "dismissed"); } catch { /* ignore */ }
   toast("You'll find the browser button in Settings");
 });
 
@@ -1777,7 +1795,7 @@ $("#btn-editmode").classList.toggle("primary", editing);
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "45";
+const APP_VERSION = "46";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {
