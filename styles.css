@@ -770,3 +770,21 @@ body:not(.editing) .bm { grid-template-columns: 36px 1fr auto; }
   vertical-align: 0.12em;
 }
 h3 .owner-badge { margin-left: 0.5rem; letter-spacing: 0.04em; }
+
+/* v34: quick save (browser extension / iPhone Shortcut): only the Save dialog shows */
+body.quick #screen-app { visibility: hidden; }
+body.quick dialog::backdrop { background: var(--paper); }
+body.quick #dlg-edit { box-shadow: 0 4px 18px rgba(40, 30, 10, 0.10); }
+.welcome .saved-mark {
+  margin: 0 auto 0.75rem;
+  width: 3rem; height: 3rem; line-height: 3rem;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+.welcome .saved-mark[hidden] { display: none; }
+#screen-saved a.btn { text-decoration: none; display: inline-block; }
+body.quick label:has(#f-desc), body.quick label:has(#f-notes) { display: none; }
+body.quick #dlg-edit form { padding: 1.4rem 1.75rem 1.5rem; }

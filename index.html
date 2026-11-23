@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Gentium+Plus:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=33">
+  <link rel="stylesheet" href="styles.css?v=34">
 </head>
 <body>
 
@@ -40,6 +40,16 @@
       <p>Pagemarks is private. <strong id="notinvited-email"></strong> isn't on the invite list yet.</p>
       <p class="muted">Ask the owner to add this email, then sign in again.</p>
       <button id="btn-signout-ni" class="btn">Sign out</button>
+    </div>
+  </section>
+
+  <!-- After a quick save, if the window couldn't close itself -->
+  <section id="screen-saved" class="screen center" hidden>
+    <div class="card welcome">
+      <p id="saved-mark" class="saved-mark" aria-hidden="true">✓</p>
+      <h1 id="saved-title">Saved to Pagemarks</h1>
+      <p class="muted">You can close this window.</p>
+      <p><a class="btn" href="./">Open Pagemarks</a></p>
     </div>
   </section>
 
@@ -387,6 +397,6 @@
 
   <div id="toast" class="toast" hidden></div>
 
-  <script type="module" src="app.js?v=33"></script>
+  <script type="module" src="app.js?v=34"></script>
 </body>
 </html>

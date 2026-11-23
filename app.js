@@ -10,7 +10,7 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=33";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=34";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -49,8 +49,21 @@ const el = (tag, attrs = {}, ...children) => {
   return n;
 };
 
+// ---------- Quick save (from the browser extension or an iPhone Shortcut) ----------
+// https://www.pagemarks.com/#save?u=<address>&t=<title>&src=ext
+const QUICK = (() => {
+  const h = location.hash || "";
+  if (!h.startsWith("#save?")) return null;
+  const p = new URLSearchParams(h.slice(6));
+  const url = (p.get("u") || "").trim();
+  if (!url) return null;
+  return { url, title: (p.get("t") || "").trim(), src: p.get("src") || "" };
+})();
+if (QUICK) document.body.classList.add("quick");
+let quickOpened = false, quickSaved = false, quickFinished = false;
+
 function showScreen(name) {
-  for (const s of ["loading", "signin", "notinvited", "app"]) {
+  for (const s of ["loading", "signin", "notinvited", "app", "saved"]) {
     $(`#screen-${s}`).hidden = s !== name;
   }
 }
@@ -276,6 +289,7 @@ function startPagemarks() {
     pmLoaded = true;
     render();
     syncFolders();
+    if (QUICK && !quickOpened) { quickOpened = true; openQuick(); }
   }, (err) => {
     console.error(err);
     toast("Could not load Pagemarks. Check the Firestore rules.");
@@ -1326,6 +1340,34 @@ function openEdit(b = null) {
 }
 
 $("#btn-add").addEventListener("click", () => openEdit());
+
+function openQuick() {
+  history.replaceState(null, "", location.pathname + location.search);
+  openEdit();
+  $("#edit-heading").textContent = "Save this page";
+  $("#f-url").value = QUICK.url;
+  $("#f-title").value = QUICK.title;
+  checkDuplicate();
+  refreshEditSuggest();
+  if (!QUICK.title) doLookup(false);
+  $("#btn-save").focus();
+}
+
+// Leaving quick-save: close the little window if we can, otherwise say so calmly.
+function quickFinish(saved) {
+  if (quickFinished) return;
+  quickFinished = true;
+  if (QUICK.src === "ext") location.hash = "pm-done";   // the extension closes its window on this
+  try { window.close(); } catch { /* ignore */ }
+  setTimeout(() => {
+    $("#saved-title").textContent = saved ? "Saved to Pagemarks" : "Nothing was saved";
+    $("#saved-mark").hidden = !saved;
+    document.body.classList.remove("quick");
+    showScreen("saved");
+  }, 350);
+}
+
+dlgEdit.addEventListener("close", () => { if (QUICK && quickOpened) quickFinish(quickSaved); });
 $("#btn-cancel").addEventListener("click", () => dlgEdit.close());
 
 function checkDuplicate() {
@@ -1402,6 +1444,7 @@ $("#form-edit").addEventListener("submit", async (e) => {
       await setDoc(ref, { ...data, createdAt: serverTimestamp() });
       toast("Pagemark added");
     }
+    quickSaved = true;
     dlgEdit.close();
   } catch (err) {
     console.error(err);
@@ -1679,7 +1722,7 @@ $("#btn-editmode").classList.toggle("primary", editing);
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "33";
+const APP_VERSION = "34";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {
