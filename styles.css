@@ -739,3 +739,6 @@ body:not(.editing) .bm { grid-template-columns: 36px 1fr auto; }
 .home-link { align-items: flex-start; }
 .home-link .tile-fav { margin-top: -0.18rem; }
 .home-row .star-btn { margin-top: 0.32rem; }
+
+/* v30: refusal counts in the invite list */
+.refusal-note { color: var(--warn-ink); font-size: 0.88em; }

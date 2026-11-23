@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Gentium+Plus:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=29">
+  <link rel="stylesheet" href="styles.css?v=30">
 </head>
 <body>
 
@@ -311,6 +311,16 @@
           </ul>
         </details>
         <details class="howto">
+          <summary>Content rules</summary>
+          <ul>
+            <li>Pagemarks doesn't allow adult, violent, hateful or harmful content.</li>
+            <li>Each Pagemark is checked when it's saved or imported: a short list of blocked sites, a word filter (titles, notes, tags, folder names, web addresses) and Cloudflare's family-safe check for adult and malware sites. Only the site name is sent to Cloudflare.</li>
+            <li>If something isn't allowed, it simply isn't saved. Nobody is blocked or penalized automatically.</li>
+            <li>Only a <em>count</em> of refused saves is kept for each account, never which site or text was refused. The owner can see the counts in the Invite list.</li>
+            <li>To test it safely, add <em>blocked-test.pagemarks.com</em> (always refused) or <em>nudity.testcategory.com</em> (Cloudflare's own test site).</li>
+          </ul>
+        </details>
+        <details class="howto">
           <summary>Updates</summary>
           <ul>
             <li>A notice appears when a newer version is online. Click <em>Reload now</em>.</li>
@@ -366,6 +376,6 @@
 
   <div id="toast" class="toast" hidden></div>
 
-  <script type="module" src="app.js?v=29"></script>
+  <script type="module" src="app.js?v=30"></script>
 </body>
 </html>

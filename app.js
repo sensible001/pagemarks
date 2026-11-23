@@ -1,4 +1,4 @@
-// Pagemarks v29 — app logic
+// Pagemarks v30 — app logic
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-app.js";
 import {
   getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect,
@@ -7,9 +7,10 @@ import {
 import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
   collection, doc, onSnapshot, setDoc, updateDoc, deleteDoc, getDoc,
-  writeBatch, serverTimestamp, Timestamp, getDocsFromServer, query, limit
+  writeBatch, serverTimestamp, Timestamp, getDocsFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=30";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -82,6 +83,18 @@ function ask({ title, text, ok = "OK", cancel = "Cancel", danger = false }) {
   });
 }
 const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
+// ---------- Content rules ----------
+// A refused save records only a COUNT on the account (never the site or text), then explains politely.
+function countRefusals(n) {
+  if (!user || n < 1) return;
+  setDoc(doc(db, "refusals", user.uid), { email: user.email, count: increment(Math.min(n, 1000)) }, { merge: true })
+    .catch((e) => console.warn("Refusal count not saved", e));
+}
+async function refuse(n, title = "This can't be saved") {
+  countRefusals(n);
+  await ask({ title, text: REFUSAL_MESSAGE, ok: "OK", cancel: null });
+}
 
 // ---------- Organize mode ----------
 let editing = false;
@@ -192,6 +205,7 @@ onAuthStateChanged(auth, async (u) => {
   if (unsubPagemarks) { unsubPagemarks(); unsubPagemarks = null; }
   if (unsubInvites) { unsubInvites(); unsubInvites = null; }
   if (unsubMeta) { unsubMeta(); unsubMeta = null; }
+  if (typeof unsubRefusals === "function") { unsubRefusals(); unsubRefusals = null; }
   extraFolders = [];
   user = u;
   pagemarks = [];
@@ -776,6 +790,7 @@ $("#form-folder").addEventListener("submit", async (e) => {
     const err = $("#folder-error");
     if (!name) { err.textContent = "Please type a name."; err.hidden = false; return; }
     if (name.includes("/")) { err.textContent = "Folder names can't contain “/”."; err.hidden = false; return; }
+    if (!textAllowed(name)) { err.textContent = "That name isn't allowed under Pagemarks' content rules."; err.hidden = false; countRefusals(1); return; }
     const full = newFolderParent ? newFolderParent + " / " + name : name;
     if (allFolderPaths().some((p) => p.toLowerCase() === full.toLowerCase())) { err.textContent = "A folder with that name is already here."; err.hidden = false; return; }
     dlgFolder.close();
@@ -790,6 +805,7 @@ $("#form-folder").addEventListener("submit", async (e) => {
     const err = $("#folder-error");
     if (!name) { err.textContent = "Please type a name."; err.hidden = false; return; }
     if (name.includes("/")) { err.textContent = "Folder names can't contain “/”. Use Move folder to put it inside another folder."; err.hidden = false; return; }
+    if (!textAllowed(name)) { err.textContent = "That name isn't allowed under Pagemarks' content rules."; err.hidden = false; countRefusals(1); return; }
     dlgFolder.close();
     const parent = parentOf(path);
     const to = parent ? parent + " / " + name : name;
@@ -893,6 +909,7 @@ async function createInPicker() {
   const err = $("#pick-error");
   if (!name) { err.textContent = "Please type a name."; err.hidden = false; return; }
   if (name.includes("/")) { err.textContent = "Folder names can't contain “/”."; err.hidden = false; return; }
+  if (!textAllowed(name)) { err.textContent = "That name isn't allowed under Pagemarks' content rules."; err.hidden = false; countRefusals(1); return; }
   const parent = st.selected || "";
   const full = parent ? parent + " / " + name : name;
   if (allFolderPaths().some((p) => p.toLowerCase() === full.toLowerCase())) { err.textContent = "That folder already exists here."; err.hidden = false; return; }
@@ -1102,6 +1119,7 @@ $("#form-bulk").addEventListener("submit", async (e) => {
   } else {
     const newTags = parseTags(val);
     if (!newTags.length) return;
+    if (!textAllowed(newTags)) { await refuse(1, "That tag can't be added"); return; }
     await bulkWrite((batch, ref, b) => batch.update(ref, { tags: [...new Set([...(b?.tags || []), ...newTags])], updatedAt: serverTimestamp() }),
       (n) => `Tagged ${n}`);
   }
@@ -1365,6 +1383,13 @@ $("#form-edit").addEventListener("submit", async (e) => {
     updatedAt: serverTimestamp()
   };
 
+  // Content rules: checked at the moment of saving
+  const saveBtn = $("#btn-save");
+  saveBtn.disabled = true; saveBtn.textContent = "Checking…";
+  const verdict = await checkPagemark(data);
+  saveBtn.disabled = false; saveBtn.textContent = "Save";
+  if (!verdict.ok) { await refuse(1); return; }
+
   try {
     if (editingId) {
       const before = pagemarks.find((x) => x.id === editingId);
@@ -1470,9 +1495,28 @@ $("#file-import").addEventListener("change", async (e) => {
       });
     }
     for (const d of toAdd) if (starUrls.has(d.normUrl)) d.starred = true;
+    // Content rules: quick checks first, then the family-safe lookup once per site
+    let refused = 0;
+    let checked = toAdd.filter((d) => quickCheck(d).ok);
+    refused += toAdd.length - checked.length;
+    const hosts = [...new Set(checked.map((d) => hostOf(d.url)))];
+    const allowedHost = new Map();
+    let done = 0;
+    const work = async () => {
+      while (hosts.length) {
+        const h = hosts.pop();
+        allowedHost.set(h, await familyDnsAllows(h));
+        status.textContent = `Checking sites against the content rules… ${++done}`;
+      }
+    };
+    await Promise.all(Array.from({ length: 8 }, work));
+    const passed = checked.filter((d) => allowedHost.get(hostOf(d.url)) !== false);
+    refused += checked.length - passed.length;
+    toAdd.length = 0; toAdd.push(...passed);
+    if (refused) countRefusals(refused);
     const toStar = pagemarks.filter((b) => !b.starred && starUrls.has(b.normUrl || normalizeUrl(b.url)));
     if (!toAdd.length && !toStar.length) {
-      status.textContent = `Nothing new to import (${skipped} duplicates or unsupported links skipped).`;
+      status.textContent = `Nothing new to import (${skipped} duplicates or unsupported links skipped` + (refused ? `, ${refused} not allowed under the content rules).` : ").");
       return;
     }
     for (let i = 0; i < toAdd.length; i += 400) {
@@ -1486,7 +1530,7 @@ $("#file-import").addEventListener("change", async (e) => {
       for (const b of toStar.slice(i, i + 400)) batch.update(doc(pmCol(), b.id), { starred: true });
       await batch.commit();
     }
-    status.textContent = `Done: ${toAdd.length} imported, ${skipped} skipped.`;
+    status.textContent = `Done: ${toAdd.length} imported, ${skipped} skipped` + (refused ? `, ${refused} not allowed under the content rules.` : ".");
   } catch (err) {
     console.error(err);
     status.textContent = "Import failed: " + (err.message || err);
@@ -1573,24 +1617,40 @@ $("#btn-export-json").addEventListener("click", () => {
 });
 
 // Invite list (admin only)
+let inviteEmails = [];
+let refusalCounts = new Map();
+let unsubRefusals = null;
 function startInvites() {
   unsubInvites = onSnapshot(collection(db, "allowlist"), (snap) => {
-    const ul = $("#invite-list");
-    const rows = snap.docs.map((d) => d.id).sort();
-    ul.replaceChildren(
-      el("li", {}, el("span", { text: user.email + " (you, owner)" })),
-      ...rows.map((email) => el("li", {},
-        el("span", { text: email }),
-        el("button", {
-          class: "btn small danger", text: "Remove",
-          onclick: async () => {
-            if (!(await ask({ title: `Remove ${email}?`, text: "Their saved Pagemarks stay, but they can no longer sign in.", ok: "Remove", danger: true }))) return;
-            await deleteDoc(doc(db, "allowlist", email));
-          }
-        })
-      ))
-    );
+    inviteEmails = snap.docs.map((d) => d.id).sort();
+    renderInvites();
   });
+  // Owner only: how many saves each account has had refused (counts only, never the content)
+  if (unsubRefusals) unsubRefusals();
+  unsubRefusals = onSnapshot(collection(db, "refusals"), (snap) => {
+    refusalCounts = new Map(snap.docs.map((d) => [(d.data().email || "").toLowerCase(), d.data().count || 0]));
+    renderInvites();
+  }, () => { refusalCounts = new Map(); });
+}
+function refusalNote(email) {
+  const n = refusalCounts.get((email || "").toLowerCase()) || 0;
+  return n ? el("span", { class: "refusal-note", text: ` · ${plural(n, "refused save")}` }) : null;
+}
+function renderInvites() {
+  const ul = $("#invite-list");
+  ul.replaceChildren(
+    el("li", {}, el("span", {}, user.email + " (you, owner)", refusalNote(user.email))),
+    ...inviteEmails.map((email) => el("li", {},
+      el("span", {}, email, refusalNote(email)),
+      el("button", {
+        class: "btn small danger", text: "Remove",
+        onclick: async () => {
+          if (!(await ask({ title: `Remove ${email}?`, text: "Their saved Pagemarks stay, but they can no longer sign in.", ok: "Remove", danger: true }))) return;
+          await deleteDoc(doc(db, "allowlist", email));
+        }
+      })
+    ))
+  );
 }
 
 $("#form-invite").addEventListener("submit", async (e) => {
@@ -1618,7 +1678,7 @@ $("#btn-editmode").classList.toggle("primary", editing);
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "29";
+const APP_VERSION = "30";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {
