@@ -10,7 +10,7 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=48";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=50";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -220,6 +220,8 @@ onAuthStateChanged(auth, async (u) => {
   if (unsubInvites) { unsubInvites(); unsubInvites = null; }
   if (unsubMeta) { unsubMeta(); unsubMeta = null; }
   if (typeof unsubRefusals === "function") { unsubRefusals(); unsubRefusals = null; }
+  if (typeof unsubLibrarian === "function") { unsubLibrarian(); unsubLibrarian = null; }
+  if (typeof unsubLibraryAll === "function") { unsubLibraryAll(); unsubLibraryAll = null; }
   extraFolders = [];
   user = u;
   pagemarks = [];
@@ -268,6 +270,7 @@ onAuthStateChanged(auth, async (u) => {
   checkPreviewCard();
   showScreen("app");
   startPagemarks();
+  startLibrarian();
   if (isAdmin) startInvites();
 });
 
@@ -438,13 +441,19 @@ function render() {
   const ids = new Set(pagemarks.map((b) => b.id));
   for (const id of [...selected]) if (!ids.has(id)) selected.delete(id);
 
+  renderLibrarian();
+
   // Counts
   const count = (fn) => pagemarks.filter(fn).length;
   $("#count-all").textContent = pagemarks.length;
   $("#count-home").textContent = pagemarks.filter((b) => b.starred).length;
-  $("#count-later").textContent = count((b) => b.readLater);
+  const later = count((b) => b.readLater);
+  $("#count-later").textContent = later;
   const unfiled = count((b) => !b.folder);
   $("#count-unfiled").textContent = unfiled;
+  // Read later and No folder only appear when they hold something (or while you're looking at them)
+  $("#count-later").closest("li").hidden = later === 0 && view.type !== "later";
+  $("#count-unfiled").closest("li").hidden = unfiled === 0 && view.type !== "unfiled";
   $("#tidy-count").textContent = unfiled;
   $("#btn-tidy").hidden = unfiled === 0;
   for (const s of ["ok", "broken", "moved", "unknown"]) $(`#count-${s}`).textContent = count((b) => linkStatus(b) === s);
@@ -1750,11 +1759,125 @@ $("#btn-export-json").addEventListener("click", () => {
   download(`pagemarks-${stamp()}.json`, JSON.stringify(data, null, 2), "application/json");
 });
 
+// ---------- The Librarian ----------
+// Suggests a folder for each Pagemark that has none. The work happens on GitHub (librarian.yml);
+// here a person asks, and sees how it's going. The owner gives each person a number of asks.
+const LIBRARIAN_MAX = 2000;
+let librarian = null;          // this person's librarian/{email} document
+let unsubLibrarian = null;
+let libraryAll = new Map();    // owner only: email -> librarian document
+let unsubLibraryAll = null;
+
+function startLibrarian() {
+  if (unsubLibrarian) unsubLibrarian();
+  const email = (user.email || "").toLowerCase();
+  unsubLibrarian = onSnapshot(doc(db, "librarian", email),
+    (s) => { librarian = s.exists() ? s.data() : null; renderLibrarian(); },
+    () => { librarian = null; renderLibrarian(); });
+}
+
+const timesText = (n) => n === 1 ? "1 more time" : `${n} more times`;
+const unsuggestedCount = () => pagemarks.filter((b) => !b.folder && !b.suggestedFolder).length;
+
+function librarianState() {
+  if (!librarian) return null;
+  const left = librarian.left || 0;
+  const status = librarian.status || "idle";
+  const busy = status === "waiting" || status === "working";
+  const used = librarian.made !== undefined || status !== "idle";
+  const lines = [];
+  if (busy) {
+    lines.push("The Librarian is looking through your Pagemarks. Suggestions will be waiting in Tidy up in about 15 minutes. You can keep using Pagemarks or close it.");
+  } else if (status === "done") {
+    const made = librarian.made || 0;
+    lines.push(made
+      ? `The Librarian made suggestions for ${plural(made, "Pagemark")}. They're waiting in Tidy up.`
+      : "The Librarian didn't find any Pagemarks that needed a folder.");
+    const more = unsuggestedCount();
+    if (more) lines.push(`${plural(more, "Pagemark")} without a folder ${more === 1 ? "has" : "have"} no suggestion yet.`);
+  } else if (status === "error") {
+    lines.push("The Librarian couldn't finish this time, so that ask wasn't used. Please try again later.");
+  }
+  if (!busy) {
+    if (left > 0) lines.push(used ? `You can ask the Librarian ${timesText(left)}.` : `You can ask the Librarian ${left === 1 ? "once" : left + " times"}.`);
+    else lines.push("You've used all your asks of the Librarian.");
+  }
+  const canAsk = !busy && left > 0 && unsuggestedCount() > 0;
+  const again = status === "done" && (librarian.made || 0) > 0;
+  return { lines, canAsk, label: again ? "Ask the Librarian again" : "Ask the Librarian" };
+}
+
+function renderLibrarian() {
+  const st = librarianState();
+  $("#librarian-section").hidden = !st;
+  $("#tidy-librarian").hidden = !st || (!st.canAsk && !(librarian && (librarian.status === "waiting" || librarian.status === "working")));
+  if (!st) return;
+  $("#lib-status").replaceChildren(...st.lines.map((t) => el("span", { class: "lib-line", text: t })));
+  $("#tidy-lib-status").textContent = st.lines[0] || "";
+  for (const id of ["#btn-ask-librarian", "#tidy-ask-librarian"]) {
+    $(id).hidden = !st.canAsk;
+    $(id).textContent = st.label;
+  }
+  if (st.canAsk) $("#tidy-lib-status").textContent = "The Librarian can suggest a folder for each Pagemark that has none.";
+}
+
+async function askLibrarian() {
+  const n = unsuggestedCount();
+  if (!librarian || !(librarian.left > 0) || !n) return;
+  const take = Math.min(n, LIBRARIAN_MAX);
+  const ok = await ask({
+    title: "Ask the Librarian?",
+    text: `The Librarian will look at ${plural(take, "Pagemark")} without a folder and suggest one for each. ` +
+      (n > LIBRARIAN_MAX ? `You have ${n.toLocaleString()}, so the rest can be done next time. ` : "") +
+      "To do this, their titles and web addresses are sent to an AI service, which doesn't use them to train its AI. Nothing is filed until you accept it in Tidy up.",
+    ok: "Ask the Librarian"
+  });
+  if (!ok) return;
+  try {
+    await updateDoc(doc(db, "librarian", (user.email || "").toLowerCase()), {
+      left: librarian.left - 1, status: "waiting", uid: user.uid, requestedAt: serverTimestamp()
+    });
+    toast("The Librarian is on it");
+  } catch (err) {
+    console.error(err);
+    toast("Couldn't reach the Librarian. Please try again.");
+  }
+}
+$("#btn-ask-librarian").addEventListener("click", askLibrarian);
+$("#tidy-ask-librarian").addEventListener("click", askLibrarian);
+
+// Owner: everyone's asks, shown in the Invite list
+function startLibraryAll() {
+  if (unsubLibraryAll) unsubLibraryAll();
+  unsubLibraryAll = onSnapshot(collection(db, "librarian"), (snap) => {
+    libraryAll = new Map(snap.docs.map((d) => [d.id, d.data()]));
+    renderInvites();
+  }, () => { libraryAll = new Map(); });
+}
+function librarianNote(email) {
+  const d = libraryAll.get((email || "").toLowerCase());
+  if (!d) return null;
+  const busy = d.status === "waiting" || d.status === "working";
+  return el("span", { class: "refusal-note", text: busy ? " · Librarian: working" : ` · Librarian: ${d.left || 0} left` });
+}
+function giveAsksButton(email) {
+  return el("button", {
+    class: "btn small", text: "Give 3 asks of the Librarian",
+    onclick: async () => {
+      try {
+        await setDoc(doc(db, "librarian", email.toLowerCase()), { left: increment(3) }, { merge: true });
+        toast(`${email} can ask the Librarian 3 more times`);
+      } catch (err) { console.error(err); toast("Could not give asks. Check the Firestore rules."); }
+    }
+  });
+}
+
 // Invite list (admin only)
 let inviteEmails = [];
 let refusalCounts = new Map();
 let unsubRefusals = null;
 function startInvites() {
+  startLibraryAll();
   unsubInvites = onSnapshot(collection(db, "allowlist"), (snap) => {
     inviteEmails = snap.docs.map((d) => d.id).sort();
     renderInvites();
@@ -1773,16 +1896,20 @@ function refusalNote(email) {
 function renderInvites() {
   const ul = $("#invite-list");
   ul.replaceChildren(
-    el("li", {}, el("span", {}, user.email + " (you, owner)", refusalNote(user.email))),
+    el("li", {}, el("span", {}, user.email + " (you, owner)", refusalNote(user.email), librarianNote(user.email)),
+      el("span", { class: "invite-actions" }, giveAsksButton(user.email))),
     ...inviteEmails.map((email) => el("li", {},
-      el("span", {}, email, refusalNote(email)),
-      el("button", {
-        class: "btn small danger", text: "Remove",
-        onclick: async () => {
-          if (!(await ask({ title: `Remove ${email}?`, text: "Their saved Pagemarks stay, but they can no longer sign in.", ok: "Remove", danger: true }))) return;
-          await deleteDoc(doc(db, "allowlist", email));
-        }
-      })
+      el("span", {}, email, refusalNote(email), librarianNote(email)),
+      el("span", { class: "invite-actions" },
+        giveAsksButton(email),
+        el("button", {
+          class: "btn small danger", text: "Remove",
+          onclick: async () => {
+            if (!(await ask({ title: `Remove ${email}?`, text: "Their saved Pagemarks stay, but they can no longer sign in.", ok: "Remove", danger: true }))) return;
+            await deleteDoc(doc(db, "allowlist", email));
+            deleteDoc(doc(db, "librarian", email)).catch(() => {});
+          }
+        }))
     ))
   );
 }
@@ -1812,7 +1939,7 @@ $("#btn-editmode").classList.toggle("primary", editing);
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "48";
+const APP_VERSION = "50";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {

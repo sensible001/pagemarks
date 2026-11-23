@@ -8,14 +8,14 @@
   <meta name="description" content="Pagemarks is a private, invitation-only app for saving and organizing web pages.">
   <meta name="application-name" content="Pagemarks">
   <meta property="og:site_name" content="Pagemarks">
-  <link rel="icon" href="favicon.ico?v=48" sizes="any">
-  <link rel="icon" href="favicon.svg?v=48" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=48">
+  <link rel="icon" href="favicon.ico?v=50" sizes="any">
+  <link rel="icon" href="favicon.svg?v=50" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=50">
   <meta name="apple-mobile-web-app-title" content="Pagemarks">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Gentium+Plus:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=48">
+  <link rel="stylesheet" href="styles.css?v=50">
 </head>
 <body>
 
@@ -27,7 +27,7 @@
   <!-- Sign in -->
   <section id="screen-signin" class="screen center" hidden>
     <div class="card welcome">
-      <img src="icon.svg?v=48" alt="" class="welcome-icon">
+      <img src="icon.svg?v=50" alt="" class="welcome-icon">
       <h1>Pagemarks</h1>
       <p class="muted">A private, invitation-only app for saving and organizing web pages.</p>
       <button id="btn-signin" class="btn primary large">Sign in with Google</button>
@@ -70,7 +70,7 @@
     <header class="topbar">
       <div class="topbar-inner">
         <a class="brand" href="#" id="brand-home">
-          <img src="icon.svg?v=48" alt="" width="28" height="28"><span>Pagemarks</span>
+          <img src="icon.svg?v=50" alt="" width="28" height="28"><span>Pagemarks</span>
         </a>
         <div class="topbar-main">
           <div class="search-wrap">
@@ -140,7 +140,7 @@
           </span>
         </div>
         <div id="ext-card" class="ext-card" hidden>
-          <img src="favicon.svg?v=48" alt="" width="36" height="36">
+          <img src="favicon.svg?v=50" alt="" width="36" height="36">
           <div class="ext-card-text">
             <strong>Save Pagemarks in one click</strong>
             <span class="muted">Add the Pagemarks button to your browser, then click it on any page you want to keep.</span>
@@ -161,7 +161,7 @@
   <!-- Add / edit dialog -->
   <dialog id="dlg-edit">
     <form id="form-edit" method="dialog">
-      <p class="quick-brand" aria-hidden="true"><img src="icon.svg?v=48" alt="" width="28" height="28"><span>Pagemarks</span></p>
+      <p class="quick-brand" aria-hidden="true"><img src="icon.svg?v=50" alt="" width="28" height="28"><span>Pagemarks</span></p>
       <h2 id="edit-heading">Add Pagemark</h2>
 
       <label>Web address
@@ -282,6 +282,10 @@
         <button type="button" class="btn icon-btn" id="tidy-close" aria-label="Close">✕</button>
       </div>
       <p class="muted" id="tidy-progress"></p>
+      <div id="tidy-librarian" class="tidy-librarian" hidden>
+        <span id="tidy-lib-status"></span>
+        <button type="button" id="tidy-ask-librarian" class="btn small primary">Ask the Librarian</button>
+      </div>
       <div id="tidy-card" class="tidy-card"></div>
       <div id="tidy-controls">
         <div id="tidy-suggest" class="tidy-suggest" hidden>
@@ -352,6 +356,16 @@
           </ul>
         </details>
         <details class="howto">
+          <summary>The Librarian</summary>
+          <ul>
+            <li>The Librarian suggests a folder for each Pagemark that has none. The suggestions wait in <em>Tidy up</em>, where you can accept them one by one or all at once, and change anything later.</li>
+            <li>Each time you ask, the Librarian looks at up to 2,000 Pagemarks. It usually takes about 15 minutes, and you can keep using Pagemarks or close it while it works.</li>
+            <li>The owner decides how many times each person can ask.</li>
+            <li>Suggestions are made with the help of AI. Only the titles and web addresses of Pagemarks without a folder are sent.</li>
+          </ul>
+          <p class="tribute">Named in memory of Bill, a librarian and friend, whose idea of checking for broken links helped start Pagemarks.</p>
+        </details>
+        <details class="howto">
           <summary>Searching</summary>
           <ul>
             <li>Search looks through titles, web addresses, descriptions, notes, folders and tags. Every word you type must match.</li>
@@ -391,6 +405,14 @@
         </details>
       </section>
 
+      <section id="librarian-section" hidden>
+        <h3>The Librarian</h3>
+        <p class="muted">The Librarian looks through your Pagemarks that have no folder and suggests one for each. You decide what to keep in <em>Tidy up</em>.</p>
+        <p id="lib-status" class="lib-status"></p>
+        <p class="row"><button type="button" id="btn-ask-librarian" class="btn primary">Ask the Librarian</button></p>
+        <p class="muted small-note">Suggestions are made with the help of AI.</p>
+      </section>
+
       <section id="ext-section">
         <h3>Browser button</h3>
         <p class="muted">The Pagemarks button saves the page you're on in one click: click it, or press <strong>Alt+Shift+P</strong>, then <em>Save</em>. It works in Chrome, Edge, Brave, Opera and Vivaldi on a computer.</p>
@@ -408,9 +430,9 @@
         <p id="import-status" class="status"></p>
       </section>
 
-      <section>
-        <h3>Folder suggestions</h3>
-        <p class="muted">Load a suggestions file (made for you in a chat with Claude). Each Pagemark with no folder gets its suggested folder ready to accept in Tidy up.</p>
+      <section class="owner-only" hidden>
+        <h3>Folder suggestions file <span class="owner-badge">Only you see this</span></h3>
+        <p class="muted">Load a suggestions file. Each Pagemark with no folder gets its suggested folder ready to accept in Tidy up.</p>
         <input type="file" id="file-suggest" accept=".json,application/json">
         <p id="suggest-status" class="status"></p>
       </section>
@@ -448,6 +470,6 @@
 
   <div id="toast" class="toast" hidden></div>
 
-  <script type="module" src="app.js?v=48"></script>
+  <script type="module" src="app.js?v=50"></script>
 </body>
 </html>
