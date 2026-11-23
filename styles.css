@@ -897,3 +897,6 @@ section.owner-only[hidden] { display: none; }
 
 /* v59: Tidy up's "that's everything for now" ending */
 .tidy-finished-note { margin: 0.3rem 0 1rem; }
+
+/* v61: confirmation text can have a paragraph break */
+#confirm-text { white-space: pre-line; }

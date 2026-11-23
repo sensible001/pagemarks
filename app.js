@@ -10,7 +10,7 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=60";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=61";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -1905,7 +1905,9 @@ async function askLibrarian() {
         : n === 1
           ? "The Librarian will look at your Unfiled Pagemark and suggest a folder for it. "
           : `The Librarian will look at the ${n} Unfiled Pagemarks and suggest a folder for each. `) +
-      "To do this, their titles and web addresses are sent to an AI service, which doesn't use them to train its AI. Nothing is filed until you accept it in Tidy up.",
+      (librarian.left === 1 ? "This uses your last Librarian visit.\n\n" : `This uses 1 of your ${librarian.left} Librarian visits.\n\n`) +
+      (n === 1 ? "Its title and web address are" : "Their titles and web addresses are") +
+      " sent to an AI service, which doesn't use them to train its AI. Suggestions will be waiting in Tidy up in about 15 minutes, and nothing is filed until you accept it.",
     ok: "Ask the Librarian"
   });
   if (!ok) return;
@@ -2033,7 +2035,7 @@ closeOnOutsideClick($("#dlg-tidy"));
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "60";
+const APP_VERSION = "61";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {
