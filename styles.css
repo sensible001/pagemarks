@@ -894,3 +894,6 @@ section.owner-only[hidden] { display: none; }
 .lib-btn { margin-top: 1rem; }
 .lib-btn:not([hidden]) + .tidy-btn { margin-top: 0.5rem; }
 .lib-welcome .btn { flex: none; }
+
+/* v59: Tidy up's "that's everything for now" ending */
+.tidy-finished-note { margin: 0.3rem 0 1rem; }

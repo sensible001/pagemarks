@@ -10,7 +10,7 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=58";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=59";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -1352,6 +1352,7 @@ $("#f-title").addEventListener("input", refreshEditSuggest);
 const dlgTidy = $("#dlg-tidy");
 let tidyQueue = [];
 let tidyDone = 0;
+let tidySkipped = new Set();   // skipped this time through; when only these are left, Tidy up finishes
 let tidyRecent = [];
 
 function nextTidy() {
@@ -1359,6 +1360,20 @@ function nextTidy() {
   tidyQueue = tidyQueue.filter((id) => ids.has(id));
   if (!tidyQueue.length) {
     $("#tidy-card").replaceChildren(el("p", { class: "tidy-finished", text: "All tidy. Every Pagemark is in a folder." }));
+    $("#tidy-controls").hidden = true;
+    return;
+  }
+  if (tidyQueue.every((id) => tidySkipped.has(id))) {
+    const n = tidyQueue.length;
+    $("#tidy-progress").textContent = `${tidyDone} filed · ${n} skipped`;
+    $("#tidy-card").replaceChildren(
+      el("p", { class: "tidy-finished", text: "That's everything for now." }),
+      el("p", { class: "muted tidy-finished-note", text: `You skipped ${plural(n, "Pagemark")}. ${n === 1 ? "It stays" : "They stay"} in Unfiled for another time.` }),
+      el("div", { class: "dlg-actions" },
+        el("button", { type: "button", class: "btn", text: "Go through skipped again", onclick: () => { tidySkipped = new Set(); nextTidy(); } }),
+        el("span", { class: "spacer" }),
+        el("button", { type: "button", class: "btn primary", text: "Done", onclick: () => dlgTidy.close() }))
+    );
     $("#tidy-controls").hidden = true;
     return;
   }
@@ -1405,6 +1420,7 @@ async function fileTidy(folderRaw) {
 $("#btn-tidy").addEventListener("click", () => {
   tidyQueue = pagemarks.filter((b) => !b.folder).sort((a, b) => dateOf(b) - dateOf(a)).map((b) => b.id);
   tidyDone = 0;
+  tidySkipped = new Set();
   dlgTidy.showModal();
   nextTidy();
 });
@@ -1412,7 +1428,7 @@ $("#tidy-file").addEventListener("click", async () => {
   const f = await pickFolder({ title: "File it in…", ok: "File here", allowNone: false });
   if (f) fileTidy(f);
 });
-$("#tidy-skip").addEventListener("click", () => { tidyQueue.push(tidyQueue.shift()); nextTidy(); });
+$("#tidy-skip").addEventListener("click", () => { const id = tidyQueue.shift(); tidySkipped.add(id); tidyQueue.push(id); nextTidy(); });
 $("#tidy-delete").addEventListener("click", async () => {
   const id = tidyQueue.shift();
   tidyDone++;
@@ -2015,7 +2031,7 @@ closeOnOutsideClick($("#dlg-tidy"));
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "58";
+const APP_VERSION = "59";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {
