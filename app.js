@@ -10,7 +10,7 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=63";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=64";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -1383,6 +1383,8 @@ function nextTidy() {
   const skippedNow = tidyQueue.filter((id) => tidySkipped.has(id)).length;
   const toGo = tidyQueue.length - skippedNow;
   $("#tidy-progress").textContent = [`${tidyDone} filed`, skippedNow ? `${skippedNow} skipped` : null, `${toGo} to go`].filter(Boolean).join(" · ");
+  const libBusy = librarian && (librarian.status === "waiting" || librarian.status === "working");
+  $("#tidy-lib-note").hidden = !libBusy;
   $("#tidy-card").replaceChildren(
     el("div", { class: "title-line" }, linkBadge(b),
       el("div", { class: "title-text" }, el("a", { class: "bm-title", href: parseUrl(b.url)?.href || "#", target: "_blank", rel: "noopener noreferrer", text: b.title || host }))),
@@ -1813,6 +1815,7 @@ function startLibrarian() {
       librarian = s.exists() ? s.data() : null;
       const now = librarian ? librarian.status : null;
       if ((before === "waiting" || before === "working") && now === "done") toast("The Librarian's suggestions are ready in Tidy up");
+      if (dlgTidy.open && before !== now) nextTidy();
       before = now;
       renderLibrarian();
     },
@@ -2042,7 +2045,7 @@ closeOnOutsideClick($("#dlg-tidy"));
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "63";
+const APP_VERSION = "64";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {

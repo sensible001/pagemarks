@@ -900,3 +900,7 @@ section.owner-only[hidden] { display: none; }
 
 /* v61: confirmation text can have a paragraph break */
 #confirm-text { white-space: pre-line; }
+
+/* v64: Tidy up note while the Librarian works */
+.tidy-lib-note { margin: -0.2rem 0 0.9rem; padding: 0.55rem 0.8rem; background: var(--accent-soft); border-radius: 10px; font-size: 0.92rem; font-style: italic; color: var(--accent); }
+.tidy-lib-note[hidden] { display: none; }
