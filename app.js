@@ -10,7 +10,7 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=61";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=62";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -1899,7 +1899,7 @@ async function askLibrarian() {
   if (!librarian || !(librarian.left > 0) || !n) return;
   const take = Math.min(n, LIBRARIAN_MAX);
   const ok = await ask({
-    title: "Ask the Librarian?",
+    title: librarian.left === 1 ? "Use your last Librarian visit?" : "Use a Librarian visit?",
     text: (n > LIBRARIAN_MAX
         ? `The Librarian will look at the first ${LIBRARIAN_MAX.toLocaleString()} of your ${n.toLocaleString()} Unfiled Pagemarks and suggest a folder for each. The rest can be done next time. `
         : n === 1
@@ -2035,7 +2035,7 @@ closeOnOutsideClick($("#dlg-tidy"));
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "61";
+const APP_VERSION = "62";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {
