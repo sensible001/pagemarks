@@ -870,3 +870,8 @@ body.quick .quick-brand img { flex: none; }
 .tribute { margin: 0.6rem 0 0.2rem; font-style: italic; color: var(--muted); font-size: 0.92rem; }
 .invite-actions { display: inline-flex; gap: 0.4rem; flex-wrap: wrap; justify-content: flex-end; }
 section.owner-only[hidden] { display: none; }
+
+/* v55: Sign out sits beside "Signed in as" at the top of Settings */
+.account-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.account-row p { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.account-row .btn { flex: none; }
