@@ -10,7 +10,7 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=56";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=58";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -363,7 +363,7 @@ function filtered() {
 function viewTitle() {
   if (view.type === "home") return $("#search").value.trim() ? "Search results" : "Home";
   if (view.type === "later") return "Read later";
-  if (view.type === "unfiled") return "No folder";
+  if (view.type === "unfiled") return "Unfiled";
   if (view.type === "folder") return view.value;
   if (view.type === "tag") return "Tag: " + view.value;
   if (view.type === "ok") return "Working links";
@@ -451,10 +451,11 @@ function render() {
   $("#count-later").textContent = later;
   const unfiled = count((b) => !b.folder);
   $("#count-unfiled").textContent = unfiled;
-  // Read later and No folder only appear when they hold something (or while you're looking at them)
+  // Read later and Unfiled only appear when they hold something (or while you're looking at them)
   $("#count-later").closest("li").hidden = later === 0 && view.type !== "later";
   $("#count-unfiled").closest("li").hidden = unfiled === 0 && view.type !== "unfiled";
-  $("#tidy-count").textContent = unfiled;
+  const suggested = count((b) => !b.folder && b.suggestedFolder);
+  $("#btn-tidy").textContent = suggested ? `Tidy up · ${suggested} suggested` : "Tidy up";
   $("#btn-tidy").hidden = unfiled === 0;
   for (const s of ["ok", "broken", "moved", "unknown"]) $(`#count-${s}`).textContent = count((b) => linkStatus(b) === s);
   const checked = count((b) => linkStatus(b) !== "pending");
@@ -884,7 +885,7 @@ $("#form-folder").addEventListener("submit", async (e) => {
 // ---------- Folder picker (used for every "choose a folder") ----------
 let pickState = null;
 
-function pickFolder({ title, ok = "Move here", current = null, here = null, allowNone = true, noneLabel = "No folder", exclude = () => false }) {
+function pickFolder({ title, ok = "Move here", current = null, here = null, allowNone = true, noneLabel = "Unfiled", exclude = () => false }) {
   pickState = { selected: current ?? null, here, allowNone, noneLabel, exclude, resolve: null, created: [] };
   $("#pick-title").textContent = title;
   $("#pick-ok").textContent = ok;
@@ -1007,7 +1008,7 @@ async function dlgFolderPickMove(path) {
 // Folder field in the Add / Edit dialog
 function syncFolderField() {
   const v = $("#f-folder").value;
-  $("#f-folder-label").textContent = v ? v : "No folder";
+  $("#f-folder-label").textContent = v ? v : "Unfiled";
   $("#f-folder-btn").classList.toggle("empty", !v);
 }
 $("#f-folder-btn").addEventListener("click", async () => {
@@ -1099,8 +1100,8 @@ function renderHome(items) {
   const names = [...groups.keys()].sort((a, b) => (a === "" ? 1 : b === "" ? -1 : a.localeCompare(b, undefined, { sensitivity: "base" })));
   box.replaceChildren(...names.map((g) => {
     const list = groups.get(g).sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || (a.title || a.url).localeCompare(b.title || b.url, undefined, { sensitivity: "base" }));
-    const parts = g ? g.split(" / ") : ["No folder"];
-    const heading = el("h3", { class: "home-group-title", title: g || "No folder" }, folderIcon(),
+    const parts = g ? g.split(" / ") : ["Unfiled"];
+    const heading = el("h3", { class: "home-group-title", title: g || "Unfiled" }, folderIcon(),
       el("span", { class: "hg-name" },
         parts.length > 1 ? el("span", { class: "hg-parent", text: parts.slice(0, -1).join(" / ") + " / " }) : null,
         parts[parts.length - 1]));
@@ -1204,7 +1205,7 @@ let bulkMode = null;
 function openBulk(mode) {
   bulkMode = mode;
   $("#bulk-heading").textContent = mode === "move" ? `Move ${selected.size} to folder` : `Add a tag to ${selected.size}`;
-  $("#bulk-label").textContent = mode === "move" ? "Folder (leave empty for No folder)" : "Tag";
+  $("#bulk-label").textContent = mode === "move" ? "Folder (leave empty for Unfiled)" : "Tag";
   $("#bulk-input").value = "";
   $("#bulk-input").setAttribute("list", mode === "move" ? "folder-options" : "");
   dlgBulk.showModal();
@@ -1215,7 +1216,7 @@ $("#bulk-move").addEventListener("click", async () => {
   const folder = await pickFolder({ title: `Move ${plural(n, "Pagemark")} to…`, ok: "Move here", here: view.type === "folder" ? view.value : null });
   if (folder === null) return;
   await bulkWrite((batch, ref) => batch.update(ref, { folder, updatedAt: serverTimestamp() }),
-    (k) => `${plural(k, "Pagemark")} moved to “${folder ? nameOf(folder) : "No folder"}”`);
+    (k) => `${plural(k, "Pagemark")} moved to “${folder ? nameOf(folder) : "Unfiled"}”`);
 });
 $("#bulk-tag").addEventListener("click", () => openBulk("tag"));
 $("#bulk-cancel").addEventListener("click", () => dlgBulk.close());
@@ -1226,7 +1227,7 @@ $("#form-bulk").addEventListener("submit", async (e) => {
   if (bulkMode === "move") {
     const folder = cleanFolder(val);
     await bulkWrite((batch, ref) => batch.update(ref, { folder, updatedAt: serverTimestamp() }),
-      (n) => `${n} moved to ${folder || "No folder"}`);
+      (n) => `${n} moved to ${folder || "Unfiled"}`);
   } else {
     const newTags = parseTags(val);
     if (!newTags.length) return;
@@ -1323,7 +1324,7 @@ $("#file-suggest").addEventListener("change", async (e) => {
       for (const [id, folder] of updates.slice(i, i + 400)) batch.update(doc(pmCol(), id), { suggestedFolder: folder, suggestedBy: null });
       await batch.commit();
     }
-    status.textContent = `Loaded ${plural(updates.length, "suggestion")}` + (missed ? ` (${missed} didn't match a Pagemark with no folder)` : "") + ". Open Tidy up to review them.";
+    status.textContent = `Loaded ${plural(updates.length, "suggestion")}` + (missed ? ` (${missed} didn't match an Unfiled Pagemark)` : "") + ". Open Tidy up to review them.";
   } catch (err) {
     console.error(err);
     status.textContent = "Couldn't read that file: " + (err.message || err);
@@ -1364,7 +1365,7 @@ function nextTidy() {
   const b = pagemarks.find((x) => x.id === tidyQueue[0]);
   const host = hostOf(b.url);
   const s = linkStatus(b);
-  $("#tidy-progress").textContent = `${tidyDone} tidied · ${tidyQueue.length} to go`;
+  $("#tidy-progress").textContent = `${tidyDone} filed · ${tidyQueue.length} to go`;
   $("#tidy-card").replaceChildren(
     el("div", { class: "title-line" }, linkBadge(b),
       el("div", { class: "title-text" }, el("a", { class: "bm-title", href: parseUrl(b.url)?.href || "#", target: "_blank", rel: "noopener noreferrer", text: b.title || host }))),
@@ -1817,7 +1818,7 @@ function librarianState() {
       ? `The Librarian made suggestions for ${plural(made, "Pagemark")}. They're waiting in Tidy up.`
       : "The Librarian didn't find any Pagemarks that needed a folder.");
     const more = unsuggestedCount();
-    if (more) lines.push(`${plural(more, "Pagemark")} without a folder ${more === 1 ? "has" : "have"} no suggestion yet.`);
+    if (more) lines.push(`${plural(more, "Unfiled Pagemark")} ${more === 1 ? "has" : "have"} no suggestion yet.`);
   } else if (status === "error") {
     lines.push("The Librarian couldn't finish this time, so that visit wasn't used. Please try again later.");
   }
@@ -1832,37 +1833,47 @@ function librarianState() {
 
 const librarianReady = () => pagemarks.filter((b) => !b.folder && b.suggestedFolder && b.suggestedBy === "librarian").length;
 
+// Organize mode only: its own button under Tidy up (the sidebar is otherwise just places)
 function renderSideLibrarian(st) {
-  const box = $("#side-librarian");
+  const btn = $("#btn-side-librarian");
   const busy = librarian && (librarian.status === "waiting" || librarian.status === "working");
-  const ready = librarian ? librarianReady() : 0;
-  let child = null;
-  if (busy) child = el("span", { class: "side-lib-note", text: "The Librarian is working…" });
-  else if (ready) child = el("button", { type: "button", class: "side-lib-link", text: `${plural(ready, "suggestion")} ready in Tidy up`, onclick: () => $("#btn-tidy").click() });
-  else if (st && st.canAsk) child = el("button", { type: "button", class: "side-lib-link", text: "Ask the Librarian", onclick: askLibrarian });
-  box.hidden = !child;
-  box.replaceChildren(...(child ? [child] : []));
+  if (busy) { btn.textContent = "The Librarian is working…"; btn.disabled = true; btn.hidden = false; return; }
+  btn.disabled = false;
+  if (st && st.canAsk) { btn.textContent = "Ask the Librarian"; btn.hidden = false; return; }
+  btn.hidden = true;
 }
+
+// A one-time welcome on Home after the owner gives someone Librarian visits
+const libWelcomeKey = () => "pm-lib-welcome-" + (user?.uid || "");
+function libWelcomeDismissed() { try { return localStorage.getItem(libWelcomeKey()) === "done"; } catch { return false; } }
+function renderLibWelcome(st) {
+  const onHome = view.type === "home";
+  const fresh = librarian && (librarian.left || 0) > 0 && librarian.made === undefined && !(librarian.status && librarian.status !== "idle");
+  const show = !!(onHome && fresh && !libWelcomeDismissed());
+  $("#lib-welcome").hidden = !show;
+  if (!show) return;
+  const left = librarian.left || 0;
+  $("#lib-welcome-text").textContent =
+    `You've been given ${plural(left, "Librarian visit")}. The Librarian is Pagemarks' AI helper: it can suggest a folder for each Unfiled Pagemark, and you decide what to keep in Tidy up.`;
+  $("#lib-welcome-ask").hidden = !(st && st.canAsk);
+  $("#lib-welcome-later").textContent = st && st.canAsk ? "Not now" : "Got it";
+}
+function dismissLibWelcome() {
+  try { localStorage.setItem(libWelcomeKey(), "done"); } catch { /* ignore */ }
+  $("#lib-welcome").hidden = true;
+}
+$("#lib-welcome-ask").addEventListener("click", () => { dismissLibWelcome(); askLibrarian(); });
+$("#lib-welcome-later").addEventListener("click", () => { dismissLibWelcome(); toast("You'll find the Librarian in Organize and in Settings"); });
 
 function renderLibrarian() {
   const st = librarianState();
   renderSideLibrarian(st);
+  renderLibWelcome(st);
   $("#librarian-section").hidden = !st;
-  $("#tidy-librarian").hidden = !st || (!st.canAsk && !(librarian && (librarian.status === "waiting" || librarian.status === "working")));
   if (!st) return;
   $("#lib-status").replaceChildren(...st.lines.map((t) => el("span", { class: "lib-line", text: t })));
-  $("#tidy-lib-status").textContent = st.lines[0] || "";
-  for (const id of ["#btn-ask-librarian", "#tidy-ask-librarian"]) {
-    $(id).hidden = !st.canAsk;
-    $(id).textContent = st.label;
-  }
-  if (st.canAsk) {
-    const n = unsuggestedCount();
-    $("#tidy-lib-status").textContent = n > LIBRARIAN_MAX
-      ? `Ask the Librarian to suggest folders for up to ${LIBRARIAN_MAX.toLocaleString()} of your ${n.toLocaleString()} Pagemarks without a folder.`
-      : n === 1 ? "Ask the Librarian to suggest a folder for your Pagemark without one."
-      : `Ask the Librarian to suggest folders for all ${n} Pagemarks without a folder.`;
-  }
+  $("#btn-ask-librarian").hidden = !st.canAsk;
+  $("#btn-ask-librarian").textContent = st.label;
 }
 
 async function askLibrarian() {
@@ -1871,8 +1882,11 @@ async function askLibrarian() {
   const take = Math.min(n, LIBRARIAN_MAX);
   const ok = await ask({
     title: "Ask the Librarian?",
-    text: `The Librarian will look at ${plural(take, "Pagemark")} without a folder and suggest one for each. ` +
-      (n > LIBRARIAN_MAX ? `You have ${n.toLocaleString()}, so the rest can be done next time. ` : "") +
+    text: (n > LIBRARIAN_MAX
+        ? `The Librarian will look at the first ${LIBRARIAN_MAX.toLocaleString()} of your ${n.toLocaleString()} Unfiled Pagemarks and suggest a folder for each. The rest can be done next time. `
+        : n === 1
+          ? "The Librarian will look at your Unfiled Pagemark and suggest a folder for it. "
+          : `The Librarian will look at the ${n} Unfiled Pagemarks and suggest a folder for each. `) +
       "To do this, their titles and web addresses are sent to an AI service, which doesn't use them to train its AI. Nothing is filed until you accept it in Tidy up.",
     ok: "Ask the Librarian"
   });
@@ -1888,7 +1902,7 @@ async function askLibrarian() {
   }
 }
 $("#btn-ask-librarian").addEventListener("click", askLibrarian);
-$("#tidy-ask-librarian").addEventListener("click", askLibrarian);
+$("#btn-side-librarian").addEventListener("click", askLibrarian);
 
 // Owner: everyone's visits, shown in the Invite list
 function startLibraryAll() {
@@ -2001,7 +2015,7 @@ closeOnOutsideClick($("#dlg-tidy"));
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "56";
+const APP_VERSION = "58";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {

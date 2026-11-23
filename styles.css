@@ -885,3 +885,12 @@ section.owner-only[hidden] { display: none; }
   font: inherit; color: var(--accent); text-decoration: underline; text-underline-offset: 2px;
 }
 .side-lib-link:hover { color: var(--brand); }
+
+/* v57: Ask the Librarian is its own Organize-mode button, under Tidy up */
+.lib-btn { margin-top: 0.5rem; background: var(--card); border-color: var(--line); }
+.lib-btn:disabled { color: var(--muted); font-weight: 400; font-style: italic; cursor: default; opacity: 1; }
+
+/* v58: Ask the Librarian sits above Tidy up; the welcome card */
+.lib-btn { margin-top: 1rem; }
+.lib-btn:not([hidden]) + .tidy-btn { margin-top: 0.5rem; }
+.lib-welcome .btn { flex: none; }

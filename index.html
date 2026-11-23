@@ -8,14 +8,14 @@
   <meta name="description" content="Pagemarks is a private, invitation-only app for saving and organizing web pages.">
   <meta name="application-name" content="Pagemarks">
   <meta property="og:site_name" content="Pagemarks">
-  <link rel="icon" href="favicon.ico?v=56" sizes="any">
-  <link rel="icon" href="favicon.svg?v=56" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=56">
+  <link rel="icon" href="favicon.ico?v=58" sizes="any">
+  <link rel="icon" href="favicon.svg?v=58" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=58">
   <meta name="apple-mobile-web-app-title" content="Pagemarks">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Gentium+Plus:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=56">
+  <link rel="stylesheet" href="styles.css?v=58">
 </head>
 <body>
 
@@ -27,7 +27,7 @@
   <!-- Sign in -->
   <section id="screen-signin" class="screen center" hidden>
     <div class="card welcome">
-      <img src="icon.svg?v=56" alt="" class="welcome-icon">
+      <img src="icon.svg?v=58" alt="" class="welcome-icon">
       <h1>Pagemarks</h1>
       <p class="muted">A private, invitation-only app for saving and organizing web pages.</p>
       <button id="btn-signin" class="btn primary large">Sign in with Google</button>
@@ -70,7 +70,7 @@
     <header class="topbar">
       <div class="topbar-inner">
         <a class="brand" href="#" id="brand-home">
-          <img src="icon.svg?v=56" alt="" width="28" height="28"><span>Pagemarks</span>
+          <img src="icon.svg?v=58" alt="" width="28" height="28"><span>Pagemarks</span>
         </a>
         <div class="topbar-main">
           <div class="search-wrap">
@@ -90,10 +90,10 @@
           <li><button class="nav-item" data-view="home"><span class="label"><span class="home-star" aria-hidden="true">★</span>Home</span> <span class="count" id="count-home">0</span></button></li>
           <li><button class="nav-item" data-view="all">All Pagemarks <span class="count" id="count-all">0</span></button></li>
           <li><button class="nav-item" data-view="later">Read later <span class="count" id="count-later">0</span></button></li>
-          <li><button class="nav-item" data-view="unfiled">No folder <span class="count" id="count-unfiled">0</span></button></li>
+          <li><button class="nav-item" data-view="unfiled">Unfiled <span class="count" id="count-unfiled">0</span></button></li>
         </ul>
-        <button id="btn-tidy" class="btn tidy-btn edit-only" hidden>Tidy up “No folder” (<span id="tidy-count">0</span>)</button>
-        <div id="side-librarian" class="side-librarian" hidden></div>
+        <button id="btn-side-librarian" class="btn tidy-btn lib-btn edit-only" hidden>Ask the Librarian</button>
+        <button id="btn-tidy" class="btn tidy-btn edit-only" hidden>Tidy up</button>
         <h3 class="edit-only">Link health</h3>
         <ul class="nav-list health-list edit-only">
           <li><button class="nav-item" data-view="ok"><span class="label"><span class="dot dot-ok"></span>Working</span> <span class="count" id="count-ok">0</span></button></li>
@@ -140,8 +140,17 @@
             <button type="button" class="btn small danger" id="bulk-delete" disabled>Delete</button>
           </span>
         </div>
+        <div id="lib-welcome" class="ext-card lib-welcome" hidden>
+          <img src="icon.svg?v=58" alt="" width="36" height="36">
+          <div class="ext-card-text">
+            <strong>The Librarian can help</strong>
+            <span class="muted" id="lib-welcome-text"></span>
+          </div>
+          <button type="button" id="lib-welcome-ask" class="btn primary">Ask the Librarian</button>
+          <button type="button" id="lib-welcome-later" class="btn">Not now</button>
+        </div>
         <div id="ext-card" class="ext-card" hidden>
-          <img src="favicon.svg?v=56" alt="" width="36" height="36">
+          <img src="favicon.svg?v=58" alt="" width="36" height="36">
           <div class="ext-card-text">
             <strong>Save Pagemarks in one click</strong>
             <span class="muted">Add the Pagemarks button to your browser, then click it on any page you want to keep.</span>
@@ -162,7 +171,7 @@
   <!-- Add / edit dialog -->
   <dialog id="dlg-edit">
     <form id="form-edit" method="dialog">
-      <p class="quick-brand" aria-hidden="true"><img src="icon.svg?v=56" alt="" width="28" height="28"><span>Pagemarks</span></p>
+      <p class="quick-brand" aria-hidden="true"><img src="icon.svg?v=58" alt="" width="28" height="28"><span>Pagemarks</span></p>
       <h2 id="edit-heading">Add Pagemark</h2>
 
       <label>Web address
@@ -184,7 +193,7 @@
       <div class="two-col">
         <label>Folder
           <input id="f-folder" type="hidden">
-          <button type="button" id="f-folder-btn" class="folder-field"><svg class="ff-icon" aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5V18a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9.5a2 2 0 0 0-2-2h-7.2l-1.7-2.2A2 2 0 0 0 8.5 4.5H5a2 2 0 0 0-2 2v1z"/></svg><span id="f-folder-label">No folder</span><span class="ff-change">Change…</span></button>
+          <button type="button" id="f-folder-btn" class="folder-field"><svg class="ff-icon" aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5V18a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9.5a2 2 0 0 0-2-2h-7.2l-1.7-2.2A2 2 0 0 0 8.5 4.5H5a2 2 0 0 0-2 2v1z"/></svg><span id="f-folder-label">Unfiled</span><span class="ff-change">Change…</span></button>
           <datalist id="folder-options"></datalist>
         </label>
         <label>Tags <span class="hint">separate with commas</span>
@@ -279,14 +288,10 @@
   <dialog id="dlg-tidy">
     <div class="settings">
       <div class="dlg-title-row">
-        <h2>Tidy up</h2>
+        <h2>Tidy up Unfiled</h2>
         <button type="button" class="btn icon-btn" id="tidy-close" aria-label="Close">✕</button>
       </div>
       <p class="muted" id="tidy-progress"></p>
-      <div id="tidy-librarian" class="tidy-librarian" hidden>
-        <span id="tidy-lib-status"></span>
-        <button type="button" id="tidy-ask-librarian" class="btn small primary">Ask the Librarian</button>
-      </div>
       <div id="tidy-card" class="tidy-card"></div>
       <div id="tidy-controls">
         <div id="tidy-suggest" class="tidy-suggest" hidden>
@@ -351,7 +356,7 @@
             <li>Folders stay until you delete them. <em>Delete folder</em> only appears when a folder is empty.</li>
             <li>A folder shows its own Pagemarks, with sub-folders as rows on top. Sidebar counts include sub-folders.</li>
             <li>Move things by dragging onto a folder, or with <em>Move to folder…</em></li>
-            <li><em>Tidy up</em> files Pagemarks with no folder, one at a time, with suggested folders first.</li>
+            <li><em>Tidy up</em> (in Organize) walks you through your <em>Unfiled</em> Pagemarks one at a time, with any suggested folders first.</li>
           </ul>
         </details>
         <details class="howto">
@@ -366,10 +371,10 @@
         <details class="howto">
           <summary>The Librarian</summary>
           <ul>
-            <li>The Librarian is Pagemarks' AI helper. It suggests a folder for each Pagemark that has none. The suggestions wait in <em>Tidy up</em>, where you can accept them one by one or all at once, and change anything later.</li>
+            <li>The Librarian is Pagemarks' AI helper. It suggests a folder for each <em>Unfiled</em> Pagemark. The suggestions wait in <em>Tidy up</em>, where you can accept them one by one or all at once, and change anything later.</li>
             <li>Each time you ask, the Librarian looks at up to 2,000 Pagemarks. It usually takes about 15 minutes, and you can keep using Pagemarks or close it while it works.</li>
             <li>Each time you ask is one Librarian visit. The owner decides how many visits each person has.</li>
-            <li>Suggestions are made with the help of AI. Only the titles and web addresses of Pagemarks without a folder are sent.</li>
+            <li>Suggestions are made with the help of AI. Only the titles and web addresses of Unfiled Pagemarks are sent.</li>
           </ul>
           <p class="tribute">Named in memory of Bill, a reference librarian and friend, whose idea of checking for broken links helped start Pagemarks.</p>
         </details>
@@ -415,7 +420,7 @@
 
       <section id="librarian-section" hidden>
         <h3>The Librarian</h3>
-        <p class="muted">The Librarian is Pagemarks' AI helper. It looks through your Pagemarks that have no folder and suggests one for each. You decide what to keep in <em>Tidy up</em>.</p>
+        <p class="muted">The Librarian is Pagemarks' AI helper. It looks through your <em>Unfiled</em> Pagemarks and suggests a folder for each. You decide what to keep in <em>Tidy up</em>.</p>
         <p id="lib-status" class="lib-status"></p>
         <p class="row"><button type="button" id="btn-ask-librarian" class="btn primary">Ask the Librarian</button></p>
         <p class="muted small-note">Suggestions are made with the help of AI.</p>
@@ -440,7 +445,7 @@
 
       <section class="owner-only" hidden>
         <h3>Folder suggestions file <span class="owner-badge">Only you see this</span></h3>
-        <p class="muted">Load a suggestions file. Each Pagemark with no folder gets its suggested folder ready to accept in Tidy up.</p>
+        <p class="muted">Load a suggestions file. Each Unfiled Pagemark gets its suggested folder ready to accept in Tidy up.</p>
         <input type="file" id="file-suggest" accept=".json,application/json">
         <p id="suggest-status" class="status"></p>
       </section>
@@ -477,6 +482,6 @@
 
   <div id="toast" class="toast" hidden></div>
 
-  <script type="module" src="app.js?v=56"></script>
+  <script type="module" src="app.js?v=58"></script>
 </body>
 </html>
