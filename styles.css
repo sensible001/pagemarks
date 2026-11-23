@@ -822,3 +822,23 @@ body.quick #dlg-edit .dlg-actions { margin-top: 0.9rem; }
 }
 .search-clear:hover { background: #f1ede4; color: var(--ink); }
 .search-clear[hidden] { display: none; }
+
+/* v45: Home card suggesting the browser button */
+.ext-card {
+  display: flex; align-items: center; gap: 0.9rem;
+  margin: 0 0 1.1rem; padding: 0.85rem 0.9rem 0.85rem 1rem;
+  background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+}
+.ext-card[hidden] { display: none; }
+.ext-card img { flex: none; }
+.ext-card-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.15rem; }
+.ext-card-text .muted { font-size: 0.9rem; }
+.ext-card .btn { flex: none; text-decoration: none; }
+.ext-card-close {
+  flex: none; width: 1.8rem; height: 1.8rem; border: 0; border-radius: 50%;
+  background: transparent; color: var(--muted); cursor: pointer; font-size: 0.85rem;
+}
+.ext-card-close:hover { background: #f1ede4; color: var(--ink); }
+.ext-installed { color: var(--accent); font-weight: 700; }
+#ext-get a.btn { text-decoration: none; }
+@media (max-width: 700px) { .ext-card { flex-wrap: wrap; } .ext-card .btn { margin-left: calc(36px + 0.9rem); } }

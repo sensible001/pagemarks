@@ -10,7 +10,7 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=44";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=45";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -466,6 +466,7 @@ function render() {
   const items = filtered();
   const onHome = view.type === "home" && !$("#search").value.trim();
   $("#home").hidden = !onHome;
+  renderExtCard(onHome);
   $("#list").hidden = onHome;
   $("#sort-wrap").hidden = onHome;
   if (onHome) {
@@ -1010,6 +1011,33 @@ function pinIcon() {
 }
 
 // Home: starred Pagemarks as tiles, grouped by their folder
+// ---------- Browser button (extension) ----------
+// Fill in the Chrome Web Store address once the listing is published; until then the Home card stays hidden.
+const EXTENSION_URL = "";
+const extInstalled = () => document.documentElement.hasAttribute("data-pagemarks-extension");
+// Desktop Chrome, Edge, Brave, Opera and Vivaldi can all install from the Chrome Web Store
+const extSupported = () => /Chrome\//.test(navigator.userAgent) && !/Mobile|Android|CriOS/.test(navigator.userAgent);
+function extCardDismissed() { try { return localStorage.getItem("pm-ext-card") === "dismissed"; } catch { return false; } }
+
+function renderExtCard(onHome) {
+  const show = onHome && !!EXTENSION_URL && extSupported() && !extInstalled() && !extCardDismissed();
+  $("#ext-card").hidden = !show;
+  if (show) $("#ext-card-add").href = EXTENSION_URL;
+}
+$("#ext-card-close").addEventListener("click", () => {
+  try { localStorage.setItem("pm-ext-card", "dismissed"); } catch { /* ignore */ }
+  $("#ext-card").hidden = true;
+  toast("You'll find the browser button in Settings");
+});
+
+function renderExtSettings() {
+  const installed = extInstalled();
+  $("#ext-installed").hidden = !installed;
+  $("#ext-get").hidden = installed || !EXTENSION_URL;
+  $("#ext-soon").hidden = installed || !!EXTENSION_URL;
+  if (EXTENSION_URL) $("#ext-settings-add").href = EXTENSION_URL;
+}
+
 function renderHome(items) {
   const box = $("#home");
   if (!items.length) {
@@ -1489,7 +1517,7 @@ $("#btn-delete").addEventListener("click", async () => {
 
 // ---------- Settings ----------
 const dlgSettings = $("#dlg-settings");
-$("#btn-settings").addEventListener("click", () => { $("#import-status").textContent = ""; dlgSettings.showModal(); });
+$("#btn-settings").addEventListener("click", () => { $("#import-status").textContent = ""; renderExtSettings(); dlgSettings.showModal(); });
 $("#btn-close-settings").addEventListener("click", () => dlgSettings.close());
 
 // Import (Chrome / Edge / Firefox favorites HTML export)
@@ -1749,7 +1777,7 @@ $("#btn-editmode").classList.toggle("primary", editing);
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "44";
+const APP_VERSION = "45";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {
