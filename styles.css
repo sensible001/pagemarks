@@ -733,3 +733,9 @@ body:not(.editing) .bm { grid-template-columns: 36px 1fr auto; }
 .home-row:hover .star-btn, .home-row .star-btn:focus-visible { opacity: 1; }
 @media (pointer: coarse) { .home-row .star-btn { opacity: 1; } }
 @media (max-width: 760px) { .home { columns: 1; } }
+
+/* ---------- v29: site icon lines up with the first line of a long title ---------- */
+.home-row { align-items: flex-start; }
+.home-link { align-items: flex-start; }
+.home-link .tile-fav { margin-top: -0.18rem; }
+.home-row .star-btn { margin-top: 0.32rem; }

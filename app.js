@@ -1,4 +1,4 @@
-// Pagemarks v28 — app logic
+// Pagemarks v29 — app logic
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-app.js";
 import {
   getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect,
@@ -1618,7 +1618,7 @@ $("#btn-editmode").classList.toggle("primary", editing);
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "28";
+const APP_VERSION = "29";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {
