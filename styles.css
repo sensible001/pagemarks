@@ -716,7 +716,7 @@ body:not(.editing) .bm { grid-template-columns: 36px 1fr auto; }
 .home-group.linked .home-group-title { cursor: pointer; }
 .home-group.linked .home-group-title:hover .hg-name { color: var(--accent); }
 .hg-name { min-width: 0; }
-.hg-parent { color: var(--muted); font-weight: 400; font-size: 0.85rem; }
+.hg-parent { color: var(--muted); font-weight: 700; font-size: inherit; }   /* v42: same size and weight; grey shows it's the parent */
 .home-group-title .sub-icon { width: 22px; height: 22px; background: transparent; flex: none; }
 .home-group-title .sub-icon svg { width: 16px; height: 16px; }
 .home-list { list-style: none; margin: 0; padding: 0; }
@@ -737,7 +737,7 @@ body:not(.editing) .bm { grid-template-columns: 36px 1fr auto; }
 /* ---------- v29: site icon lines up with the first line of a long title ---------- */
 .home-row { align-items: flex-start; }
 .home-link { align-items: flex-start; }
-.home-link .tile-fav { margin-top: -0.18rem; }
+.home-link .tile-fav { margin-top: -0.08rem; }   /* v41: level with the middle of the first line's letters */
 .home-row .star-btn { margin-top: 0.32rem; }
 
 /* v30: refusal counts in the invite list */
@@ -805,3 +805,7 @@ body.quick #dlg-edit .dlg-actions { margin-top: 0.9rem; }
 .btn.primary { background: var(--brand); border-color: var(--brand); }
 .btn.primary:hover { background: var(--brand-hover); border-color: var(--brand-hover); }
 .chip.active { background: var(--brand); border-color: var(--brand); }
+
+/* v42: folder icon on Home lines up with the first line of a heading that wraps */
+.home-group-title { align-items: flex-start; }
+.home-group-title .sub-icon { margin-top: 0.12rem; }
