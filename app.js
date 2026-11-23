@@ -10,7 +10,7 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=51";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=53";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -1761,7 +1761,7 @@ $("#btn-export-json").addEventListener("click", () => {
 
 // ---------- The Librarian ----------
 // Suggests a folder for each Pagemark that has none. The work happens on GitHub (librarian.yml);
-// here a person asks, and sees how it's going. The owner gives each person a number of asks.
+// here a person asks, and sees how it's going. The owner gives each person a number of visits.
 const LIBRARIAN_MAX = 2000;
 let librarian = null;          // this person's librarian/{email} document
 let unsubLibrarian = null;
@@ -1776,7 +1776,6 @@ function startLibrarian() {
     () => { librarian = null; renderLibrarian(); });
 }
 
-const timesText = (n) => n === 1 ? "1 more time" : `${n} more times`;
 const unsuggestedCount = () => pagemarks.filter((b) => !b.folder && !b.suggestedFolder).length;
 
 function librarianState() {
@@ -1796,11 +1795,11 @@ function librarianState() {
     const more = unsuggestedCount();
     if (more) lines.push(`${plural(more, "Pagemark")} without a folder ${more === 1 ? "has" : "have"} no suggestion yet.`);
   } else if (status === "error") {
-    lines.push("The Librarian couldn't finish this time, so that ask wasn't used. Please try again later.");
+    lines.push("The Librarian couldn't finish this time, so that visit wasn't used. Please try again later.");
   }
   if (!busy) {
-    if (left > 0) lines.push(used ? `You can ask the Librarian ${timesText(left)}.` : `You can ask the Librarian ${left === 1 ? "once" : left + " times"}.`);
-    else lines.push("You've used all your asks of the Librarian.");
+    if (left > 0) lines.push(`You have ${plural(left, "Librarian visit")} left.`);
+    else lines.push("You've used all your Librarian visits.");
   }
   const canAsk = !busy && left > 0 && unsuggestedCount() > 0;
   const again = status === "done" && (librarian.made || 0) > 0;
@@ -1846,7 +1845,7 @@ async function askLibrarian() {
 $("#btn-ask-librarian").addEventListener("click", askLibrarian);
 $("#tidy-ask-librarian").addEventListener("click", askLibrarian);
 
-// Owner: everyone's asks, shown in the Invite list
+// Owner: everyone's visits, shown in the Invite list
 function startLibraryAll() {
   if (unsubLibraryAll) unsubLibraryAll();
   unsubLibraryAll = onSnapshot(collection(db, "librarian"), (snap) => {
@@ -1858,16 +1857,16 @@ function librarianNote(email) {
   const d = libraryAll.get((email || "").toLowerCase());
   if (!d) return null;
   const busy = d.status === "waiting" || d.status === "working";
-  return el("span", { class: "refusal-note", text: busy ? " · Librarian: working" : ` · Librarian: ${d.left || 0} left` });
+  return el("span", { class: "refusal-note", text: busy ? " · Librarian: working" : ` · Librarian: ${plural(d.left || 0, "visit")} left` });
 }
 function giveAsksButton(email) {
   return el("button", {
-    class: "btn small", text: "Give 3 asks of the Librarian",
+    class: "btn small", text: "Give 3 Librarian visits",
     onclick: async () => {
       try {
         await setDoc(doc(db, "librarian", email.toLowerCase()), { left: increment(3) }, { merge: true });
-        toast(`${email} can ask the Librarian 3 more times`);
-      } catch (err) { console.error(err); toast("Could not give asks. Check the Firestore rules."); }
+        toast(`Gave ${email} 3 Librarian visits`);
+      } catch (err) { console.error(err); toast("Could not give visits. Check the Firestore rules."); }
     }
   });
 }
@@ -1939,7 +1938,7 @@ $("#btn-editmode").classList.toggle("primary", editing);
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "51";
+const APP_VERSION = "53";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {
