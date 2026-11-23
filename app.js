@@ -10,7 +10,7 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=53";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=54";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -1936,9 +1936,27 @@ document.body.classList.toggle("editing", editing);
 $("#btn-editmode").textContent = editing ? "✓ Done" : "Organize";
 $("#btn-editmode").classList.toggle("primary", editing);
 
+// ---------- Click outside to close ----------
+// Only for windows you read (Settings, Tidy up), never ones you type into or that ask a question.
+// Both the press and the release must land outside the box, so selecting text and letting go outside doesn't close it.
+function closeOnOutsideClick(dlg) {
+  const outside = (e) => {
+    const r = dlg.getBoundingClientRect();
+    return e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom;
+  };
+  let pressedOutside = false;
+  dlg.addEventListener("pointerdown", (e) => { pressedOutside = e.target === dlg && outside(e); });
+  dlg.addEventListener("click", (e) => {
+    if (pressedOutside && e.target === dlg && outside(e)) dlg.close();
+    pressedOutside = false;
+  });
+}
+closeOnOutsideClick($("#dlg-settings"));
+closeOnOutsideClick($("#dlg-tidy"));
+
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "53";
+const APP_VERSION = "54";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {
