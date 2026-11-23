@@ -1,0 +1,30 @@
+name: Librarian
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"   # every 15 minutes; it only does work when someone has asked
+  workflow_dispatch:          # adds a "Run workflow" button to run it right away
+
+permissions:
+  contents: read
+
+concurrency:
+  group: librarian
+  cancel-in-progress: false
+
+jobs:
+  suggest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install
+        run: npm install --no-save --no-audit --no-fund firebase-admin@14
+      - name: Make folder suggestions for anyone who asked
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: node checker/librarian.mjs
