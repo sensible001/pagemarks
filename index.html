@@ -8,14 +8,14 @@
   <meta name="description" content="Pagemarks is a private, invitation-only app for saving and organizing web pages.">
   <meta name="application-name" content="Pagemarks">
   <meta property="og:site_name" content="Pagemarks">
-  <link rel="icon" href="favicon.ico?v=43" sizes="any">
-  <link rel="icon" href="favicon.svg?v=43" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=43">
+  <link rel="icon" href="favicon.ico?v=44" sizes="any">
+  <link rel="icon" href="favicon.svg?v=44" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=44">
   <meta name="apple-mobile-web-app-title" content="Pagemarks">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Gentium+Plus:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=43">
+  <link rel="stylesheet" href="styles.css?v=44">
 </head>
 <body>
 
@@ -27,7 +27,7 @@
   <!-- Sign in -->
   <section id="screen-signin" class="screen center" hidden>
     <div class="card welcome">
-      <img src="icon.svg?v=43" alt="" class="welcome-icon">
+      <img src="icon.svg?v=44" alt="" class="welcome-icon">
       <h1>Pagemarks</h1>
       <p class="muted">A private, invitation-only app for saving and organizing web pages.</p>
       <button id="btn-signin" class="btn primary large">Sign in with Google</button>
@@ -61,11 +61,12 @@
     <header class="topbar">
       <div class="topbar-inner">
         <a class="brand" href="#" id="brand-home">
-          <img src="icon.svg?v=43" alt="" width="28" height="28"><span>Pagemarks</span>
+          <img src="icon.svg?v=44" alt="" width="28" height="28"><span>Pagemarks</span>
         </a>
         <div class="topbar-main">
           <div class="search-wrap">
             <input id="search" type="search" placeholder="Search titles, tags, notes…" autocomplete="off">
+            <button type="button" id="search-clear" class="search-clear" aria-label="Clear search" title="Clear search (Esc)" hidden>✕</button>
           </div>
           <button id="btn-add" class="btn primary">+ Add</button>
           <button id="btn-editmode" class="btn" title="Organize: move, rename, delete">Organize</button>
@@ -324,6 +325,15 @@
           </ul>
         </details>
         <details class="howto">
+          <summary>Searching</summary>
+          <ul>
+            <li>Search looks through titles, web addresses, descriptions, notes, folders and tags. Every word you type must match.</li>
+            <li>On <em>Home</em>, it searches all your Pagemarks. In a folder, it searches that folder and its sub-folders.</li>
+            <li>Clicking <em>Home</em> or the Pagemarks logo clears the search. Clicking a folder keeps it, so you can narrow the results.</li>
+            <li>To clear it any time, click <strong>✕</strong> in the search box or press Esc.</li>
+          </ul>
+        </details>
+        <details class="howto">
           <summary>Content rules</summary>
           <ul>
             <li>Pagemarks doesn't allow adult, violent, hateful or harmful content.</li>
@@ -400,6 +410,6 @@
 
   <div id="toast" class="toast" hidden></div>
 
-  <script type="module" src="app.js?v=43"></script>
+  <script type="module" src="app.js?v=44"></script>
 </body>
 </html>

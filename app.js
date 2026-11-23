@@ -10,7 +10,7 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=43";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=44";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -649,11 +649,35 @@ function setView(v) {
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
+// ---------- Search ----------
+// Home and the logo start fresh (search cleared). Folders keep the search, so you can narrow results.
+function syncSearchClear() { $("#search-clear").hidden = !$("#search").value; }
+function clearSearch() { $("#search").value = ""; syncSearchClear(); }
+
 document.querySelectorAll(".nav-item[data-view]").forEach((btn) => {
-  btn.addEventListener("click", () => setView({ type: btn.dataset.view, value: null }));
+  btn.addEventListener("click", () => {
+    if (btn.dataset.view === "home") clearSearch();
+    setView({ type: btn.dataset.view, value: null });
+  });
 });
-$("#brand-home").addEventListener("click", (e) => { e.preventDefault(); $("#search").value = ""; setView({ type: "all", value: null }); });
-$("#search").addEventListener("input", () => { selected.clear(); render(); });
+$("#brand-home").addEventListener("click", (e) => {
+  e.preventDefault();
+  clearSearch();
+  setView({ type: pagemarks.some((b) => b.starred) ? "home" : "all", value: null });
+});
+syncSearchClear();   // in case the browser restored a search after a reload
+$("#search").addEventListener("input", () => { syncSearchClear(); selected.clear(); render(); });
+$("#search").addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && $("#search").value) {
+    e.preventDefault();
+    e.stopPropagation();   // Esc here only clears the search (it doesn't also leave Organize)
+    clearSearch(); selected.clear(); render();
+  }
+});
+$("#search-clear").addEventListener("click", () => {
+  clearSearch(); selected.clear(); render();
+  $("#search").focus();
+});
 $("#btn-filters").addEventListener("click", () => document.querySelector(".sidebar").classList.toggle("open"));
 $("#sort").addEventListener("change", render);
 
@@ -1725,7 +1749,7 @@ $("#btn-editmode").classList.toggle("primary", editing);
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "43";
+const APP_VERSION = "44";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {

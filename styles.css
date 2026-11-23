@@ -809,3 +809,16 @@ body.quick #dlg-edit .dlg-actions { margin-top: 0.9rem; }
 /* v42: folder icon on Home lines up with the first line of a heading that wraps */
 .home-group-title { align-items: flex-start; }
 .home-group-title .sub-icon { margin-top: 0; }   /* v43: level with the first line (was 2px low) */
+
+/* v44: a clear (✕) button inside the search box */
+.search-wrap { position: relative; }
+#search { padding-right: 2.2rem; }
+#search::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; display: none; }
+.search-clear {
+  position: absolute; right: 0.45rem; top: 50%; transform: translateY(-50%);
+  width: 1.6rem; height: 1.6rem; border: 0; border-radius: 50%;
+  background: transparent; color: var(--muted); font-size: 0.85rem; line-height: 1;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+.search-clear:hover { background: #f1ede4; color: var(--ink); }
+.search-clear[hidden] { display: none; }
