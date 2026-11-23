@@ -808,4 +808,4 @@ body.quick #dlg-edit .dlg-actions { margin-top: 0.9rem; }
 
 /* v42: folder icon on Home lines up with the first line of a heading that wraps */
 .home-group-title { align-items: flex-start; }
-.home-group-title .sub-icon { margin-top: 0.12rem; }
+.home-group-title .sub-icon { margin-top: 0; }   /* v43: level with the first line (was 2px low) */
