@@ -10,7 +10,7 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=34";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=35";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -1350,7 +1350,10 @@ function openQuick() {
   checkDuplicate();
   refreshEditSuggest();
   if (!QUICK.title) doLookup(false);
-  $("#btn-save").focus();
+  // Start at the top so the heading and address are the first thing you see; Enter still saves.
+  $("#btn-save").focus({ preventScroll: true });
+  dlgEdit.scrollTop = 0;
+  requestAnimationFrame(() => { dlgEdit.scrollTop = 0; });
 }
 
 // Leaving quick-save: close the little window if we can, otherwise say so calmly.
@@ -1722,7 +1725,7 @@ $("#btn-editmode").classList.toggle("primary", editing);
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "34";
+const APP_VERSION = "35";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {

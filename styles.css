@@ -773,8 +773,15 @@ h3 .owner-badge { margin-left: 0.5rem; letter-spacing: 0.04em; }
 
 /* v34: quick save (browser extension / iPhone Shortcut): only the Save dialog shows */
 body.quick #screen-app { visibility: hidden; }
-body.quick dialog::backdrop { background: var(--paper); }
-body.quick #dlg-edit { box-shadow: 0 4px 18px rgba(40, 30, 10, 0.10); }
+body.quick dialog::backdrop { background: var(--card); }
+/* v35: the save form fills the small window, top first, compact spacing */
+body.quick #dlg-edit {
+  width: 100vw; max-width: 100vw;
+  height: 100vh; max-height: 100vh;
+  margin: 0; inset: 0;
+  border: 0; border-radius: 0; box-shadow: none;
+  overflow-y: auto;
+}
 .welcome .saved-mark {
   margin: 0 auto 0.75rem;
   width: 3rem; height: 3rem; line-height: 3rem;
@@ -787,4 +794,8 @@ body.quick #dlg-edit { box-shadow: 0 4px 18px rgba(40, 30, 10, 0.10); }
 .welcome .saved-mark[hidden] { display: none; }
 #screen-saved a.btn { text-decoration: none; display: inline-block; }
 body.quick label:has(#f-desc), body.quick label:has(#f-notes) { display: none; }
-body.quick #dlg-edit form { padding: 1.4rem 1.75rem 1.5rem; }
+body.quick #dlg-edit form { padding: 1.1rem 1.5rem 1.1rem; max-width: 560px; margin: 0 auto; }
+body.quick #dlg-edit h2 { margin-bottom: 0.7rem; }
+body.quick #dlg-edit label { margin-bottom: 0.7rem; }
+body.quick #dlg-edit .suggest-line { margin: -0.3rem 0 0.7rem; }
+body.quick #dlg-edit .dlg-actions { margin-top: 0.9rem; }
