@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Gentium+Plus:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=31">
+  <link rel="stylesheet" href="styles.css?v=33">
 </head>
 <body>
 
@@ -317,15 +317,26 @@
             <li>Each Pagemark is checked when it's saved or imported: a short list of blocked sites, a word filter (titles, notes, tags, folder names, web addresses) and Cloudflare's family-safe check for adult and malware sites. Only the site name is sent to Cloudflare.</li>
             <li>If something isn't allowed, it simply isn't saved. Nobody is blocked or penalized automatically.</li>
             <li>Only a <em>count</em> of refused saves is kept for each account, never which site or text was refused. The owner can see the counts in the Invite list.</li>
-            <li>To test it safely, add <em>blocked-test.pagemarks.com</em> (always refused) or <em>nudity.testcategory.com</em> (Cloudflare's own test site).</li>
           </ul>
+          <div class="owner-note owner-only" hidden>
+            <span class="owner-badge">Only you see this</span>
+            <p>To test the content rules, add one of these. Each should be refused and add 1 to your count in the Invite list.</p>
+            <ul>
+              <li><em>blocked-test.pagemarks.com</em> tests Pagemarks' own list</li>
+              <li><em>malware.testcategory.com</em> tests Cloudflare's malware check</li>
+              <li><em>nudity.testcategory.com</em> tests Cloudflare's adult-content check</li>
+            </ul>
+          </div>
         </details>
         <details class="howto">
           <summary>Updates</summary>
           <ul>
             <li>A notice appears when a newer version is online. Click <em>Reload now</em>.</li>
-            <li>To install a new version: unzip, select all files, drag them onto the GitHub upload page, then <em>Commit changes</em>.</li>
           </ul>
+          <div class="owner-note owner-only" hidden>
+            <span class="owner-badge">Only you see this</span>
+            <p>To install a new version: unzip, select all files, drag them onto the GitHub upload page, then <em>Commit changes</em>.</p>
+          </div>
         </details>
       </section>
 
@@ -353,7 +364,7 @@
       </section>
 
       <section id="invite-section" hidden>
-        <h3>Invite list</h3>
+        <h3>Invite list <span class="owner-badge">Only you see this</span></h3>
         <p class="muted">People must sign in with this exact Google email.</p>
         <form id="form-invite" class="row">
           <input type="email" id="invite-email" placeholder="name@gmail.com" required>
@@ -376,6 +387,6 @@
 
   <div id="toast" class="toast" hidden></div>
 
-  <script type="module" src="app.js?v=31"></script>
+  <script type="module" src="app.js?v=33"></script>
 </body>
 </html>

@@ -10,7 +10,7 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=31";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=33";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -234,6 +234,7 @@ onAuthStateChanged(auth, async (u) => {
 
   $("#me-email").textContent = u.email;
   $("#invite-section").hidden = !isAdmin;
+  document.querySelectorAll(".owner-only").forEach(el => { el.hidden = !isAdmin; });
   showScreen("app");
   startPagemarks();
   if (isAdmin) startInvites();
@@ -1678,7 +1679,7 @@ $("#btn-editmode").classList.toggle("primary", editing);
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "31";
+const APP_VERSION = "33";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {
