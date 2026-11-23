@@ -10,7 +10,7 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=59";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=60";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -1380,7 +1380,9 @@ function nextTidy() {
   const b = pagemarks.find((x) => x.id === tidyQueue[0]);
   const host = hostOf(b.url);
   const s = linkStatus(b);
-  $("#tidy-progress").textContent = `${tidyDone} filed · ${tidyQueue.length} to go`;
+  const skippedNow = tidyQueue.filter((id) => tidySkipped.has(id)).length;
+  const toGo = tidyQueue.length - skippedNow;
+  $("#tidy-progress").textContent = [`${tidyDone} filed`, skippedNow ? `${skippedNow} skipped` : null, `${toGo} to go`].filter(Boolean).join(" · ");
   $("#tidy-card").replaceChildren(
     el("div", { class: "title-line" }, linkBadge(b),
       el("div", { class: "title-text" }, el("a", { class: "bm-title", href: parseUrl(b.url)?.href || "#", target: "_blank", rel: "noopener noreferrer", text: b.title || host }))),
@@ -2031,7 +2033,7 @@ closeOnOutsideClick($("#dlg-tidy"));
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "59";
+const APP_VERSION = "60";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {
