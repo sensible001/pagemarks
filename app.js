@@ -10,7 +10,7 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=55";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=56";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -1249,24 +1249,36 @@ const STOP = new Set("the and for with from your you this that what how are was 
 const words = (s) => (s || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").split(" ").filter((w) => w.length > 2 && !STOP.has(w) && !/^\d+$/.test(w));
 const siteOf = (url) => { const h = hostOf(url); const p = h.split("."); return p.length > 2 ? p.slice(-2).join(".") : h; };
 
+// Everyday words that say nothing about a page's subject ("NY Daily News" is not about "Gen Art News")
+const GENERIC = new Set("news daily blog blogs post posts article articles online free best top today times journal magazine media video videos watch shop store info review reviews world story stories".split(" "));
+const meaningful = (list) => list.filter((w) => !GENERIC.has(w));
+
 function folderSuggestions(b, max = 2) {
   const scores = new Map();
   const add = (f, n) => scores.set(f, (scores.get(f) || 0) + n);
   const host = hostOf(b.url), site = siteOf(b.url);
-  const mine = new Set(words(b.title + " " + (parseUrl(b.url)?.pathname || "")));
+  const allMine = new Set(words(b.title + " " + (parseUrl(b.url)?.pathname || "")));
+  const mine = new Set(meaningful([...allMine]));
   const filed = pagemarks.filter((p) => p.folder && p.id !== b.id);
   // Same website as Pagemarks already filed
   for (const p of filed) {
     if (hostOf(p.url) === host) add(p.folder, 4);
     else if (siteOf(p.url) === site) add(p.folder, 2);
   }
-  // Words shared with folder names (strong) and with titles already in a folder (weaker)
+  // Words shared with a folder's own name (strong). Only the last part counts ("Gen Art News", not "Art"),
+  // everyday words don't count, and partial matches need longer words ("garden" ~ "gardening").
   for (const f of allFolderPaths()) {
-    for (const w of words(f)) if (mine.has(w) || [...mine].some((m) => m.startsWith(w) || w.startsWith(m))) add(f, 3);
+    const own = f.split(" / ").pop();
+    const ownWords = words(own);
+    if (ownWords.length === 1 && allMine.has(ownWords[0])) { add(f, 3); continue; }   // a folder simply named "News"
+    for (const w of meaningful(ownWords)) {
+      if (mine.has(w) || [...mine].some((m) => m.length >= 5 && w.length >= 5 && (m.startsWith(w) || w.startsWith(m)))) add(f, 3);
+    }
   }
+  // Words shared with titles already in a folder (weaker)
   for (const p of filed) {
     let shared = 0;
-    for (const w of new Set(words(p.title))) if (mine.has(w)) shared++;
+    for (const w of new Set(meaningful(words(p.title)))) if (mine.has(w)) shared++;
     if (shared) add(p.folder, Math.min(shared, 3) * 0.75);
   }
   return [...scores.entries()]
@@ -1308,7 +1320,7 @@ $("#file-suggest").addEventListener("change", async (e) => {
     }
     for (let i = 0; i < updates.length; i += 400) {
       const batch = writeBatch(db);
-      for (const [id, folder] of updates.slice(i, i + 400)) batch.update(doc(pmCol(), id), { suggestedFolder: folder });
+      for (const [id, folder] of updates.slice(i, i + 400)) batch.update(doc(pmCol(), id), { suggestedFolder: folder, suggestedBy: null });
       await batch.commit();
     }
     status.textContent = `Loaded ${plural(updates.length, "suggestion")}` + (missed ? ` (${missed} didn't match a Pagemark with no folder)` : "") + ". Open Tidy up to review them.";
@@ -1360,9 +1372,14 @@ function nextTidy() {
   );
   $("#tidy-controls").hidden = false;
   // Suggestions first
-  const sugg = suggestionsFor(b);
-  $("#tidy-suggest").hidden = !sugg.length;
-  $("#tidy-suggest-list").replaceChildren(...sugg.map((f) => suggestButton(f, fileTidy)));
+  const own = b.suggestedFolder ? [b.suggestedFolder] : [];
+  const hints = folderSuggestions(b).filter((f) => !own.includes(f));
+  const sugg = [...own, ...hints];
+  $("#tidy-suggest").hidden = !own.length;
+  $("#tidy-suggest-label").textContent = b.suggestedBy === "librarian" ? "Suggested by the Librarian" : "Suggested";
+  $("#tidy-suggest-list").replaceChildren(...own.map((f) => suggestButton(f, fileTidy)));
+  $("#tidy-hints").hidden = !hints.length;
+  $("#tidy-hints-list").replaceChildren(...hints.map((f) => suggestButton(f, fileTidy)));
   const remainingSuggested = tidyQueue.filter((id) => pagemarks.find((x) => x.id === id)?.suggestedFolder).length;
   $("#tidy-accept-all").hidden = remainingSuggested < 2;
   $("#tidy-accept-all").textContent = `Accept all ${remainingSuggested} suggestions…`;
@@ -1381,7 +1398,7 @@ async function fileTidy(folderRaw) {
   tidyRecent = [folder, ...tidyRecent.filter((f) => f !== folder)].slice(0, 4);
   tidyDone++;
   nextTidy();
-  await updateDoc(doc(pmCol(), id), { folder, suggestedFolder: null, updatedAt: serverTimestamp() });
+  await updateDoc(doc(pmCol(), id), { folder, suggestedFolder: null, suggestedBy: null, updatedAt: serverTimestamp() });
 }
 
 $("#btn-tidy").addEventListener("click", () => {
@@ -1407,7 +1424,7 @@ $("#tidy-accept-all").addEventListener("click", async () => {
   if (!(await ask({ title: `File ${plural(items.length, "Pagemark")} in their suggested folders?`, text: "Any suggested folders that don't exist yet will be created. You can still move things afterwards.", ok: "File them all" }))) return;
   for (let i = 0; i < items.length; i += 400) {
     const batch = writeBatch(db);
-    for (const b of items.slice(i, i + 400)) batch.update(doc(pmCol(), b.id), { folder: b.suggestedFolder, suggestedFolder: null, updatedAt: serverTimestamp() });
+    for (const b of items.slice(i, i + 400)) batch.update(doc(pmCol(), b.id), { folder: b.suggestedFolder, suggestedFolder: null, suggestedBy: null, updatedAt: serverTimestamp() });
     await batch.commit();
   }
   tidyDone += items.length;
@@ -1771,8 +1788,15 @@ let unsubLibraryAll = null;
 function startLibrarian() {
   if (unsubLibrarian) unsubLibrarian();
   const email = (user.email || "").toLowerCase();
+  let before = null;
   unsubLibrarian = onSnapshot(doc(db, "librarian", email),
-    (s) => { librarian = s.exists() ? s.data() : null; renderLibrarian(); },
+    (s) => {
+      librarian = s.exists() ? s.data() : null;
+      const now = librarian ? librarian.status : null;
+      if ((before === "waiting" || before === "working") && now === "done") toast("The Librarian's suggestions are ready in Tidy up");
+      before = now;
+      renderLibrarian();
+    },
     () => { librarian = null; renderLibrarian(); });
 }
 
@@ -1806,8 +1830,23 @@ function librarianState() {
   return { lines, canAsk, label: again ? "Ask the Librarian again" : "Ask the Librarian" };
 }
 
+const librarianReady = () => pagemarks.filter((b) => !b.folder && b.suggestedFolder && b.suggestedBy === "librarian").length;
+
+function renderSideLibrarian(st) {
+  const box = $("#side-librarian");
+  const busy = librarian && (librarian.status === "waiting" || librarian.status === "working");
+  const ready = librarian ? librarianReady() : 0;
+  let child = null;
+  if (busy) child = el("span", { class: "side-lib-note", text: "The Librarian is working…" });
+  else if (ready) child = el("button", { type: "button", class: "side-lib-link", text: `${plural(ready, "suggestion")} ready in Tidy up`, onclick: () => $("#btn-tidy").click() });
+  else if (st && st.canAsk) child = el("button", { type: "button", class: "side-lib-link", text: "Ask the Librarian", onclick: askLibrarian });
+  box.hidden = !child;
+  box.replaceChildren(...(child ? [child] : []));
+}
+
 function renderLibrarian() {
   const st = librarianState();
+  renderSideLibrarian(st);
   $("#librarian-section").hidden = !st;
   $("#tidy-librarian").hidden = !st || (!st.canAsk && !(librarian && (librarian.status === "waiting" || librarian.status === "working")));
   if (!st) return;
@@ -1817,7 +1856,13 @@ function renderLibrarian() {
     $(id).hidden = !st.canAsk;
     $(id).textContent = st.label;
   }
-  if (st.canAsk) $("#tidy-lib-status").textContent = "The Librarian can suggest a folder for each Pagemark that has none.";
+  if (st.canAsk) {
+    const n = unsuggestedCount();
+    $("#tidy-lib-status").textContent = n > LIBRARIAN_MAX
+      ? `Ask the Librarian to suggest folders for up to ${LIBRARIAN_MAX.toLocaleString()} of your ${n.toLocaleString()} Pagemarks without a folder.`
+      : n === 1 ? "Ask the Librarian to suggest a folder for your Pagemark without one."
+      : `Ask the Librarian to suggest folders for all ${n} Pagemarks without a folder.`;
+  }
 }
 
 async function askLibrarian() {
@@ -1956,7 +2001,7 @@ closeOnOutsideClick($("#dlg-tidy"));
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "55";
+const APP_VERSION = "56";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {

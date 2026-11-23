@@ -8,14 +8,14 @@
   <meta name="description" content="Pagemarks is a private, invitation-only app for saving and organizing web pages.">
   <meta name="application-name" content="Pagemarks">
   <meta property="og:site_name" content="Pagemarks">
-  <link rel="icon" href="favicon.ico?v=55" sizes="any">
-  <link rel="icon" href="favicon.svg?v=55" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=55">
+  <link rel="icon" href="favicon.ico?v=56" sizes="any">
+  <link rel="icon" href="favicon.svg?v=56" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=56">
   <meta name="apple-mobile-web-app-title" content="Pagemarks">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Gentium+Plus:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=55">
+  <link rel="stylesheet" href="styles.css?v=56">
 </head>
 <body>
 
@@ -27,7 +27,7 @@
   <!-- Sign in -->
   <section id="screen-signin" class="screen center" hidden>
     <div class="card welcome">
-      <img src="icon.svg?v=55" alt="" class="welcome-icon">
+      <img src="icon.svg?v=56" alt="" class="welcome-icon">
       <h1>Pagemarks</h1>
       <p class="muted">A private, invitation-only app for saving and organizing web pages.</p>
       <button id="btn-signin" class="btn primary large">Sign in with Google</button>
@@ -70,7 +70,7 @@
     <header class="topbar">
       <div class="topbar-inner">
         <a class="brand" href="#" id="brand-home">
-          <img src="icon.svg?v=55" alt="" width="28" height="28"><span>Pagemarks</span>
+          <img src="icon.svg?v=56" alt="" width="28" height="28"><span>Pagemarks</span>
         </a>
         <div class="topbar-main">
           <div class="search-wrap">
@@ -93,6 +93,7 @@
           <li><button class="nav-item" data-view="unfiled">No folder <span class="count" id="count-unfiled">0</span></button></li>
         </ul>
         <button id="btn-tidy" class="btn tidy-btn edit-only" hidden>Tidy up “No folder” (<span id="tidy-count">0</span>)</button>
+        <div id="side-librarian" class="side-librarian" hidden></div>
         <h3 class="edit-only">Link health</h3>
         <ul class="nav-list health-list edit-only">
           <li><button class="nav-item" data-view="ok"><span class="label"><span class="dot dot-ok"></span>Working</span> <span class="count" id="count-ok">0</span></button></li>
@@ -140,7 +141,7 @@
           </span>
         </div>
         <div id="ext-card" class="ext-card" hidden>
-          <img src="favicon.svg?v=55" alt="" width="36" height="36">
+          <img src="favicon.svg?v=56" alt="" width="36" height="36">
           <div class="ext-card-text">
             <strong>Save Pagemarks in one click</strong>
             <span class="muted">Add the Pagemarks button to your browser, then click it on any page you want to keep.</span>
@@ -161,7 +162,7 @@
   <!-- Add / edit dialog -->
   <dialog id="dlg-edit">
     <form id="form-edit" method="dialog">
-      <p class="quick-brand" aria-hidden="true"><img src="icon.svg?v=55" alt="" width="28" height="28"><span>Pagemarks</span></p>
+      <p class="quick-brand" aria-hidden="true"><img src="icon.svg?v=56" alt="" width="28" height="28"><span>Pagemarks</span></p>
       <h2 id="edit-heading">Add Pagemark</h2>
 
       <label>Web address
@@ -289,8 +290,12 @@
       <div id="tidy-card" class="tidy-card"></div>
       <div id="tidy-controls">
         <div id="tidy-suggest" class="tidy-suggest" hidden>
-          <p class="tidy-label">Suggested</p>
+          <p class="tidy-label" id="tidy-suggest-label">Suggested</p>
           <div id="tidy-suggest-list" class="suggest-buttons"></div>
+        </div>
+        <div id="tidy-hints" class="tidy-suggest" hidden>
+          <p class="tidy-label">Like your other Pagemarks</p>
+          <div id="tidy-hints-list" class="suggest-buttons"></div>
         </div>
         <p class="tidy-label">Or file it in</p>
         <div id="tidy-picks" class="tag-cloud"></div>
@@ -472,6 +477,6 @@
 
   <div id="toast" class="toast" hidden></div>
 
-  <script type="module" src="app.js?v=55"></script>
+  <script type="module" src="app.js?v=56"></script>
 </body>
 </html>

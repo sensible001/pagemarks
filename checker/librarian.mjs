@@ -111,7 +111,7 @@ async function serve(ref) {
         const b = chunk[row && Number(row.i)];
         const f = b && cleanFolder(row.f, folders);
         if (!b || !f) continue;
-        batch.update(col.doc(b.id), { suggestedFolder: f });
+        batch.update(col.doc(b.id), { suggestedFolder: f, suggestedBy: "librarian" });
         folders.add(f);          // later chunks reuse new folders instead of inventing more
         n++;
       }
