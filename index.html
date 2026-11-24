@@ -8,36 +8,36 @@
   <meta name="description" content="Pagemarks is a private, invitation-only app for saving and organizing web pages.">
   <meta name="application-name" content="Pagemarks">
   <meta property="og:site_name" content="Pagemarks">
-  <link rel="icon" href="favicon.ico?v=69" sizes="any">
-  <link rel="icon" href="favicon.svg?v=69" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=69">
+  <link rel="icon" href="favicon.ico?v=72" sizes="any">
+  <link rel="icon" href="favicon.svg?v=72" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=72">
   <meta name="apple-mobile-web-app-title" content="Pagemarks">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Gentium+Plus:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=69">
+  <link rel="stylesheet" href="styles.css?v=72">
 </head>
 <body>
 
   <!-- Loading -->
-  <section id="screen-loading" class="screen center">
+  <section id="screen-loading" class="screen center" role="main">
     <p class="muted">Loading Pagemarks…</p>
   </section>
 
   <!-- Sign in -->
-  <section id="screen-signin" class="screen center" hidden>
+  <section id="screen-signin" class="screen center" role="main" hidden>
     <div class="card welcome">
-      <img src="icon.svg?v=69" alt="" class="welcome-icon">
+      <img src="icon.svg?v=72" alt="" class="welcome-icon">
       <h1>Pagemarks</h1>
       <p class="muted">A private, invitation-only app for saving and organizing web pages.</p>
       <button id="btn-signin" class="btn primary large">Sign in with Google</button>
       <p id="signin-error" class="error" hidden></p>
-      <p class="signin-foot"><a href="privacy.html">Privacy policy</a></p>
+      <p class="signin-foot"><a href="privacy.html">Privacy policy</a> · <a href="accessibility.html">Accessibility</a></p>
     </div>
   </section>
 
   <!-- Not invited -->
-  <section id="screen-notinvited" class="screen center" hidden>
+  <section id="screen-notinvited" class="screen center" role="main" hidden>
     <div class="card welcome">
       <h1>Invitation needed</h1>
       <p>Pagemarks is private. <strong id="notinvited-email"></strong> isn't on the invite list yet.</p>
@@ -46,7 +46,7 @@
     </div>
   </section>
 
-  <section id="screen-offline" class="screen center" hidden>
+  <section id="screen-offline" class="screen center" role="main" hidden>
     <div class="card welcome">
       <h1>Couldn't connect</h1>
       <p>You're signed in as <strong id="offline-email"></strong>, but Pagemarks couldn't reach its database just now.</p>
@@ -56,7 +56,7 @@
   </section>
 
   <!-- After a quick save, if the window couldn't close itself -->
-  <section id="screen-saved" class="screen center" hidden>
+  <section id="screen-saved" class="screen center" role="main" hidden>
     <div class="card welcome">
       <p id="saved-mark" class="saved-mark" aria-hidden="true">✓</p>
       <h1 id="saved-title">Saved to Pagemarks</h1>
@@ -67,10 +67,11 @@
 
   <!-- App -->
   <section id="screen-app" class="screen" hidden>
-    <header class="topbar">
+    <header class="topbar" role="banner">
+      <a class="skip-link" href="#view-title">Skip to your Pagemarks</a>
       <div class="topbar-inner">
         <a class="brand" href="#" id="brand-home">
-          <img src="icon.svg?v=69" alt="" width="28" height="28"><span>Pagemarks</span>
+          <img src="icon.svg?v=72" alt="" width="28" height="28"><span>Pagemarks</span>
         </a>
         <div class="topbar-main">
           <div class="search-wrap">
@@ -101,6 +102,8 @@
           <li><button class="nav-item" data-view="broken"><span class="label"><span class="dot dot-broken"></span>Broken</span> <span class="count" id="count-broken">0</span></button></li>
           <li><button class="nav-item" data-view="moved"><span class="label"><span class="dot dot-moved"></span>Moved</span> <span class="count" id="count-moved">0</span></button></li>
           <li><button class="nav-item" data-view="unknown"><span class="label"><span class="dot dot-unknown"></span>Couldn't check</span> <span class="count" id="count-unknown">0</span></button></li>
+          <li id="li-changed" hidden><button class="nav-item" data-view="changed"><span class="label"><span class="dot dot-changed"></span>Looks different</span> <span class="count" id="count-changed">0</span></button></li>
+          <li id="li-unsafe" hidden><button class="nav-item" data-view="unsafe"><span class="label"><span class="dot dot-unsafe"></span>May be unsafe</span> <span class="count" id="count-unsafe">0</span></button></li>
         </ul>
         <p class="muted small-note edit-only" id="health-note"></p>
         <h3 id="folders-heading" class="drop-root" title="Drop a folder here to move it to the top level">Folders</h3>
@@ -113,7 +116,7 @@
 
       <main class="main">
         <div class="main-head">
-          <h2 id="view-title">All Pagemarks</h2>
+          <h1 id="view-title" tabindex="-1">All Pagemarks</h1>
           <span id="folder-tools" class="folder-tools edit-only" hidden>
             <button type="button" class="btn small" id="folder-rename">Rename</button>
             <button type="button" class="btn small" id="folder-move">Move folder…</button>
@@ -142,7 +145,7 @@
           </span>
         </div>
         <div id="lib-welcome" class="ext-card lib-welcome" hidden>
-          <img src="icon.svg?v=69" alt="" width="36" height="36">
+          <img src="icon.svg?v=72" alt="" width="36" height="36">
           <div class="ext-card-text">
             <strong>The Librarian can help</strong>
             <span class="muted" id="lib-welcome-text"></span>
@@ -151,7 +154,7 @@
           <button type="button" id="lib-welcome-later" class="btn">Not now</button>
         </div>
         <div id="ext-card" class="ext-card" hidden>
-          <img src="favicon.svg?v=69" alt="" width="36" height="36">
+          <img src="favicon.svg?v=72" alt="" width="36" height="36">
           <div class="ext-card-text">
             <strong>Save Pagemarks in one click</strong>
             <span class="muted">Add the Pagemarks button to your browser, then click it on any page you want to keep.</span>
@@ -185,7 +188,7 @@
   <!-- Add / edit dialog -->
   <dialog id="dlg-edit">
     <form id="form-edit" method="dialog">
-      <p class="quick-brand" aria-hidden="true"><img src="icon.svg?v=69" alt="" width="28" height="28"><span>Pagemarks</span></p>
+      <p class="quick-brand" aria-hidden="true"><img src="icon.svg?v=72" alt="" width="28" height="28"><span>Pagemarks</span></p>
       <h2 id="edit-heading">Add Pagemark</h2>
 
       <label>Web address
@@ -352,6 +355,7 @@
             <li><span class="dot dot-moved"></span><strong>Moved:</strong> the address now leads somewhere else. Use <em>Update link</em>, unless it lands on a home or sign-in page (then the page is probably gone).</li>
             <li><span class="dot dot-broken"></span><strong>Broken:</strong> missing, server error, or refused to everyone. Or you marked it broken yourself.</li>
             <li><span class="dot dot-unknown"></span><strong>Couldn't check:</strong> the site blocks automated checks or needs a sign-in. Usually fine. Open it, then use <em>It works</em> or <em>Mark as broken</em>.</li>
+            <li><span class="dot dot-unsafe"></span><strong>May be unsafe:</strong> the website may not be the one you saved anymore. It has a new owner, is on a list of harmful sites, looks parked or for sale, or sends visitors somewhere unrelated. Pagemarks asks before opening it.</li>
             <li><span class="dot dot-ok dot-confirmed"></span><strong>Working, confirmed by you:</strong> the checker can't reach the site, but you said it works. The checker keeps watching it, and it turns red or orange if the site disappears, says “not found” or moves. After 6 months Pagemarks asks you again.</li>
             <li><span class="dot dot-pending"></span><strong>Not checked yet:</strong> new, or its address was just changed.</li>
           </ul>
@@ -365,8 +369,23 @@
             <li>Why some pages show <em>Couldn't check</em>: the checker runs on GitHub's computers in a data center, and many sites turn away every visitor from data centers to keep out bots. The site refuses before saying whether the page exists. Your own browser isn't turned away, so you can tell.</li>
             <li>For those, open the page yourself (in <em>Organize</em>), then click <em>It works</em> or <em>Mark as broken</em>. <em>It works</em> shows a green ring and counts under Working.</li>
             <li><em>It works</em> doesn't stop the checking. If the checker later sees clear proof that the page is gone (“not found”, or the site no longer exists) or has moved, it cancels your confirmation. Otherwise, after 6 months, Pagemarks asks you again.</li>
-            <li>One thing the checker can't catch on a site that turns it away: a page that shows a “not found” screen while the site still says “OK”. That's why Pagemarks asks again after 6 months.</li>
+            <li>A page that loads but says “Page not found” counts as <em>Broken</em> too: the weekly check reads each page's title. Sites that turn the checker away can still hide this, which is why Pagemarks asks again after 6 months.</li>
             <li>Your <em>Mark as broken</em> always wins over the checker. Your <em>It works</em> only fills in where the checker couldn't tell.</li>
+          </ul>
+        </details>
+        <details class="howto">
+          <summary>Safety checks</summary>
+          <ul>
+            <li>Old websites sometimes expire and are bought by someone else, who uses the old address to send visitors to ads, scams or harmful sites. Each night the checker also looks for signs of that:</li>
+            <li><strong>A new owner:</strong> public registry records show when a website's address was last registered. If that's after you saved the Pagemark, the website has probably changed hands. Checked about once a week.</li>
+            <li><strong>Harmful-site lists:</strong> the website, and anywhere it now sends you, is checked every night against Cloudflare's lists of harmful and adult sites (the same check used when you save).</li>
+            <li><strong>Parked or for sale:</strong> pages like “This domain is for sale”. Checked about once a week.</li>
+            <li><strong>Sent somewhere unrelated:</strong> a page that now bounces visitors to a different website, especially throwaway-style ones (ending in .site, .top, .xyz and similar).</li>
+            <li>A Pagemark that may be unsafe gets a red diamond and a <em>May be unsafe</em> label, even outside Organize. Clicking it asks before opening. You can <em>Look for an archived copy</em> of the original, <em>Mark as broken</em>, or choose <em>It's fine</em> if you're sure.</li>
+            <li><strong>Looks different:</strong> once a week the checker compares each page's title now with the title you saved. If they have nothing in common (say, “Jes Liao — Paintings” has become “Best Casino Bonuses”), the Pagemark gets a <em>Looks different</em> note in Organize. Websites do get redesigned, so it's a gentle note rather than a warning, and <em>It's fine</em> clears it.</li>
+            <li><strong>A real browser, weekly:</strong> on Sunday nights every Pagemark is also opened in an invisible Chrome browser on GitHub's computers, which runs the page's scripts and notes where it really ends up and what it's titled. Some harmful sites only redirect real browsers, so this catches more of them. Those computers are wiped after each run.</li>
+            <li><strong>A live check when you open one:</strong> when you click a Pagemark, your browser first asks Cloudflare whether the website is on its harmful or adult list right now, since it may have been added since last night. It takes a moment; if it's listed, Pagemarks asks before opening.</li>
+            <li>Only website names are looked up. Some harmful sites show the checker a harmless page, so no check is perfect: if a Pagemark ever takes you somewhere strange, close it and use <em>Mark as broken</em>.</li>
           </ul>
         </details>
         <details class="howto">
@@ -459,14 +478,14 @@
       <section>
         <h3>Import favorites</h3>
         <p class="muted">In Chrome or Edge, export your favorites as an HTML file, then choose it here. Each one becomes a Pagemark. Duplicates are skipped.</p>
-        <input type="file" id="file-import" accept=".html,.htm,text/html">
+        <input type="file" id="file-import" accept=".html,.htm,text/html" aria-label="Choose a favorites file to import">
         <p id="import-status" class="status"></p>
       </section>
 
       <section class="owner-only" hidden>
         <h3>Folder suggestions file <span class="owner-badge">Only you see this</span></h3>
         <p class="muted">Load a suggestions file. Each Unfiled Pagemark gets its suggested folder ready to accept in Tidy up.</p>
-        <input type="file" id="file-suggest" accept=".json,application/json">
+        <input type="file" id="file-suggest" accept=".json,application/json" aria-label="Choose a folder suggestions file">
         <p id="suggest-status" class="status"></p>
       </section>
 
@@ -490,18 +509,20 @@
       </section>
 
       <section>
-        <p class="muted"><a href="privacy.html" target="_blank" rel="noopener">Privacy policy</a></p>
+        <p class="muted"><a href="privacy.html" target="_blank" rel="noopener">Privacy policy</a> · <a href="accessibility.html" target="_blank" rel="noopener">Accessibility</a></p>
       </section>
     </div>
   </dialog>
 
-  <div id="update-bar" class="update-bar" hidden>
+  <aside aria-label="Notices">
+  <div id="update-bar" class="update-bar" role="status" hidden>
     <span>A newer version of Pagemarks is ready.</span>
     <button type="button" class="btn small primary" id="btn-reload">Reload now</button>
   </div>
 
-  <div id="toast" class="toast" hidden></div>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  </aside>
 
-  <script type="module" src="app.js?v=69"></script>
+  <script type="module" src="app.js?v=72"></script>
 </body>
 </html>

@@ -941,3 +941,42 @@ section.owner-only[hidden] { display: none; }
 /* ---------- v68: "It works" (confirmed by you) ---------- */
 .dot.dot-confirmed { background: transparent; border: 2px solid #3c8d5a; box-sizing: border-box; }
 .fix-row.confirmed-note { color: var(--muted); }
+
+/* ---------- v70: accessibility ---------- */
+/* Status dots and stars meet the 3:1 contrast needed to see them (WCAG 1.4.11) */
+.dot-moved { background: #a87a12; }
+.dot-unknown { background: #8a8478; }
+.dot-pending { border-color: #8f897d; }
+.star-btn { color: #8f897d; }
+.star-btn.on, .home-star { color: #a87a12; }
+.star-btn:hover { color: #a87a12; }
+.bm .star-btn { opacity: 1; }
+
+/* The page heading keeps its old size; it's now the page's main heading for screen readers */
+#view-title { font-size: 1.35rem; }
+#view-title:focus { outline: none; }
+
+/* "Skip to your Pagemarks": hidden until reached with the Tab key */
+.skip-link {
+  position: absolute; left: 1rem; top: -3rem; z-index: 100;
+  background: var(--accent); color: #fff; padding: 0.5rem 0.9rem; border-radius: 8px; text-decoration: none;
+}
+.skip-link:focus { top: 0.6rem; outline: 2px solid var(--ink); outline-offset: 2px; }
+
+/* Narrow screens and 400% zoom: let rows wrap instead of running off the edge (WCAG 1.4.10) */
+.row { flex-wrap: wrap; }
+.invite-list li { flex-wrap: wrap; gap: 0.3rem 0.6rem; }
+.invite-list li > * { min-width: 0; overflow-wrap: anywhere; }
+
+/* ---------- v71: "May be unsafe" ---------- */
+/* A red diamond, so it differs from the round "Broken" dot by shape as well as color */
+.dot-unsafe { background: #a33a2b; border-radius: 2px; transform: rotate(45deg) scale(0.85); }
+.pill-unsafe { background: #a33a2b; color: #fff; }
+.fix-row.unsafe-row { color: #8e2a1e; }
+/* Shown even outside Organize: safety matters everywhere */
+body:not(.editing) .title-text .pill.pill-unsafe { display: inline-block !important; }
+body:not(.editing) .bm-body .fix-row.unsafe-row { display: block !important; }
+
+/* ---------- v72: "Looks different" ---------- */
+/* An amber ring, so it differs from the solid amber "Moved" dot */
+.dot-changed { background: transparent; border: 2px solid #a87a12; box-sizing: border-box; }

@@ -10,7 +10,7 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, getDocFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=69";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=72";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -71,10 +71,11 @@ function showScreen(name) {
 let toastTimer;
 function toast(msg) {
   const t = $("#toast");
-  t.textContent = msg;
   t.hidden = false;
+  t.textContent = msg;
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => (t.hidden = true), 2600);
+  // Longer messages stay up longer, so there's time to read them
+  toastTimer = setTimeout(() => (t.hidden = true), Math.max(4000, msg.length * 75));
 }
 
 // Styled replacement for the browser's confirm()/alert(). Resolves true if OK was clicked.
@@ -120,7 +121,7 @@ function setEditing(on) {
   const b = $("#btn-editmode");
   b.textContent = on ? "✓ Done" : "Organize";
   b.classList.toggle("primary", on);
-  if (!on && ["ok", "broken", "moved", "unknown"].includes(view.type)) view = { type: "all", value: null };
+  if (!on && ["ok", "broken", "moved", "unknown", "unsafe", "changed"].includes(view.type)) view = { type: "all", value: null };
   render();
 }
 
@@ -324,7 +325,9 @@ function startPagemarks() {
 }
 
 // ---------- Rendering ----------
-const LINK_LABEL = { ok: "Working", moved: "Moved", broken: "Broken", unknown: "Couldn't check" };
+let unsafeHrefs = new Map();   // links that ask before opening (see the click handler below)
+let pmHrefs = new Map();       // every Pagemark's link, for the live check when you open one
+const LINK_LABEL = { ok: "Working", moved: "Moved", broken: "Broken", unknown: "Couldn't check", unsafe: "May be unsafe" };
 const selected = new Set();
 let expanded = new Set();
 try { expanded = new Set(JSON.parse(localStorage.getItem("pm-expanded") || "[]")); } catch { /* ignore */ }
@@ -340,7 +343,27 @@ const confirmedOk = (b) => {
   return !b.markedBroken && !!when && b.link && b.link.status === "unknown"
     && Date.now() - when.getTime() < CONFIRM_DAYS * 24 * 3600 * 1000;
 };
-const linkStatus = (b) => b.markedBroken ? "broken" : confirmedOk(b) ? "ok" : ((b.link && b.link.status) || "pending");
+// "May be unsafe": the nightly checker found signs this is no longer the place you saved
+// (a new owner, a harmful-site list, a parked page, or sending visitors elsewhere).
+// It beats everything except your own "Mark as broken"; "It's fine" silences that one reason.
+const riskActive = (b) => !b.markedBroken && !!(b.link && b.link.risk && b.link.risk.kind) && b.riskOk !== b.link.risk.kind;
+function riskText(b) {
+  const r = (b.link && b.link.risk) || {};
+  const other = r.host && hostOf(b.url) !== r.host ? r.host : "";
+  switch (r.kind) {
+    case "malware": return "It's on a list of harmful websites (malware or scams)" + (other ? `, and it now sends you to ${other}` : "") + ".";
+    case "adult": return "It's now on the family-safe blocklist (adult or harmful content)" + (other ? `, and it now sends you to ${other}` : "") + ".";
+    case "newOwner": return `Its address was registered again on ${new Date(r.since).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })}, after you saved it, so it probably belongs to someone else now.`;
+    case "strangeRedirect": return `It now sends visitors to an unrelated website${other ? ` (${other})` : ""}.`;
+    case "parked": return "It looks parked or for sale, so the original website is probably gone.";
+    default: return "The checker found signs it may not be the website you saved.";
+  }
+}
+// "Looks different": the page's title now has nothing in common with the one you saved.
+// A gentle note rather than a warning, since websites do get redesigned.
+const driftActive = (b) => !!(b.link && b.link.drift && b.link.drift.kind === "changed") && b.changeOk !== b.link.drift.title
+  && !b.markedBroken && !riskActive(b) && (b.link.status === "ok" || b.link.status === "moved" || b.link.status === "unknown");
+const linkStatus = (b) => b.markedBroken ? "broken" : riskActive(b) ? "unsafe" : confirmedOk(b) ? "ok" : ((b.link && b.link.status) || "pending");
 
 function filtered() {
   let list = pagemarks;
@@ -354,7 +377,8 @@ function filtered() {
     list = list.filter((b) => b.folder === view.value || (searching && (b.folder || "").startsWith(view.value + " / ")));
   }
   else if (view.type === "tag") list = list.filter((b) => (b.tags || []).includes(view.value));
-  else if (["ok", "broken", "moved", "unknown"].includes(view.type)) list = list.filter((b) => linkStatus(b) === view.type);
+  else if (view.type === "changed") list = list.filter(driftActive);
+  else if (["ok", "broken", "moved", "unknown", "unsafe"].includes(view.type)) list = list.filter((b) => linkStatus(b) === view.type);
 
   const terms = $("#search").value.trim().toLowerCase().split(/\s+/).filter(Boolean);
   if (terms.length) {
@@ -423,7 +447,7 @@ function renderTree(node, depth) {
     const active = view.type === "folder" && view.value === k.path;
     const toggle = hasKids
       ? el("button", {
-          class: "twisty", "aria-label": open ? "Collapse" : "Expand",
+          class: "twisty", "aria-label": (open ? "Collapse " : "Expand ") + k.name, "aria-expanded": open ? "true" : "false",
           onclick: (e) => { e.stopPropagation(); open ? expanded.delete(k.path) : expanded.add(k.path); saveExpanded(); render(); }
         }, open ? "▾" : "▸")
       : el("span", { class: "twisty-space" });
@@ -434,7 +458,7 @@ function renderTree(node, depth) {
           class: "nav-item" + (active ? " active" : ""), title: k.path,
           draggable: editing ? "true" : "false", "data-folder": k.path,
           onclick: () => setView({ type: "folder", value: k.path })
-        }, el("span", { class: "label", text: k.name }), el("span", { class: "count", text: String(k.count) }))
+        }, el("span", { class: "label", text: k.name }), " ", el("span", { class: "count", text: String(k.count) }))
       )
     );
     const btn = li.querySelector(".nav-item");
@@ -474,7 +498,12 @@ function render() {
   $("#btn-review").hidden = suggested === 0;
   $("#btn-review").classList.toggle("active", view.type === "review");
   $("#btn-tidy").hidden = unfiled === 0;
-  for (const s of ["ok", "broken", "moved", "unknown"]) $(`#count-${s}`).textContent = count((b) => linkStatus(b) === s);
+  for (const s of ["ok", "broken", "moved", "unknown", "unsafe"]) $(`#count-${s}`).textContent = count((b) => linkStatus(b) === s);
+  $("#li-unsafe").hidden = $("#count-unsafe").textContent === "0" && view.type !== "unsafe";
+  unsafeHrefs = new Map(pagemarks.filter((b) => linkStatus(b) === "unsafe").map((b) => [parseUrl(b.url)?.href || b.url, b]));
+  pmHrefs = new Map(pagemarks.map((b) => [parseUrl(b.url)?.href || b.url, b]));
+  $("#count-changed").textContent = count(driftActive);
+  $("#li-changed").hidden = $("#count-changed").textContent === "0" && view.type !== "changed";
   const checked = count((b) => linkStatus(b) !== "pending");
   $("#health-note").textContent = checked ? "" : "Links are checked every night.";
 
@@ -571,12 +600,15 @@ function subfolderRows(tree, path) {
 
 function linkBadge(b) {
   const s = linkStatus(b);
-  if (s === "pending") return el("span", { class: "dot dot-pending", title: "Not checked yet" });
-  if (b.markedBroken) return el("span", { class: "dot dot-broken", title: "Broken (marked by you)" });
-  if (confirmedOk(b)) return el("span", { class: "dot dot-ok dot-confirmed", title: "Working · you confirmed it on " + fmtDate(confirmedOn(b)) + " (the checker can't reach this site)" });
+  // Each dot has a text name too, so the status isn't shown by color alone
+  const dot = (cls, label) => el("span", { class: "dot " + cls, title: label, role: "img", "aria-label": label });
+  if (s === "pending") return dot("dot-pending", "Not checked yet");
+  if (b.markedBroken) return dot("dot-broken", "Broken (marked by you)");
+  if (s === "unsafe") return dot("dot-unsafe", "May be unsafe: " + riskText(b));
+  if (confirmedOk(b)) return dot("dot-ok dot-confirmed", "Working · you confirmed it on " + fmtDate(confirmedOn(b)) + " (the checker can't reach this site)");
   const when = b.link.checkedAt && b.link.checkedAt.toDate ? " · checked " + fmtDate(b.link.checkedAt.toDate()) : "";
   const why = b.link.reason ? ` (${b.link.reason})` : "";
-  return el("span", { class: `dot dot-${s}`, title: LINK_LABEL[s] + why + when });
+  return dot("dot-" + s, LINK_LABEL[s] + why + when);
 }
 
 function renderItem(b) {
@@ -588,7 +620,7 @@ function renderItem(b) {
   box.checked = selected.has(b.id);
   box.addEventListener("change", () => { box.checked ? selected.add(b.id) : selected.delete(b.id); render(); });
 
-  const fav = el("div", { class: "fav" });
+  const fav = el("div", { class: "fav", "aria-hidden": "true" });
   if (host) {
     const img = el("img", { alt: "", loading: "lazy", src: `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=64` });
     img.addEventListener("error", () => { fav.textContent = host[0].toUpperCase(); });
@@ -600,6 +632,8 @@ function renderItem(b) {
   const titleText = el("div", { class: "title-text" }, title);
   if (b.pinned) titleText.prepend(pinIcon());
   if (s === "broken") titleText.append(el("span", { class: "pill pill-broken", text: "Broken" }));
+  if (s === "unsafe") titleText.append(el("span", { class: "pill pill-unsafe", text: "May be unsafe" }));
+  if (driftActive(b)) titleText.append(el("span", { class: "pill pill-moved", text: "Looks different" }));
   if (s === "moved") titleText.append(el("span", { class: "pill pill-moved", text: "Moved" }));
   if (b.readLater) titleText.append(el("span", { class: "later-badge", text: "Read later" }));
   const titleLine = el("div", { class: "title-line" }, linkBadge(b), titleText);
@@ -616,6 +650,20 @@ function renderItem(b) {
   const archiveLink = () => (b.link && b.link.archiveUrl)
     ? el("a", { href: b.link.archiveUrl, target: "_blank", rel: "noopener noreferrer", text: "Open the archived copy" })
     : el("a", { href: "https://web.archive.org/web/*/" + b.url, target: "_blank", rel: "noopener noreferrer", text: "Look for an archived copy" });
+  if (driftActive(b)) {
+    body.append(el("div", { class: "fix-row" },
+      el("span", { text: `This page looks very different from when you saved it. It's now titled “${b.link.drift.title}”. If it's not what you saved:` }), " ",
+      archiveLink(), " ",
+      el("button", { class: "btn small", text: "Mark as broken", onclick: () => setMarkedBroken(b, true) }), " ",
+      el("button", { class: "btn small", text: "It's fine", onclick: () => setChangeOk(b) })));
+  }
+  if (s === "unsafe") {
+    body.append(el("div", { class: "fix-row unsafe-row" },
+      el("span", { text: riskText(b) + " Opening it isn't recommended." }), " ",
+      archiveLink(), " ",
+      el("button", { class: "btn small", text: "Mark as broken", onclick: () => setMarkedBroken(b, true) }), " ",
+      el("button", { class: "btn small", text: "It's fine", onclick: () => setRiskOk(b) })));
+  }
   if (s === "broken") {
     const fix = el("div", { class: "fix-row" },
       el("span", { text: b.markedBroken ? "You marked this page as broken." : "This page no longer loads." }), " ", archiveLink());
@@ -695,6 +743,22 @@ async function setMarkedBroken(b, on) {
   toast(on ? "Marked as broken. It's now listed under Broken." : "No longer marked as broken.");
 }
 
+async function setChangeOk(b) {
+  await updateDoc(doc(pmCol(), b.id), { changeOk: b.link.drift.title, updatedAt: serverTimestamp() });
+  toast("OK. Pagemarks will tell you if it changes again.");
+}
+
+async function setRiskOk(b) {
+  const ok = await ask({
+    title: "Keep this Pagemark?",
+    text: "Only choose this if you're sure the website is still the one you saved.\n\nPagemarks will warn you again if the checker finds a different problem.",
+    ok: "It's fine", cancel: "Cancel"
+  });
+  if (!ok) return;
+  await updateDoc(doc(pmCol(), b.id), { riskOk: b.link.risk.kind, updatedAt: serverTimestamp() });
+  toast("OK. The warning is gone, and the checker keeps watching it.");
+}
+
 async function setConfirmed(b, on) {
   await updateDoc(doc(pmCol(), b.id), { confirmedWorking: on ? serverTimestamp() : null, markedBroken: false, updatedAt: serverTimestamp() });
   toast(on ? "Thanks. It's now listed under Working, and the checker keeps watching it." : "Back to Couldn't check.");
@@ -705,7 +769,7 @@ async function updateLink(b) {
   if (!u) return;
   await updateDoc(doc(pmCol(), b.id), {
     url: u.href, normUrl: normalizeUrl(u.href),
-    link: { ...b.link, status: "ok", finalUrl: "", reason: "", fails: 0 }, confirmedWorking: null,
+    link: { ...b.link, status: "ok", finalUrl: "", reason: "", fails: 0, risk: null, reg: null, scan: null, drift: null, browser: null }, confirmedWorking: null, riskOk: null, changeOk: null,
     updatedAt: serverTimestamp()
   });
   toast("Link updated");
@@ -1074,7 +1138,7 @@ async function toggleStar(b) {
   toast(b.starred ? "Removed from Home" : "Added to Home");
 }
 function pinIcon() {
-  const s = el("span", { class: "pin-icon", title: "Pinned to the top of this folder", "aria-label": "Pinned" });
+  const s = el("span", { class: "pin-icon", title: "Pinned to the top of this folder", role: "img", "aria-label": "Pinned" });
   s.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></svg>';
   return s;
 }
@@ -1099,6 +1163,55 @@ function checkPreviewCard() {
   setView({ type: "home", value: null });
 }
 window.addEventListener("hashchange", checkPreviewCard);
+
+// Opening a Pagemark, wherever its link appears (list, Home, Tidy up, Review):
+// 1. If the nightly checker found it may be unsafe, ask first.
+// 2. Otherwise a live check: ask Cloudflare's harmful-site list about the website right now
+//    (it may have been listed since last night). Takes a moment; if the check can't be done, it just opens.
+const openTab = (href) => {
+  // Open a blank tab, cut its link back to Pagemarks, then go (same protection as rel="noopener")
+  const w = window.open("about:blank", "_blank");
+  if (!w) { toast("Your browser blocked the new tab. Allow pop-ups for pagemarks.com, or click again."); return; }
+  try { w.opener = null; } catch { /* ignore */ }
+  w.location.href = href;
+};
+document.addEventListener("click", async (e) => {
+  const a = e.target.closest && e.target.closest("a[href]");
+  if (!a) return;
+  const b = pmHrefs.get(a.href);
+  if (!b) return;
+  if (e.ctrlKey || e.metaKey || e.shiftKey || e.button !== 0) return;   // background tabs: leave to the browser
+  e.preventDefault();
+  e.stopPropagation();
+  if (unsafeHrefs.has(a.href)) {
+    const go = await ask({
+      title: "This website may not be safe",
+      text: riskText(b) + "\n\nIt may not be the website you saved. To see the original instead, use “Look for an archived copy” under it.",
+      ok: "Open anyway", cancel: "Don't open", danger: true
+    });
+    if (go) openTab(a.href);
+    return;
+  }
+  const host = parseUrl(a.href)?.hostname || "";
+  const alreadyOk = b.riskOk === "malware" || b.riskOk === "adult";
+  const allowed = alreadyOk || !host ? true
+    : await Promise.race([familyDnsAllows(host), new Promise((r) => setTimeout(() => r(true), 1500))]);
+  if (allowed) { openTab(a.href); return; }
+  const go = await ask({
+    title: "This website may not be safe",
+    text: `${host} is now on a list of harmful or adult websites. It may have changed since you saved it.\n\nTo see the original instead, use “Look for an archived copy” under it in Organize.`,
+    ok: "Open anyway", cancel: "Don't open", danger: true
+  });
+  if (go) openTab(a.href);
+}, true);
+
+// "Skip to your Pagemarks" moves keyboard focus to the list heading without changing the address
+document.querySelector(".skip-link")?.addEventListener("click", (e) => {
+  e.preventDefault();
+  const h = $("#view-title");
+  h.focus();
+  h.scrollIntoView({ block: "start" });
+});
 
 function renderExtCard(onHome) {
   const normal = !!EXTENSION_URL && extSupported() && !extInstalled() && !extCardDismissed();
@@ -1142,7 +1255,7 @@ function renderHome(items) {
   box.replaceChildren(...names.map((g) => {
     const list = groups.get(g).sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || (a.title || a.url).localeCompare(b.title || b.url, undefined, { sensitivity: "base" }));
     const parts = g ? g.split(" / ") : ["Unfiled"];
-    const heading = el("h3", { class: "home-group-title", title: g || "Unfiled" }, folderIcon(),
+    const heading = el("h3", { class: "home-group-title", "aria-level": "2", title: g || "Unfiled" }, folderIcon(),
       el("span", { class: "hg-name" },
         parts.length > 1 ? el("span", { class: "hg-parent", text: parts.slice(0, -1).join(" / ") + " / " }) : null,
         parts[parts.length - 1]));
@@ -1213,7 +1326,7 @@ $("#bulk-update").addEventListener("click", async () => {
       const u = parseUrl(b.link.finalUrl);
       batch.update(doc(pmCol(), b.id), {
         url: u.href, normUrl: normalizeUrl(u.href),
-        link: { ...b.link, status: "ok", finalUrl: "", reason: "", fails: 0 }, confirmedWorking: null,
+        link: { ...b.link, status: "ok", finalUrl: "", reason: "", fails: 0, risk: null, reg: null, scan: null, drift: null, browser: null }, confirmedWorking: null, riskOk: null, changeOk: null,
         updatedAt: serverTimestamp()
       });
     }
@@ -1706,7 +1819,7 @@ $("#form-edit").addEventListener("submit", async (e) => {
   try {
     if (editingId) {
       const before = pagemarks.find((x) => x.id === editingId);
-      if (before && normalizeUrl(before.url) !== data.normUrl) { data.link = { status: "pending" }; data.markedBroken = false; data.confirmedWorking = null; }
+      if (before && normalizeUrl(before.url) !== data.normUrl) { data.link = { status: "pending" }; data.markedBroken = false; data.confirmedWorking = null; data.riskOk = null; data.changeOk = null; }
       await updateDoc(doc(pmCol(), editingId), data);
       toast("Saved");
     } else {
@@ -2178,7 +2291,7 @@ closeOnOutsideClick($("#dlg-tidy"));
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "69";
+const APP_VERSION = "72";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {
