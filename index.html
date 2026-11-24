@@ -8,14 +8,14 @@
   <meta name="description" content="Pagemarks is a private, invitation-only app for saving and organizing web pages.">
   <meta name="application-name" content="Pagemarks">
   <meta property="og:site_name" content="Pagemarks">
-  <link rel="icon" href="favicon.ico?v=64" sizes="any">
-  <link rel="icon" href="favicon.svg?v=64" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=64">
+  <link rel="icon" href="favicon.ico?v=65" sizes="any">
+  <link rel="icon" href="favicon.svg?v=65" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=65">
   <meta name="apple-mobile-web-app-title" content="Pagemarks">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Gentium+Plus:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=64">
+  <link rel="stylesheet" href="styles.css?v=65">
 </head>
 <body>
 
@@ -27,7 +27,7 @@
   <!-- Sign in -->
   <section id="screen-signin" class="screen center" hidden>
     <div class="card welcome">
-      <img src="icon.svg?v=64" alt="" class="welcome-icon">
+      <img src="icon.svg?v=65" alt="" class="welcome-icon">
       <h1>Pagemarks</h1>
       <p class="muted">A private, invitation-only app for saving and organizing web pages.</p>
       <button id="btn-signin" class="btn primary large">Sign in with Google</button>
@@ -70,7 +70,7 @@
     <header class="topbar">
       <div class="topbar-inner">
         <a class="brand" href="#" id="brand-home">
-          <img src="icon.svg?v=64" alt="" width="28" height="28"><span>Pagemarks</span>
+          <img src="icon.svg?v=65" alt="" width="28" height="28"><span>Pagemarks</span>
         </a>
         <div class="topbar-main">
           <div class="search-wrap">
@@ -93,6 +93,7 @@
           <li><button class="nav-item" data-view="unfiled">Unfiled <span class="count" id="count-unfiled">0</span></button></li>
         </ul>
         <button id="btn-side-librarian" class="btn tidy-btn lib-btn edit-only" hidden>Ask the Librarian</button>
+        <button id="btn-review" class="btn tidy-btn review-btn edit-only" hidden>Review suggestions</button>
         <button id="btn-tidy" class="btn tidy-btn edit-only" hidden>Tidy up</button>
         <h3 class="edit-only">Link health</h3>
         <ul class="nav-list health-list edit-only">
@@ -141,7 +142,7 @@
           </span>
         </div>
         <div id="lib-welcome" class="ext-card lib-welcome" hidden>
-          <img src="icon.svg?v=64" alt="" width="36" height="36">
+          <img src="icon.svg?v=65" alt="" width="36" height="36">
           <div class="ext-card-text">
             <strong>The Librarian can help</strong>
             <span class="muted" id="lib-welcome-text"></span>
@@ -150,13 +151,26 @@
           <button type="button" id="lib-welcome-later" class="btn">Not now</button>
         </div>
         <div id="ext-card" class="ext-card" hidden>
-          <img src="favicon.svg?v=64" alt="" width="36" height="36">
+          <img src="favicon.svg?v=65" alt="" width="36" height="36">
           <div class="ext-card-text">
             <strong>Save Pagemarks in one click</strong>
             <span class="muted">Add the Pagemarks button to your browser, then click it on any page you want to keep.</span>
           </div>
           <a id="ext-card-add" class="btn primary" target="_blank" rel="noopener">Add to browser</a>
           <button type="button" id="ext-card-close" class="ext-card-close" aria-label="Not now" title="Not now">✕</button>
+        </div>
+        <div id="review" class="review" hidden>
+          <button type="button" id="review-back" class="link-btn review-back">← Back</button>
+          <p class="muted review-intro" id="review-intro"></p>
+          <div id="review-groups"></div>
+          <div id="review-bar" class="review-bar">
+            <button type="button" id="review-all" class="link-btn">Select all</button>
+            <span class="muted">·</span>
+            <button type="button" id="review-none" class="link-btn">Select none</button>
+            <span class="muted" id="review-count"></span>
+            <span class="spacer"></span>
+            <button type="button" id="review-file" class="btn primary">File Pagemarks</button>
+          </div>
         </div>
         <div id="home" class="home" hidden></div>
         <ul id="list" class="bm-list"></ul>
@@ -171,7 +185,7 @@
   <!-- Add / edit dialog -->
   <dialog id="dlg-edit">
     <form id="form-edit" method="dialog">
-      <p class="quick-brand" aria-hidden="true"><img src="icon.svg?v=64" alt="" width="28" height="28"><span>Pagemarks</span></p>
+      <p class="quick-brand" aria-hidden="true"><img src="icon.svg?v=65" alt="" width="28" height="28"><span>Pagemarks</span></p>
       <h2 id="edit-heading">Add Pagemark</h2>
 
       <label>Web address
@@ -306,10 +320,10 @@
         <p class="tidy-label">Or file it in</p>
         <div id="tidy-picks" class="tag-cloud"></div>
         <button type="button" id="tidy-file" class="btn tidy-choose">Choose a folder…</button>
+        <p class="tidy-review"><button type="button" id="tidy-review-link" class="link-btn" hidden>Review all suggestions at once →</button></p>
         <div class="dlg-actions">
           <button type="button" id="tidy-delete" class="btn danger">Delete</button>
           <span class="spacer"></span>
-          <button type="button" id="tidy-accept-all" class="btn" hidden>Accept all suggestions…</button>
           <button type="button" id="tidy-skip" class="btn">Skip for now</button>
         </div>
       </div>
@@ -483,6 +497,6 @@
 
   <div id="toast" class="toast" hidden></div>
 
-  <script type="module" src="app.js?v=64"></script>
+  <script type="module" src="app.js?v=65"></script>
 </body>
 </html>

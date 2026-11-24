@@ -10,7 +10,7 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=64";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=65";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -455,7 +455,9 @@ function render() {
   $("#count-later").closest("li").hidden = later === 0 && view.type !== "later";
   $("#count-unfiled").closest("li").hidden = unfiled === 0 && view.type !== "unfiled";
   const suggested = count((b) => !b.folder && b.suggestedFolder);
-  $("#btn-tidy").textContent = suggested ? `Tidy up · ${suggested} suggested` : "Tidy up";
+  $("#btn-review").textContent = `Review suggestions (${suggested})`;
+  $("#btn-review").hidden = suggested === 0;
+  $("#btn-review").classList.toggle("active", view.type === "review");
   $("#btn-tidy").hidden = unfiled === 0;
   for (const s of ["ok", "broken", "moved", "unknown"]) $(`#count-${s}`).textContent = count((b) => linkStatus(b) === s);
   const checked = count((b) => linkStatus(b) !== "pending");
@@ -491,6 +493,14 @@ function render() {
   $("#view-title").textContent = viewTitle();
   $("#folder-tools").hidden = view.type !== "folder";
   $("#folder-delete").hidden = !(view.type === "folder" && !pagemarks.some((b) => b.folder && isInside(b.folder, view.value)));
+  // The Librarian's suggestions, reviewed all at once
+  $("#review").hidden = view.type !== "review";
+  if (view.type === "review") {
+    for (const id of ["#home", "#list", "#sort-wrap", "#empty", "#bulk-bar", "#ext-card", "#lib-welcome"]) $(id).hidden = true;
+    renderReview();
+    return;
+  }
+
   const items = filtered();
   const onHome = view.type === "home" && !$("#search").value.trim();
   $("#home").hidden = !onHome;
@@ -1401,8 +1411,9 @@ function nextTidy() {
   $("#tidy-hints").hidden = !hints.length;
   $("#tidy-hints-list").replaceChildren(...hints.map((f) => suggestButton(f, fileTidy)));
   const remainingSuggested = tidyQueue.filter((id) => pagemarks.find((x) => x.id === id)?.suggestedFolder).length;
-  $("#tidy-accept-all").hidden = remainingSuggested < 2;
-  $("#tidy-accept-all").textContent = `Accept all ${remainingSuggested} suggestions…`;
+  const allSuggested = reviewItems().length;
+  $("#tidy-review-link").hidden = allSuggested < 2;
+  $("#tidy-review-link").textContent = `Review all ${allSuggested} suggestions at once →`;
   // Quick picks: recently used, then biggest folders
   const counts = new Map();
   for (const p of pagemarks) if (p.folder) counts.set(p.folder, (counts.get(p.folder) || 0) + 1);
@@ -1410,6 +1421,108 @@ function nextTidy() {
   const picks = [...new Set([...tidyRecent, ...top])].filter((f) => !sugg.includes(f)).slice(0, 8);
   $("#tidy-picks").replaceChildren(...picks.map((f) => el("button", { type: "button", class: "chip", text: f, onclick: () => fileTidy(f) })));
 }
+
+// ---------- Review suggestions (all at once) ----------
+let reviewOff = new Set();        // Pagemarks unticked on the review page (stay in Unfiled)
+let reviewReturn = { type: "home", value: null };
+
+function openReview() {
+  if (view.type !== "review") reviewReturn = view;
+  reviewOff = new Set();
+  setView({ type: "review", value: null });
+}
+$("#btn-review").addEventListener("click", openReview);
+$("#review-back").addEventListener("click", () => setView(reviewReturn));
+
+const reviewItems = () => pagemarks.filter((b) => !b.folder && b.suggestedFolder);
+
+async function setSuggestion(ids, folderRaw) {
+  const folder = cleanFolder(folderRaw);
+  if (!folder || !ids.length) return;
+  const batch = writeBatch(db);
+  for (const id of ids) batch.update(doc(pmCol(), id), { suggestedFolder: folder });
+  await batch.commit();
+}
+
+function renderReview() {
+  const items = reviewItems();
+  const known = new Set(allFolderPaths());
+  const fromLibrarian = items.length && items.every((b) => b.suggestedBy === "librarian");
+  $("#view-title").textContent = fromLibrarian ? "The Librarian's suggestions" : "Suggested folders";
+  for (const id of [...reviewOff]) if (!items.some((b) => b.id === id)) reviewOff.delete(id);
+
+  if (!items.length) {
+    $("#review-intro").textContent = "Every suggestion has been handled.";
+    $("#review-groups").replaceChildren();
+    $("#review-bar").hidden = true;
+    return;
+  }
+  $("#review-bar").hidden = false;
+  $("#review-intro").textContent =
+    `${plural(items.length, "Unfiled Pagemark")}, each with a suggested folder. Untick any you'd rather not file, change a folder if you like, then file them. You can always move them later.`;
+
+  const groups = new Map();
+  for (const b of items) {
+    if (!groups.has(b.suggestedFolder)) groups.set(b.suggestedFolder, []);
+    groups.get(b.suggestedFolder).push(b);
+  }
+  const ordered = [...groups.entries()].sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]));
+
+  $("#review-groups").replaceChildren(...ordered.map(([folder, list]) => {
+    const parts = folder.split(" / ");
+    const name = parts.pop();
+    const head = el("div", { class: "rv-head" },
+      folderIcon(),
+      el("span", { class: "rv-name" },
+        parts.length ? el("span", { class: "hg-parent", text: parts.join(" / ") + " / " }) : null, name),
+      el("span", { class: "rv-count", text: String(list.length) }),
+      known.has(folder) ? null : el("span", { class: "rv-new", text: "new folder" }),
+      el("button", {
+        type: "button", class: "btn small rv-change", text: "Change folder…",
+        onclick: async () => {
+          const f = await pickFolder({ title: `Move all ${list.length} to…`, ok: "Choose", allowNone: false, current: known.has(folder) ? folder : null });
+          if (f) setSuggestion(list.map((b) => b.id), f);
+        }
+      }));
+    const rows = list.sort((a, b) => (a.title || "").localeCompare(b.title || "")).map((b) => {
+      const off = reviewOff.has(b.id);
+      const box = el("input", { type: "checkbox", class: "rv-check", "aria-label": `File ${b.title || b.url}` });
+      box.checked = !off;
+      box.addEventListener("change", () => { box.checked ? reviewOff.delete(b.id) : reviewOff.add(b.id); renderReview(); });
+      return el("li", { class: "rv-row" + (off ? " off" : "") },
+        el("label", { class: "rv-label" }, box,
+          el("span", { class: "rv-title", text: b.title || b.url }),
+          el("span", { class: "rv-site", text: hostOf(b.url) })),
+        el("button", {
+          type: "button", class: "rv-row-change", text: "Change…",
+          onclick: async () => {
+            const f = await pickFolder({ title: "Suggest a different folder", ok: "Choose", allowNone: false, current: b.suggestedFolder });
+            if (f) setSuggestion([b.id], f);
+          }
+        }));
+    });
+    return el("section", { class: "rv-group" }, head, el("ul", { class: "rv-list" }, ...rows));
+  }));
+
+  const chosen = items.filter((b) => !reviewOff.has(b.id)).length;
+  $("#review-count").textContent = chosen === items.length ? `All ${items.length} selected` : `${chosen} of ${items.length} selected`;
+  $("#review-file").textContent = chosen ? `File ${plural(chosen, "Pagemark")}` : "Nothing selected";
+  $("#review-file").disabled = !chosen;
+}
+
+$("#review-all").addEventListener("click", () => { reviewOff = new Set(); renderReview(); });
+$("#review-none").addEventListener("click", () => { reviewOff = new Set(reviewItems().map((b) => b.id)); renderReview(); });
+$("#review-file").addEventListener("click", async () => {
+  const items = reviewItems().filter((b) => !reviewOff.has(b.id));
+  if (!items.length) return;
+  for (let i = 0; i < items.length; i += 400) {
+    const batch = writeBatch(db);
+    for (const b of items.slice(i, i + 400)) batch.update(doc(pmCol(), b.id), { folder: b.suggestedFolder, suggestedFolder: null, suggestedBy: null, updatedAt: serverTimestamp() });
+    await batch.commit();
+  }
+  toast(`Filed ${plural(items.length, "Pagemark")}`);
+  if (!reviewItems().some((b) => !items.includes(b))) setView(reviewReturn);
+});
 
 async function fileTidy(folderRaw) {
   const folder = cleanFolder(folderRaw);
@@ -1440,18 +1553,7 @@ $("#tidy-delete").addEventListener("click", async () => {
   await deleteDoc(doc(pmCol(), id));
 });
 $("#tidy-close").addEventListener("click", () => dlgTidy.close());
-$("#tidy-accept-all").addEventListener("click", async () => {
-  const items = tidyQueue.map((id) => pagemarks.find((x) => x.id === id)).filter((b) => b && b.suggestedFolder);
-  if (!(await ask({ title: `File ${plural(items.length, "Pagemark")} in their suggested folders?`, text: "Any suggested folders that don't exist yet will be created. You can still move things afterwards.", ok: "File them all" }))) return;
-  for (let i = 0; i < items.length; i += 400) {
-    const batch = writeBatch(db);
-    for (const b of items.slice(i, i + 400)) batch.update(doc(pmCol(), b.id), { folder: b.suggestedFolder, suggestedFolder: null, suggestedBy: null, updatedAt: serverTimestamp() });
-    await batch.commit();
-  }
-  tidyDone += items.length;
-  toast(`Filed ${plural(items.length, "Pagemark")}`);
-  nextTidy();
-});
+$("#tidy-review-link").addEventListener("click", () => { dlgTidy.close(); openReview(); });
 
 // ---------- Add / edit ----------
 const dlgEdit = $("#dlg-edit");
@@ -1814,7 +1916,7 @@ function startLibrarian() {
     (s) => {
       librarian = s.exists() ? s.data() : null;
       const now = librarian ? librarian.status : null;
-      if ((before === "waiting" || before === "working") && now === "done") toast("The Librarian's suggestions are ready in Tidy up");
+      if ((before === "waiting" || before === "working") && now === "done") toast("The Librarian's suggestions are ready. Open Organize, then Review suggestions.");
       if (dlgTidy.open && before !== now) nextTidy();
       before = now;
       renderLibrarian();
@@ -2045,7 +2147,7 @@ closeOnOutsideClick($("#dlg-tidy"));
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "64";
+const APP_VERSION = "65";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {
