@@ -1,3 +1,4 @@
+// © 2026 The Sensible Studio. All rights reserved. Not licensed for copying, reuse or redistribution.
 // The Librarian: suggests a folder for each Pagemark that has none.
 // Runs on GitHub Actions every 15 minutes (see .github/workflows/librarian.yml).
 // It only does anything when someone has asked the Librarian in Pagemarks.

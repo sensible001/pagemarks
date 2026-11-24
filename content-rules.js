@@ -1,3 +1,4 @@
+// © 2026 The Sensible Studio. All rights reserved. Not licensed for copying, reuse or redistribution.
 // Pagemarks content rules
 // Checks a Pagemark at the moment it is saved (and during imports).
 // Layers: a test address, a short list of blocked sites, a word filter, and

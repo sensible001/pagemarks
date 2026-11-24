@@ -1,3 +1,4 @@
+// © 2026 The Sensible Studio. All rights reserved. Not licensed for copying, reuse or redistribution.
 // Pagemarks link checker — runs on GitHub Actions (see .github/workflows/check-links.yml)
 // Visits every saved Pagemark and records whether the page still works, and whether it may
 // have become unsafe (new owner, harmful-site lists, parked, or sending visitors elsewhere).

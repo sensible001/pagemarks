@@ -1,3 +1,4 @@
+// © 2026 The Sensible Studio. All rights reserved. Not licensed for copying, reuse or redistribution.
 // Pagemarks configuration
 // The Firebase web config is meant to be public; your data is protected by the Firestore security rules.
 

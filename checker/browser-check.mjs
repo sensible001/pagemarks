@@ -1,3 +1,4 @@
+// © 2026 The Sensible Studio. All rights reserved. Not licensed for copying, reuse or redistribution.
 // Pagemarks weekly browser check: runs on GitHub Actions (see .github/workflows/browser-check.yml)
 // Opens each saved Pagemark in a real (invisible) Chrome, lets its scripts run, and records where
 // it really ends up and the title it shows there. Some harmful sites only redirect real browsers,

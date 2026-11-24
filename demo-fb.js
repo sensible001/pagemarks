@@ -1,3 +1,4 @@
+// © 2026 The Sensible Studio. All rights reserved. Not licensed for copying, reuse or redistribution.
 // Pagemarks "Try it" demo: a stand-in for Firebase that keeps everything inside this browser tab.
 // index.html swaps this in for the real Firebase when the address ends in ?demo, so the demo runs
 // the very same app and content checks, but nothing is sent to Pagemarks' database and it costs nothing.
