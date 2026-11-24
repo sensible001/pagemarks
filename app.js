@@ -10,7 +10,7 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=65";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=66";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -232,12 +232,20 @@ onAuthStateChanged(auth, async (u) => {
   // Only the owner is allowed to list the invite list, so a successful read means "owner".
   // A "permission denied" answer is a real no. Anything else (a slow or dropped connection
   // right after signing in) is retried, so a hiccup never looks like "not invited".
+  // Right after signing in, the database can briefly answer "permission denied" before it has
+  // received the new sign-in. So a "no" is only trusted after refreshing the sign-in and asking again.
+  try { await u.getIdToken(); } catch (e) {}
   const ask = async (fn) => {
-    for (let attempt = 0; attempt < 4; attempt++) {
+    let denials = 0;
+    for (let attempt = 0; attempt < 5; attempt++) {
       try { return { ok: true, value: await fn() }; }
       catch (err) {
-        if (err && err.code === "permission-denied") return { ok: false, denied: true };
-        await new Promise((r) => setTimeout(r, 700 * (attempt + 1)));
+        if (err && err.code === "permission-denied") {
+          denials++;
+          if (denials >= 3) return { ok: false, denied: true };
+          try { await u.getIdToken(true); } catch (e) {}
+        }
+        await new Promise((r) => setTimeout(r, 600 * (attempt + 1)));
       }
     }
     return { ok: false, denied: false };
@@ -2147,7 +2155,7 @@ closeOnOutsideClick($("#dlg-tidy"));
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "65";
+const APP_VERSION = "66";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {
