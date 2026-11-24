@@ -7,10 +7,10 @@ import {
 import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
   collection, doc, onSnapshot, setDoc, updateDoc, deleteDoc, getDoc,
-  writeBatch, serverTimestamp, Timestamp, getDocsFromServer, query, limit, increment
+  writeBatch, serverTimestamp, Timestamp, getDocsFromServer, getDocFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=66";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=67";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -229,38 +229,36 @@ onAuthStateChanged(auth, async (u) => {
 
   showScreen("loading");
   const email = (u.email || "").toLowerCase();
-  // Only the owner is allowed to list the invite list, so a successful read means "owner".
-  // A "permission denied" answer is a real no. Anything else (a slow or dropped connection
-  // right after signing in) is retried, so a hiccup never looks like "not invited".
-  // Right after signing in, the database can briefly answer "permission denied" before it has
-  // received the new sign-in. So a "no" is only trusted after refreshing the sign-in and asking again.
-  try { await u.getIdToken(); } catch (e) {}
-  const ask = async (fn) => {
-    let denials = 0;
+  // Step 1: read your own invite. The rules always let a signed-in person read their own entry,
+  // so the answer is "exists" or "doesn't exist", never "permission denied". A refusal here only
+  // means the database hasn't received the new sign-in yet (it happens right after signing in),
+  // so it is treated like a dropped connection: wait, refresh the sign-in and ask again.
+  const retry = async (fn, { deniedIsAnswer }) => {
     for (let attempt = 0; attempt < 5; attempt++) {
       try { return { ok: true, value: await fn() }; }
       catch (err) {
-        if (err && err.code === "permission-denied") {
-          denials++;
-          if (denials >= 3) return { ok: false, denied: true };
-          try { await u.getIdToken(true); } catch (e) {}
-        }
+        const denied = err && err.code === "permission-denied";
+        if (denied && deniedIsAnswer) return { ok: false, denied: true };
+        if (denied) { try { await u.getIdToken(true); } catch (e) {} }
         await new Promise((r) => setTimeout(r, 600 * (attempt + 1)));
       }
     }
     return { ok: false, denied: false };
   };
 
-  const adminCheck = await ask(() => getDocsFromServer(query(collection(db, "allowlist"), limit(1))));
-  isAdmin = adminCheck.ok;
-
-  let invited = isAdmin;
-  let unreachable = !adminCheck.ok && !adminCheck.denied;
-  if (!invited) {
-    const inviteCheck = await ask(async () => (await getDoc(doc(db, "allowlist", email))).exists());
-    if (inviteCheck.ok) { invited = inviteCheck.value; unreachable = false; }
-    else unreachable = unreachable || !inviteCheck.denied;
+  const inviteCheck = await retry(async () => (await getDocFromServer(doc(db, "allowlist", email))).exists(), { deniedIsAnswer: false });
+  if (!inviteCheck.ok) {
+    $("#offline-email").textContent = u.email;
+    showScreen("offline");
+    return;
   }
+
+  // Step 2: now that the database has confirmed the sign-in, ask whether this is the owner.
+  // Only the owner may list the invite list, so here "permission denied" really does mean "not the owner".
+  const adminCheck = await retry(() => getDocsFromServer(query(collection(db, "allowlist"), limit(1))), { deniedIsAnswer: true });
+  isAdmin = adminCheck.ok;
+  const invited = isAdmin || inviteCheck.value;
+  const unreachable = !adminCheck.ok && !adminCheck.denied && !invited;
   if (!invited && unreachable) {
     $("#offline-email").textContent = u.email;
     showScreen("offline");
@@ -2155,7 +2153,7 @@ closeOnOutsideClick($("#dlg-tidy"));
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "66";
+const APP_VERSION = "67";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {
