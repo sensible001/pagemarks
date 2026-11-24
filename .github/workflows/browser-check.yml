@@ -1,0 +1,31 @@
+name: Weekly browser check
+
+on:
+  schedule:
+    - cron: "11 5 * * 0"   # Sundays 05:11 UTC = 12:11 AM EST, before the nightly link check
+  workflow_dispatch:        # adds a "Run workflow" button for checking on demand
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-links
+  cancel-in-progress: false
+
+jobs:
+  browse:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install
+        run: |
+          npm install --no-save --no-audit --no-fund firebase-admin@14 playwright@1
+          npx playwright install --with-deps chromium
+      - name: Open every Pagemark in a real browser
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: node checker/browser-check.mjs
