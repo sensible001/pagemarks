@@ -11,7 +11,7 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, getDocFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=77";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=78";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -2080,7 +2080,7 @@ function librarianState() {
   const used = librarian.made !== undefined || status !== "idle";
   const lines = [];
   if (busy) {
-    lines.push("The Librarian is looking through your Pagemarks. Suggestions will be waiting in Tidy up in about 15 minutes. You can keep using Pagemarks or close it.");
+    lines.push("The Librarian is looking through your Pagemarks. Suggestions are usually ready within an hour, often sooner. You can keep using Pagemarks or close it.");
   } else if (status === "done") {
     const made = librarian.made || 0;
     lines.push(made
@@ -2158,7 +2158,7 @@ async function askLibrarian() {
           : `The Librarian will look at the ${n} Unfiled Pagemarks and suggest a folder for each. `) +
       (librarian.left === 1 ? "This uses your last Librarian visit.\n\n" : `This uses 1 of your ${librarian.left} Librarian visits.\n\n`) +
       (n === 1 ? "Its title and web address are" : "Their titles and web addresses are") +
-      " sent to an AI service, which doesn't use them to train its AI. Suggestions will be waiting in Tidy up in about 15 minutes, and nothing is filed until you accept it.",
+      " sent to an AI service, which doesn't use them to train its AI. Suggestions are usually ready within an hour, often sooner, and nothing is filed until you accept it.",
     ok: "Ask the Librarian"
   });
   if (!ok) return;
@@ -2169,7 +2169,7 @@ async function askLibrarian() {
     await ask({
       title: "The Librarian is on it",
       text: (take === 1 ? "The Librarian is looking at your Unfiled Pagemark." : `The Librarian is looking through your ${take} Unfiled Pagemarks.`) +
-        " In about 15 minutes, the suggestions will be waiting in Tidy up (in Organize).\n\n" +
+        " Usually within an hour, often sooner, the suggestions will be waiting in Organize.\n\n" +
         "You can keep using Pagemarks or close it while the Librarian works. Nothing is filed until you accept it.",
       ok: "OK",
       cancel: null
@@ -2293,7 +2293,7 @@ closeOnOutsideClick($("#dlg-tidy"));
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "77";
+const APP_VERSION = "78";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {
