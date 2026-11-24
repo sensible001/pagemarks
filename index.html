@@ -8,14 +8,14 @@
   <meta name="description" content="Pagemarks is a private, invitation-only app for saving and organizing web pages.">
   <meta name="application-name" content="Pagemarks">
   <meta property="og:site_name" content="Pagemarks">
-  <link rel="icon" href="favicon.ico?v=67" sizes="any">
-  <link rel="icon" href="favicon.svg?v=67" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=67">
+  <link rel="icon" href="favicon.ico?v=69" sizes="any">
+  <link rel="icon" href="favicon.svg?v=69" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=69">
   <meta name="apple-mobile-web-app-title" content="Pagemarks">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Gentium+Plus:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=67">
+  <link rel="stylesheet" href="styles.css?v=69">
 </head>
 <body>
 
@@ -27,7 +27,7 @@
   <!-- Sign in -->
   <section id="screen-signin" class="screen center" hidden>
     <div class="card welcome">
-      <img src="icon.svg?v=67" alt="" class="welcome-icon">
+      <img src="icon.svg?v=69" alt="" class="welcome-icon">
       <h1>Pagemarks</h1>
       <p class="muted">A private, invitation-only app for saving and organizing web pages.</p>
       <button id="btn-signin" class="btn primary large">Sign in with Google</button>
@@ -70,7 +70,7 @@
     <header class="topbar">
       <div class="topbar-inner">
         <a class="brand" href="#" id="brand-home">
-          <img src="icon.svg?v=67" alt="" width="28" height="28"><span>Pagemarks</span>
+          <img src="icon.svg?v=69" alt="" width="28" height="28"><span>Pagemarks</span>
         </a>
         <div class="topbar-main">
           <div class="search-wrap">
@@ -142,7 +142,7 @@
           </span>
         </div>
         <div id="lib-welcome" class="ext-card lib-welcome" hidden>
-          <img src="icon.svg?v=67" alt="" width="36" height="36">
+          <img src="icon.svg?v=69" alt="" width="36" height="36">
           <div class="ext-card-text">
             <strong>The Librarian can help</strong>
             <span class="muted" id="lib-welcome-text"></span>
@@ -151,7 +151,7 @@
           <button type="button" id="lib-welcome-later" class="btn">Not now</button>
         </div>
         <div id="ext-card" class="ext-card" hidden>
-          <img src="favicon.svg?v=67" alt="" width="36" height="36">
+          <img src="favicon.svg?v=69" alt="" width="36" height="36">
           <div class="ext-card-text">
             <strong>Save Pagemarks in one click</strong>
             <span class="muted">Add the Pagemarks button to your browser, then click it on any page you want to keep.</span>
@@ -185,7 +185,7 @@
   <!-- Add / edit dialog -->
   <dialog id="dlg-edit">
     <form id="form-edit" method="dialog">
-      <p class="quick-brand" aria-hidden="true"><img src="icon.svg?v=67" alt="" width="28" height="28"><span>Pagemarks</span></p>
+      <p class="quick-brand" aria-hidden="true"><img src="icon.svg?v=69" alt="" width="28" height="28"><span>Pagemarks</span></p>
       <h2 id="edit-heading">Add Pagemark</h2>
 
       <label>Web address
@@ -351,7 +351,8 @@
             <li><span class="dot dot-ok"></span><strong>Working:</strong> the page opened normally.</li>
             <li><span class="dot dot-moved"></span><strong>Moved:</strong> the address now leads somewhere else. Use <em>Update link</em>, unless it lands on a home or sign-in page (then the page is probably gone).</li>
             <li><span class="dot dot-broken"></span><strong>Broken:</strong> missing, server error, or refused to everyone. Or you marked it broken yourself.</li>
-            <li><span class="dot dot-unknown"></span><strong>Couldn't check:</strong> the site blocks automated checks or needs a sign-in. Usually fine. If it won't open for you either, use <em>Mark as broken</em>.</li>
+            <li><span class="dot dot-unknown"></span><strong>Couldn't check:</strong> the site blocks automated checks or needs a sign-in. Usually fine. Open it, then use <em>It works</em> or <em>Mark as broken</em>.</li>
+            <li><span class="dot dot-ok dot-confirmed"></span><strong>Working, confirmed by you:</strong> the checker can't reach the site, but you said it works. The checker keeps watching it, and it turns red or orange if the site disappears, says “not found” or moves. After 6 months Pagemarks asks you again.</li>
             <li><span class="dot dot-pending"></span><strong>Not checked yet:</strong> new, or its address was just changed.</li>
           </ul>
         </details>
@@ -361,7 +362,11 @@
             <li>Runs every night, usually between 2:00 AM and 3:30 AM Eastern Time (ET). To run it now: GitHub → Actions → Check links → Run workflow.</li>
             <li>A page must fail two checks in a row before it turns red, so a short outage isn't flagged.</li>
             <li>A plain “403 Forbidden” counts as broken. Bot-protection screens stay gray.</li>
-            <li>Your <em>Mark as broken</em> always wins over the checker.</li>
+            <li>Why some pages show <em>Couldn't check</em>: the checker runs on GitHub's computers in a data center, and many sites turn away every visitor from data centers to keep out bots. The site refuses before saying whether the page exists. Your own browser isn't turned away, so you can tell.</li>
+            <li>For those, open the page yourself (in <em>Organize</em>), then click <em>It works</em> or <em>Mark as broken</em>. <em>It works</em> shows a green ring and counts under Working.</li>
+            <li><em>It works</em> doesn't stop the checking. If the checker later sees clear proof that the page is gone (“not found”, or the site no longer exists) or has moved, it cancels your confirmation. Otherwise, after 6 months, Pagemarks asks you again.</li>
+            <li>One thing the checker can't catch on a site that turns it away: a page that shows a “not found” screen while the site still says “OK”. That's why Pagemarks asks again after 6 months.</li>
+            <li>Your <em>Mark as broken</em> always wins over the checker. Your <em>It works</em> only fills in where the checker couldn't tell.</li>
           </ul>
         </details>
         <details class="howto">
@@ -497,6 +502,6 @@
 
   <div id="toast" class="toast" hidden></div>
 
-  <script type="module" src="app.js?v=67"></script>
+  <script type="module" src="app.js?v=69"></script>
 </body>
 </html>

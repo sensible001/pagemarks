@@ -152,7 +152,11 @@ async function worker() {
     // Save only when something changed (or once a week to refresh "last checked"), to keep database use low
     const lastChecked = prev.checkedAt && prev.checkedAt.toMillis ? prev.checkedAt.toMillis() : 0;
     const changed = ["status", "code", "finalUrl", "reason", "fails", "archiveUrl"].some((k) => (prev[k] ?? "") !== (link[k] ?? ""));
-    if (changed || Date.now() - lastChecked > 7 * 24 * 3600 * 1000) { await d.ref.update({ link }); saved++; }
+    // "It works" (confirmed by a person) only stands while the checker can't tell.
+    // Clear evidence that the page is gone or has moved cancels it.
+    const cancelConfirm = !!data.confirmedWorking && (shown === "broken" || shown === "moved");
+    const update = cancelConfirm ? { link, confirmedWorking: FieldValue.delete() } : { link };
+    if (changed || cancelConfirm || Date.now() - lastChecked > 7 * 24 * 3600 * 1000) { await d.ref.update(update); saved++; }
     totals[shown]++;
   }
 }

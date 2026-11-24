@@ -10,7 +10,7 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, getDocFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=67";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=69";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -330,8 +330,17 @@ let expanded = new Set();
 try { expanded = new Set(JSON.parse(localStorage.getItem("pm-expanded") || "[]")); } catch { /* ignore */ }
 const saveExpanded = () => { try { localStorage.setItem("pm-expanded", JSON.stringify([...expanded])); } catch { /* ignore */ } };
 
-// "Mark as broken" (your own judgement) overrides the nightly checker
-const linkStatus = (b) => b.markedBroken ? "broken" : ((b.link && b.link.status) || "pending");
+// Your own judgement beats the nightly checker. "Mark as broken" always wins.
+// "It works" only answers what the checker couldn't: it counts while the checker says
+// "Couldn't check", and lasts 6 months before Pagemarks asks again.
+const CONFIRM_DAYS = 182;
+const confirmedOn = (b) => (b.confirmedWorking && b.confirmedWorking.toDate) ? b.confirmedWorking.toDate() : null;
+const confirmedOk = (b) => {
+  const when = confirmedOn(b);
+  return !b.markedBroken && !!when && b.link && b.link.status === "unknown"
+    && Date.now() - when.getTime() < CONFIRM_DAYS * 24 * 3600 * 1000;
+};
+const linkStatus = (b) => b.markedBroken ? "broken" : confirmedOk(b) ? "ok" : ((b.link && b.link.status) || "pending");
 
 function filtered() {
   let list = pagemarks;
@@ -564,6 +573,7 @@ function linkBadge(b) {
   const s = linkStatus(b);
   if (s === "pending") return el("span", { class: "dot dot-pending", title: "Not checked yet" });
   if (b.markedBroken) return el("span", { class: "dot dot-broken", title: "Broken (marked by you)" });
+  if (confirmedOk(b)) return el("span", { class: "dot dot-ok dot-confirmed", title: "Working · you confirmed it on " + fmtDate(confirmedOn(b)) + " (the checker can't reach this site)" });
   const when = b.link.checkedAt && b.link.checkedAt.toDate ? " · checked " + fmtDate(b.link.checkedAt.toDate()) : "";
   const why = b.link.reason ? ` (${b.link.reason})` : "";
   return el("span", { class: `dot dot-${s}`, title: LINK_LABEL[s] + why + when });
@@ -614,10 +624,18 @@ function renderItem(b) {
   }
   if (s === "unknown") {
     const why = b.link && b.link.reason ? ` (${b.link.reason})` : "";
+    const again = confirmedOn(b) ? " It's been 6 months since you confirmed it." : "";
     body.append(el("div", { class: "fix-row" },
-      el("span", { text: "The checker couldn't verify this page" + why + ". If it doesn't open for you either:" }), " ",
-      archiveLink(), " ",
-      el("button", { class: "btn small", text: "Mark as broken", onclick: () => setMarkedBroken(b, true) })));
+      el("span", { text: "The checker couldn't verify this page" + why + "." + again + " Open it and let Pagemarks know:" }), " ",
+      el("button", { class: "btn small", text: "It works", onclick: () => setConfirmed(b, true) }), " ",
+      el("button", { class: "btn small", text: "Mark as broken", onclick: () => setMarkedBroken(b, true) }), " ",
+      archiveLink()));
+  }
+  if (confirmedOk(b)) {
+    const until = new Date(confirmedOn(b).getTime() + CONFIRM_DAYS * 24 * 3600 * 1000);
+    body.append(el("div", { class: "fix-row confirmed-note" },
+      el("span", { text: `You confirmed this page works on ${fmtDate(confirmedOn(b))}. The checker still watches it, and Pagemarks will ask again in ${until.toLocaleDateString(undefined, { month: "long", year: "numeric" })}.` }), " ",
+      el("button", { class: "btn small", text: "Undo", onclick: () => setConfirmed(b, false) })));
   }
   if (s === "moved" && b.link.finalUrl) {
     if (suspiciousMove(b.url, b.link.finalUrl)) body.append(el("div", { class: "fix-row warn-text", text: "Goes to a home or sign-in page, so the original may be gone." }));
@@ -671,8 +689,15 @@ function renderItem(b) {
 }
 
 async function setMarkedBroken(b, on) {
-  await updateDoc(doc(pmCol(), b.id), { markedBroken: on, updatedAt: serverTimestamp() });
+  const data = { markedBroken: on, updatedAt: serverTimestamp() };
+  if (on) data.confirmedWorking = null;
+  await updateDoc(doc(pmCol(), b.id), data);
   toast(on ? "Marked as broken. It's now listed under Broken." : "No longer marked as broken.");
+}
+
+async function setConfirmed(b, on) {
+  await updateDoc(doc(pmCol(), b.id), { confirmedWorking: on ? serverTimestamp() : null, markedBroken: false, updatedAt: serverTimestamp() });
+  toast(on ? "Thanks. It's now listed under Working, and the checker keeps watching it." : "Back to Couldn't check.");
 }
 
 async function updateLink(b) {
@@ -680,7 +705,7 @@ async function updateLink(b) {
   if (!u) return;
   await updateDoc(doc(pmCol(), b.id), {
     url: u.href, normUrl: normalizeUrl(u.href),
-    link: { ...b.link, status: "ok", finalUrl: "", reason: "", fails: 0 },
+    link: { ...b.link, status: "ok", finalUrl: "", reason: "", fails: 0 }, confirmedWorking: null,
     updatedAt: serverTimestamp()
   });
   toast("Link updated");
@@ -1188,7 +1213,7 @@ $("#bulk-update").addEventListener("click", async () => {
       const u = parseUrl(b.link.finalUrl);
       batch.update(doc(pmCol(), b.id), {
         url: u.href, normUrl: normalizeUrl(u.href),
-        link: { ...b.link, status: "ok", finalUrl: "", reason: "", fails: 0 },
+        link: { ...b.link, status: "ok", finalUrl: "", reason: "", fails: 0 }, confirmedWorking: null,
         updatedAt: serverTimestamp()
       });
     }
@@ -1681,7 +1706,7 @@ $("#form-edit").addEventListener("submit", async (e) => {
   try {
     if (editingId) {
       const before = pagemarks.find((x) => x.id === editingId);
-      if (before && normalizeUrl(before.url) !== data.normUrl) { data.link = { status: "pending" }; data.markedBroken = false; }
+      if (before && normalizeUrl(before.url) !== data.normUrl) { data.link = { status: "pending" }; data.markedBroken = false; data.confirmedWorking = null; }
       await updateDoc(doc(pmCol(), editingId), data);
       toast("Saved");
     } else {
@@ -2153,7 +2178,7 @@ closeOnOutsideClick($("#dlg-tidy"));
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "67";
+const APP_VERSION = "69";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {

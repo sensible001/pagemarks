@@ -937,3 +937,7 @@ section.owner-only[hidden] { display: none; }
 .lib-btn:not([hidden]) + .review-btn, .review-btn:not([hidden]) + .tidy-btn { margin-top: 0.5rem; }
 .review-btn.active { background: var(--brand); border-color: var(--brand); color: #fff; }
 .rv-head .sub-icon { background: none; border: 0; width: auto; height: auto; padding: 0; display: inline-flex; color: var(--muted); }
+
+/* ---------- v68: "It works" (confirmed by you) ---------- */
+.dot.dot-confirmed { background: transparent; border: 2px solid #3c8d5a; box-sizing: border-box; }
+.fix-row.confirmed-note { color: var(--muted); }
