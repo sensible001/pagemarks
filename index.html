@@ -8,14 +8,30 @@
   <meta name="description" content="Pagemarks is a private, invitation-only app for saving and organizing web pages.">
   <meta name="application-name" content="Pagemarks">
   <meta property="og:site_name" content="Pagemarks">
-  <link rel="icon" href="favicon.ico?v=72" sizes="any">
-  <link rel="icon" href="favicon.svg?v=72" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=72">
+  <link rel="icon" href="favicon.ico?v=75" sizes="any">
+  <link rel="icon" href="favicon.svg?v=75" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=75">
   <meta name="apple-mobile-web-app-title" content="Pagemarks">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Gentium+Plus:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=72">
+  <link rel="stylesheet" href="styles.css?v=75">
+  <script>
+    // "Try Pagemarks" demo (www.pagemarks.com/?demo): the same app, but with a stand-in for the
+    // database that keeps everything in this browser tab (demo-fb.js). Nothing is saved to Pagemarks.
+    if (/(^|[?&])demo(=|&|$)/.test(location.search.slice(1))) {
+      document.documentElement.classList.add("demo");
+      var map = document.createElement("script");
+      map.type = "importmap";
+      var fb = "./demo-fb.js?v=75", base = "https://www.gstatic.com/firebasejs/13.4.0/";
+      var imports = {};
+      imports[base + "firebase-app.js"] = fb;
+      imports[base + "firebase-auth.js"] = fb;
+      imports[base + "firebase-firestore.js"] = fb;
+      map.textContent = JSON.stringify({ imports: imports });
+      document.currentScript.after(map);
+    }
+  </script>
 </head>
 <body>
 
@@ -27,7 +43,7 @@
   <!-- Sign in -->
   <section id="screen-signin" class="screen center" role="main" hidden>
     <div class="card welcome">
-      <img src="icon.svg?v=72" alt="" class="welcome-icon">
+      <img src="icon.svg?v=75" alt="" class="welcome-icon">
       <h1>Pagemarks</h1>
       <p class="muted">A private, invitation-only app for saving and organizing web pages.</p>
       <button id="btn-signin" class="btn primary large">Sign in with Google</button>
@@ -67,11 +83,15 @@
 
   <!-- App -->
   <section id="screen-app" class="screen" hidden>
+    <aside class="demo-bar" aria-label="About this demo">
+      <span><strong>You're trying Pagemarks.</strong> Add, organize and explore freely. Everything stays in this tab and is erased when you close it.</span>
+      <button type="button" class="btn small" id="demo-leave">Leave the demo</button>
+    </aside>
     <header class="topbar" role="banner">
       <a class="skip-link" href="#view-title">Skip to your Pagemarks</a>
       <div class="topbar-inner">
         <a class="brand" href="#" id="brand-home">
-          <img src="icon.svg?v=72" alt="" width="28" height="28"><span>Pagemarks</span>
+          <img src="icon.svg?v=75" alt="" width="28" height="28"><span>Pagemarks</span>
         </a>
         <div class="topbar-main">
           <div class="search-wrap">
@@ -145,7 +165,7 @@
           </span>
         </div>
         <div id="lib-welcome" class="ext-card lib-welcome" hidden>
-          <img src="icon.svg?v=72" alt="" width="36" height="36">
+          <img src="icon.svg?v=75" alt="" width="36" height="36">
           <div class="ext-card-text">
             <strong>The Librarian can help</strong>
             <span class="muted" id="lib-welcome-text"></span>
@@ -154,7 +174,7 @@
           <button type="button" id="lib-welcome-later" class="btn">Not now</button>
         </div>
         <div id="ext-card" class="ext-card" hidden>
-          <img src="favicon.svg?v=72" alt="" width="36" height="36">
+          <img src="favicon.svg?v=75" alt="" width="36" height="36">
           <div class="ext-card-text">
             <strong>Save Pagemarks in one click</strong>
             <span class="muted">Add the Pagemarks button to your browser, then click it on any page you want to keep.</span>
@@ -188,7 +208,7 @@
   <!-- Add / edit dialog -->
   <dialog id="dlg-edit">
     <form id="form-edit" method="dialog">
-      <p class="quick-brand" aria-hidden="true"><img src="icon.svg?v=72" alt="" width="28" height="28"><span>Pagemarks</span></p>
+      <p class="quick-brand" aria-hidden="true"><img src="icon.svg?v=75" alt="" width="28" height="28"><span>Pagemarks</span></p>
       <h2 id="edit-heading">Add Pagemark</h2>
 
       <label>Web address
@@ -455,6 +475,19 @@
             <p>To see the Home card that suggests the browser button (normally hidden for you), open <em>www.pagemarks.com/#preview-card</em>.</p>
           </div>
         </details>
+        <details class="howto owner-only" hidden>
+          <summary>Demo (not public yet)</summary>
+          <div class="owner-note">
+            <span class="owner-badge">Only you see this</span>
+            <p>A “Try Pagemarks” demo is ready but not linked anywhere. Anyone with this address can open it: <em>www.pagemarks.com/?demo</em></p>
+            <ul>
+              <li>No sign-in. Visitors start with a sample library and can add, organize and tidy up like a member. The same content checks apply.</li>
+              <li>Everything stays in the visitor's own browser tab and is erased when they close it. Visitors never see each other's changes, and nothing is saved to Pagemarks.</li>
+              <li>It costs nothing to run.</li>
+              <li>To release it: ask Claude to add the “Try Pagemarks” link to the sign-in screen and a line about it to the privacy policy.</li>
+            </ul>
+          </div>
+        </details>
       </section>
 
       <section id="librarian-section" hidden>
@@ -520,9 +553,9 @@
     <button type="button" class="btn small primary" id="btn-reload">Reload now</button>
   </div>
 
-  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <div id="toast" class="toast" hidden><span id="toast-text" role="status" aria-live="polite"></span><button type="button" class="btn small primary" id="toast-ok">OK</button></div>
   </aside>
 
-  <script type="module" src="app.js?v=72"></script>
+  <script type="module" src="app.js?v=75"></script>
 </body>
 </html>

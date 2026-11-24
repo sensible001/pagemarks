@@ -980,3 +980,28 @@ body:not(.editing) .bm-body .fix-row.unsafe-row { display: block !important; }
 /* ---------- v72: "Looks different" ---------- */
 /* An amber ring, so it differs from the solid amber "Moved" dot */
 .dot-changed { background: transparent; border: 2px solid #a87a12; box-sizing: border-box; }
+
+/* ---------- v73: messages stay until you click OK ---------- */
+.toast {
+  display: flex; align-items: center; gap: 0.9rem; max-width: min(34rem, calc(100vw - 2rem));
+  background: var(--card); color: var(--ink); border: 1px solid #cfe0d6; border-radius: 10px;
+  box-shadow: 0 6px 24px rgba(40, 30, 10, 0.15); padding: 0.7rem 0.75rem 0.7rem 1.1rem; font-size: 0.98rem; line-height: 1.45;
+}
+.toast[hidden] { display: none !important; }
+#toast-ok { flex: none; min-width: 3.2rem; }
+.update-bar:not([hidden]) ~ .toast { bottom: 5rem; }
+
+/* ---------- v74: "Try Pagemarks" demo ---------- */
+.try-it { margin: 1.1rem 0 0; font-size: 0.95rem; color: var(--muted); }
+.demo-bar { display: none; }
+html.demo .demo-bar {
+  display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 0.5rem 1rem;
+  background: #eef5f0; border-bottom: 1px solid #cfe0d6; color: var(--ink);
+  padding: 0.55rem 1rem; font-size: 0.95rem; text-align: center;
+}
+/* Things that don't apply to a demo visitor */
+html.demo #ext-card, html.demo #ext-section, html.demo #librarian-section, html.demo #lib-welcome,
+html.demo #account-row-signout-note { display: none !important; }
+
+/* v75: owner-only Settings sections */
+details.owner-only[hidden] { display: none; }

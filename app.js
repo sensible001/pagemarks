@@ -10,7 +10,7 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, getDocFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=72";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=75";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -69,14 +69,17 @@ function showScreen(name) {
 }
 
 let toastTimer;
+// Messages stay on screen until you click OK (or the next message replaces them), so there's
+// always time to read them. They don't block anything else. Actions whose result you can see
+// (starring, saving, deleting, moving) don't show a message at all.
 function toast(msg) {
-  const t = $("#toast");
-  t.hidden = false;
-  t.textContent = msg;
-  clearTimeout(toastTimer);
-  // Longer messages stay up longer, so there's time to read them
-  toastTimer = setTimeout(() => (t.hidden = true), Math.max(4000, msg.length * 75));
+  $("#toast-text").textContent = msg;
+  $("#toast").hidden = false;
 }
+$("#toast-ok").addEventListener("click", () => { $("#toast").hidden = true; });
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && !$("#toast").hidden && !document.querySelector("dialog[open]")) $("#toast").hidden = true;
+});
 
 // Styled replacement for the browser's confirm()/alert(). Resolves true if OK was clicked.
 function ask({ title, text, ok = "OK", cancel = "Cancel", danger = false }) {
@@ -215,6 +218,10 @@ const doSignOut = () => signOut(auth);
 $("#btn-retry-offline").addEventListener("click", () => location.reload());
 $("#btn-signout").addEventListener("click", () => { $("#dlg-settings").close(); doSignOut(); });
 $("#btn-signout-ni").addEventListener("click", doSignOut);
+// The "Try Pagemarks" demo (see demo-fb.js): leaving erases the sandbox
+const DEMO = document.documentElement.classList.contains("demo");
+$("#demo-leave").addEventListener("click", doSignOut);
+if (DEMO) $("#btn-signout").textContent = "Leave the demo";
 
 onAuthStateChanged(auth, async (u) => {
   if (unsubPagemarks) { unsubPagemarks(); unsubPagemarks = null; }
@@ -639,7 +646,9 @@ function renderItem(b) {
   const titleLine = el("div", { class: "title-line" }, linkBadge(b), titleText);
 
   const meta = el("div", { class: "bm-meta" });
-  meta.append(host + " · " + fmtDate(dateOf(b)));
+  meta.append(host);
+  // When it was saved: a detail for Organize, not for everyday browsing
+  meta.append(el("span", { class: "edit-only", text: " · Saved " + fmtDate(dateOf(b)) }));
   if (b.folder) {
     meta.append(" · ");
     meta.append(el("span", { class: "folder-label", text: b.folder }));
@@ -772,7 +781,6 @@ async function updateLink(b) {
     link: { ...b.link, status: "ok", finalUrl: "", reason: "", fails: 0, risk: null, reg: null, scan: null, drift: null, browser: null }, confirmedWorking: null, riskOk: null, changeOk: null,
     updatedAt: serverTimestamp()
   });
-  toast("Link updated");
 }
 
 function setView(v) {
@@ -861,7 +869,6 @@ async function moveFolder(from, destParent) {
   if (parentOf(from) === destParent) return;
   const to = destParent ? destParent + " / " + nameOf(from) : nameOf(from);
   const n = await relocateFolder(from, to);
-  toast(`Moved “${nameOf(from)}” ${destParent ? "into “" + nameOf(destParent) + "”" : "to the top level"} (${n} Pagemark${n === 1 ? "" : "s"})`);
 }
 
 async function movePagemarksTo(ids, folder) {
@@ -873,7 +880,6 @@ async function movePagemarksTo(ids, folder) {
   for (const id of ids) selected.delete(id);
   const parent = parentOf(folder);
   if (parent) { expanded.add(parent); saveExpanded(); }
-  toast(`Moved ${ids.length} Pagemark${ids.length === 1 ? "" : "s"} to “${nameOf(folder)}”`);
 }
 
 function makeDropTarget(node, folderPath) {
@@ -950,7 +956,6 @@ $("#folder-delete").addEventListener("click", async () => {
   if (!(await ask({ title: `Delete the folder “${nameOf(path)}”?`, text: "It's empty, so nothing else is deleted.", ok: "Delete", danger: true }))) return;
   await saveExtraFolders(extraFolders.filter((p) => !isInside(p, path)));
   setView(parentOf(path) ? { type: "folder", value: parentOf(path) } : { type: "all", value: null });
-  toast("Folder deleted");
 });
 $("#folder-rename").addEventListener("click", () => openFolderDialog("rename"));
 $("#folder-cancel").addEventListener("click", () => dlgFolder.close());
@@ -983,7 +988,6 @@ $("#form-folder").addEventListener("submit", async (e) => {
     const parent = parentOf(path);
     const to = parent ? parent + " / " + name : name;
     const n = await relocateFolder(path, to);
-    toast(`Renamed to “${name}” (${n} Pagemark${n === 1 ? "" : "s"})`);
   }
 });
 
@@ -1135,7 +1139,6 @@ function starButton(b) {
 }
 async function toggleStar(b) {
   await updateDoc(doc(pmCol(), b.id), { starred: !b.starred, updatedAt: serverTimestamp() });
-  toast(b.starred ? "Removed from Home" : "Added to Home");
 }
 function pinIcon() {
   const s = el("span", { class: "pin-icon", title: "Pinned to the top of this folder", role: "img", "aria-label": "Pinned" });
@@ -1333,7 +1336,7 @@ $("#bulk-update").addEventListener("click", async () => {
     await batch.commit();
   }
   for (const b of safe) selected.delete(b.id);
-  toast(`${safe.length} link${safe.length === 1 ? "" : "s"} updated` + (risky ? ` · ${risky} left to check` : ""));
+  if (risky) toast(`${safe.length} link${safe.length === 1 ? "" : "s"} updated. ${risky} left for you to check: they lead to a home or sign-in page.`);
 });
 
 $("#bulk-all").addEventListener("change", () => {
@@ -1351,7 +1354,6 @@ async function bulkWrite(fn, doneMsg) {
     await batch.commit();
   }
   selected.clear();
-  toast(doneMsg(ids.length));
 }
 
 const dlgBulk = $("#dlg-bulk");
@@ -1664,7 +1666,6 @@ $("#review-file").addEventListener("click", async () => {
     for (const b of items.slice(i, i + 400)) batch.update(doc(pmCol(), b.id), { folder: b.suggestedFolder, suggestedFolder: null, suggestedBy: null, updatedAt: serverTimestamp() });
     await batch.commit();
   }
-  toast(`Filed ${plural(items.length, "Pagemark")}`);
   if (!reviewItems().some((b) => !items.includes(b))) setView(reviewReturn);
 });
 
@@ -1821,11 +1822,11 @@ $("#form-edit").addEventListener("submit", async (e) => {
       const before = pagemarks.find((x) => x.id === editingId);
       if (before && normalizeUrl(before.url) !== data.normUrl) { data.link = { status: "pending" }; data.markedBroken = false; data.confirmedWorking = null; data.riskOk = null; data.changeOk = null; }
       await updateDoc(doc(pmCol(), editingId), data);
-      toast("Saved");
+      
     } else {
       const ref = doc(pmCol());
       await setDoc(ref, { ...data, createdAt: serverTimestamp() });
-      toast("Pagemark added");
+      
     }
     quickSaved = true;
     dlgEdit.close();
@@ -1840,7 +1841,7 @@ $("#btn-delete").addEventListener("click", async () => {
   if (!(await ask({ title: "Delete this Pagemark?", text: "This can't be undone.", ok: "Delete", danger: true }))) return;
   await deleteDoc(doc(pmCol(), editingId));
   dlgEdit.close();
-  toast("Deleted");
+  
 });
 
 // ---------- Settings ----------
@@ -2291,7 +2292,7 @@ closeOnOutsideClick($("#dlg-tidy"));
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "72";
+const APP_VERSION = "75";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {
