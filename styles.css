@@ -720,6 +720,9 @@ body:not(.editing) .bm { grid-template-columns: 36px 1fr auto; }
 .home-group.linked .home-group-title:hover .hg-name { color: var(--accent); }
 .hg-name { min-width: 0; }
 /* Negative margins so showing the button in Organize doesn't push the card's rule down */
+/* "Unpin" (already pinned) gets a soft green fill so pinned folders stand out in Organize */
+.hg-pin.on, #folder-pin.on { background: #e6f0ea; border-color: #b9d3c3; color: var(--accent); }
+.hg-pin.on:hover, #folder-pin.on:hover { background: #dbe9e0; }
 .hg-pin { margin: -0.4rem 0 -0.4rem auto; flex: none; padding: 0.15rem 0.6rem; font-size: 0.82rem; line-height: 1.3; align-self: center; }
 #view-title .home-pin { margin-left: 0.15rem; vertical-align: 0.1em; }
 .hg-parent { color: var(--muted); font-weight: 700; font-size: inherit; }   /* v42: same size and weight; grey shows it's the parent */

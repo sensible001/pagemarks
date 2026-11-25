@@ -11,7 +11,7 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, getDocFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=100";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=101";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -394,14 +394,15 @@ const linkStatus = (b) => b.markedBroken ? "broken" : riskActive(b) ? "unsafe" :
 
 function filtered() {
   let list = pagemarks;
+  // The search box always looks through all your Pagemarks, wherever you are
   const searchingAll = $("#search").value.trim() !== "";
-  if (view.type === "home" && !searchingAll) list = list.filter((b) => b.starred);
+  if (searchingAll) { /* everything */ }
+  else if (view.type === "home") list = list.filter((b) => b.starred);
   else if (view.type === "later") list = list.filter((b) => b.readLater);
   else if (view.type === "unfiled") list = list.filter((b) => !b.folder);
   else if (view.type === "folder") {
-    // Only this folder's own Pagemarks; sub-folders appear as rows. While searching, include sub-folders too.
-    const searching = $("#search").value.trim() !== "";
-    list = list.filter((b) => b.folder === view.value || (searching && (b.folder || "").startsWith(view.value + " / ")));
+    // Only this folder's own Pagemarks; sub-folders appear as rows
+    list = list.filter((b) => b.folder === view.value);
   }
   else if (view.type === "tag") list = list.filter((b) => (b.tags || []).includes(view.value));
   else if (view.type === "changed") list = list.filter(driftActive);
@@ -422,12 +423,13 @@ function filtered() {
   else if (sort === "old") list.sort((a, b) => dateOf(a) - dateOf(b));
   else list.sort((a, b) => dateOf(b) - dateOf(a));
   // Pinned Pagemarks stay at the top of their folder (sort still applies within each group)
-  if (view.type === "folder" || view.type === "unfiled") list.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
+  if (!searchingAll && (view.type === "folder" || view.type === "unfiled")) list.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
   return list;
 }
 
 function viewTitle() {
-  if (view.type === "home") return $("#search").value.trim() ? "Search results" : "Home";
+  if ($("#search").value.trim()) return "Search results";
+  if (view.type === "home") return "Home";
   if (view.type === "later") return "Read later";
   if (view.type === "unfiled") return "Unfiled";
   if (view.type === "folder") return view.value;
@@ -563,8 +565,11 @@ function render() {
 
   // List
   $("#view-title").textContent = viewTitle();
-  $("#folder-tools").hidden = view.type !== "folder";
-  if (view.type === "folder") $("#folder-pin").textContent = homePinned(view.value) ? "Unpin from Home" : "Pin on Home";
+  $("#folder-tools").hidden = view.type !== "folder" || !!$("#search").value.trim();
+  if (view.type === "folder") {
+    $("#folder-pin").textContent = homePinned(view.value) ? "Unpin from Home" : "Pin on Home";
+    $("#folder-pin").classList.toggle("on", homePinned(view.value));
+  }
   $("#folder-delete").hidden = !(view.type === "folder" && !pagemarks.some((b) => b.folder && isInside(b.folder, view.value)));
   // The Librarian's suggestions, reviewed all at once
   $("#review").hidden = view.type !== "review";
@@ -590,9 +595,11 @@ function render() {
   $("#list").replaceChildren(...subRows, ...items.map(renderItem));
   $("#empty").hidden = items.length > 0 || subRows.length > 0;
   if (!items.length && !subRows.length) {
-    const inFolder = view.type === "folder";
-    $("#empty-title").textContent = inFolder ? "This folder is empty." : "No Pagemarks here yet.";
-    $("#empty-hint").textContent = inFolder
+    const q = $("#search").value.trim();
+    const inFolder = view.type === "folder" && !q;
+    $("#empty-title").textContent = q ? `Nothing matches “${q}”.` : inFolder ? "This folder is empty." : "No Pagemarks here yet.";
+    $("#empty-hint").textContent = q ? "Search looks through all your Pagemarks: titles, addresses, notes, tags and folders."
+      : inFolder
       ? (editing ? "Drag Pagemarks onto it in the sidebar, or tick them elsewhere and use Move to folder…" : "Click Organize to move Pagemarks here.")
       : "Click + Add to save a Pagemark, or import your favorites under ⚙ Settings.";
   }
@@ -812,6 +819,7 @@ async function updateLink(b) {
 
 function setView(v) {
   view = v;
+  clearSearch();   // search covers everything, so going somewhere ends it
   selected.clear();
   document.querySelector(".sidebar").classList.remove("open");
   render();
@@ -819,7 +827,7 @@ function setView(v) {
 }
 
 // ---------- Search ----------
-// Home and the logo start fresh (search cleared). Folders keep the search, so you can narrow results.
+// Search always covers all your Pagemarks. Going to any page (Home, a folder, a tag) clears it.
 function syncSearchClear() { $("#search-clear").hidden = !$("#search").value; }
 function clearSearch() { $("#search").value = ""; syncSearchClear(); }
 
@@ -2382,7 +2390,7 @@ closeOnOutsideClick($("#dlg-tidy"));
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "100";
+const APP_VERSION = "101";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {
