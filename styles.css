@@ -1107,3 +1107,12 @@ body.quick #dlg-edit .dlg-actions {
 html:has(body.quick), body.quick { overflow: hidden; height: 100%; }
 body.quick #screen-app { display: none; }
 body.quick #dlg-edit form { scrollbar-width: thin; scrollbar-color: #cfc8b8 transparent; }
+
+/* v117: the logo sits beside "Save a Pagemark" instead of on a line of its own (the window's
+   title bar already says Pagemarks), so the form fits even when "Already saved" appears */
+body.quick .quick-brand { display: none; }
+body.quick #edit-heading { display: flex; align-items: center; gap: 0.55rem; margin: 0 0 0.7rem; }
+body.quick #edit-heading::before {
+  content: ""; flex: none; width: 26px; height: 26px;
+  background: url("icon.svg") center / contain no-repeat;
+}
