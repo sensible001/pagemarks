@@ -1016,3 +1016,7 @@ details.owner-only[hidden] { display: none; }
 .howto ol { margin: 0.45rem 0 0.3rem; padding-left: 1.3rem; font-size: 0.9rem; color: #4a463f; }
 .howto ol ul { font-size: 1em; margin: 0.2rem 0; }
 .howto p.muted { font-size: 0.9rem; }
+
+/* v89: the browser button's save window has the same margin on every side.
+   The window is now tall enough that the form fits without a scroll bar. */
+body.quick #dlg-edit form { padding: 1.5rem; }
