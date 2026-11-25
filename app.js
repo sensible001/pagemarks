@@ -11,7 +11,7 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, getDocFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=93";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=95";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -73,14 +73,15 @@ let toastTimer;
 // Messages stay on screen until you click OK (or the next message replaces them), so there's
 // always time to read them. They don't block anything else. Actions whose result you can see
 // (starring, saving, deleting, moving) don't show a message at all.
+// Messages appear in the middle of the screen and wait for OK (or Enter / Esc),
+// so they can't be missed while you carry on.
 function toast(msg) {
+  const dlg = $("#toast");
   $("#toast-text").textContent = msg;
-  $("#toast").hidden = false;
+  if (!dlg.open) dlg.showModal();
+  $("#toast-ok").focus();
 }
-$("#toast-ok").addEventListener("click", () => { $("#toast").hidden = true; });
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && !$("#toast").hidden && !document.querySelector("dialog[open]")) $("#toast").hidden = true;
-});
+$("#toast").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); $("#toast").close(); } });
 
 // Styled replacement for the browser's confirm()/alert(). Resolves true if OK was clicked.
 function ask({ title, text, ok = "OK", cancel = "Cancel", danger = false }) {
@@ -343,12 +344,14 @@ const saveExpanded = () => { try { localStorage.setItem("pm-expanded", JSON.stri
 
 // Your own judgement beats the daily checker. "Mark as broken" always wins.
 // "It works" only answers what the checker couldn't: it counts while the checker says
-// "Couldn't check", and lasts 6 months before Pagemarks asks again.
+// "Couldn't check" (or the site refused it or had a server error), and lasts 6 months.
+// A site that refused the checker (403) or had a server error (5xx): may still open for people
+const weakBroken = (b) => !!b.link && b.link.status === "broken" && (b.link.code === 403 || b.link.code >= 500);
 const CONFIRM_DAYS = 182;
 const confirmedOn = (b) => (b.confirmedWorking && b.confirmedWorking.toDate) ? b.confirmedWorking.toDate() : null;
 const confirmedOk = (b) => {
   const when = confirmedOn(b);
-  return !b.markedBroken && !!when && b.link && b.link.status === "unknown"
+  return !b.markedBroken && !!when && b.link && (b.link.status === "unknown" || weakBroken(b))
     && Date.now() - when.getTime() < CONFIRM_DAYS * 24 * 3600 * 1000;
 };
 // "May be unsafe": the daily checker found signs this is no longer the place you saved
@@ -680,6 +683,9 @@ function renderItem(b) {
       el("span", { text: b.markedBroken ? "You marked this page as broken." : "This page no longer loads." }), " ", archiveLink());
     if (b.markedBroken) fix.append(" ", el("button", { class: "btn small", text: "Not broken", onclick: () => setMarkedBroken(b, false) }));
     body.append(fix);
+    if (!b.markedBroken && weakBroken(b)) body.append(el("div", { class: "fix-row" },
+      el("span", { text: `Some sites turn away automated checks (HTTP ${b.link.code}). If it opens for you:` }), " ",
+      el("button", { class: "btn small", text: "It works", onclick: () => setConfirmed(b, true) })));
   }
   if (s === "unknown") {
     const why = b.link && b.link.reason ? ` (${b.link.reason})` : "";
@@ -2329,7 +2335,7 @@ closeOnOutsideClick($("#dlg-tidy"));
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "93";
+const APP_VERSION = "95";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {

@@ -478,6 +478,8 @@ body.editing .bm-list { gap: 0.75rem; }
 .dlg-confirm h2 { margin-bottom: 0.5rem; font-size: 1.25rem; }
 .dlg-confirm p { margin: 0 0 0.5rem; color: #4a463f; }
 .dlg-confirm .dlg-actions { margin-top: 1.25rem; }
+.dlg-notice #toast-text { font-size: 1.08rem; line-height: 1.5; color: var(--ink); margin: 0.2rem 0 0; }
+.dlg-notice #toast-ok { min-width: 5rem; }
 .btn.danger-solid { background: var(--danger); border-color: var(--danger); color: #fff; }
 .btn.danger-solid:hover { background: #8e2e22; }
 

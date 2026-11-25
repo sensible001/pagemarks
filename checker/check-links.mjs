@@ -57,7 +57,7 @@ async function request(url, method) {
       try { await res.body?.cancel(); } catch { /* ignore */ }
     }
     const headers = {};
-    for (const k of ["server", "cf-mitigated", "x-datadome", "x-sucuri-id", "x-iinfo", "x-amz-cf-id", "set-cookie"]) {
+    for (const k of ["server", "cf-mitigated", "x-datadome", "x-sucuri-id", "x-iinfo", "x-amz-cf-id", "x-amzn-waf-action", "set-cookie"]) {
       const v = res.headers.get(k);
       if (v) headers[k] = v;
     }
@@ -74,7 +74,7 @@ async function request(url, method) {
 function looksLikeBotProtection(r) {
   const h = r.headers || {};
   const server = (h["server"] || "").toLowerCase();
-  if (h["cf-mitigated"] || h["x-datadome"] || h["x-sucuri-id"] || h["x-iinfo"]) return true;
+  if (h["cf-mitigated"] || h["x-amzn-waf-action"] || h["x-datadome"] || h["x-sucuri-id"] || h["x-iinfo"]) return true;
   if (/cloudflare|akamai|incapsula|imperva|sucuri|ddos-guard|datadome|perimeterx|kasada|cloudfront|varnish/.test(server)) return true;
   if (/datadome|_px|incap_ses|visid_incap|ak_bmsc|bm_sv|__cf_bm/i.test(h["set-cookie"] || "")) return true;
   const body = (r.sample || "").toLowerCase();
@@ -389,7 +389,9 @@ async function worker() {
       || !same(prev.risk, link.risk) || !same(prev.reg, link.reg) || !same(prev.scan, link.scan) || !same(prev.drift, link.drift);
     // "It works" (confirmed by a person) only stands while the checker can't tell.
     // Clear evidence that the page is gone or has moved cancels it.
-    const cancelConfirm = !!data.confirmedWorking && (shown === "broken" || shown === "moved");
+    // (A refusal or server error isn't clear evidence: sites often turn checkers away.)
+    const weak = shown === "broken" && (result.code === 403 || result.code >= 500);
+    const cancelConfirm = !!data.confirmedWorking && ((shown === "broken" && !weak) || shown === "moved");
     const update = cancelConfirm ? { link, confirmedWorking: FieldValue.delete() } : { link };
     if (changed || cancelConfirm || Date.now() - lastChecked > 7 * 24 * 3600 * 1000) { await d.ref.update(update); saved++; }
     totals[shown]++;
