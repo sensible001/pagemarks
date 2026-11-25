@@ -11,7 +11,7 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, getDocFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=110";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=112";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -1328,7 +1328,7 @@ function renderHome(items) {
   if (!items.length && (!pinnedEmpty.length || !editing)) {
     box.replaceChildren(el("div", { class: "empty" },
       el("p", { text: "Your Home page is empty." }),
-      el("p", { class: "muted", text: "Click the ☆ on any Pagemark you visit often, and it will appear here, grouped by folder." })));
+      el("p", { class: "muted", text: "Click Organize, then the ☆ on any Pagemark you visit often, and it will appear here, grouped by folder." })));
     return;
   }
   const groups = new Map();
@@ -2692,7 +2692,7 @@ closeOnOutsideClick($("#dlg-tidy"));
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "110";
+const APP_VERSION = "112";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {

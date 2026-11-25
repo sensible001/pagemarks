@@ -741,7 +741,9 @@ body:not(.editing) .bm { grid-template-columns: 36px 1fr auto; }
 .home-title { font-size: 0.95rem; line-height: 1.35; overflow-wrap: anywhere; }
 .home-row .star-btn { flex: none; width: 1.7rem; height: 1.7rem; font-size: 1rem; opacity: 0; }
 .home-row:hover .star-btn, .home-row .star-btn:focus-visible { opacity: 1; }
-@media (pointer: coarse) { .home-row .star-btn { opacity: 1; } }
+/* Stars appear only in Organize, on every device; the calm view stays clean */
+body:not(.editing) .star-btn { display: none; }
+@media (pointer: coarse) { body.editing .home-row .star-btn { opacity: 1; } }
 @media (max-width: 760px) { .home { columns: 1; } }
 
 /* ---------- v29: site icon lines up with the first line of a long title ---------- */
