@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<!-- © 2026 The Sensible Studio. All rights reserved. Not licensed for copying, reuse or redistribution. -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="robots" content="noindex">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Accessibility · Pagemarks</title>
+  <link rel="icon" href="/favicon.ico?v=82" sizes="any">
+  <link rel="icon" href="/favicon.svg?v=82" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=82">
+  <meta name="apple-mobile-web-app-title" content="Pagemarks">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Gentium+Plus:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+  <style>
+    :root { --paper: #faf8f3; --card: #fff; --ink: #2b2a27; --muted: #6f6a60; --line: #e4dfd4; --accent: #2f5d50; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--paper); color: var(--ink);
+      font-family: "Gentium Plus", Cambria, Georgia, serif; font-size: 18px; line-height: 1.6;
+    }
+    .page { max-width: 720px; margin: 0 auto; padding: 3rem 1.5rem 4rem; }
+    .brand { display: inline-flex; align-items: center; gap: 0.35rem; color: var(--ink); text-decoration: none; font-weight: 700; font-size: 1.2rem; }
+    h1 { font-size: 2rem; line-height: 1.2; margin: 2rem 0 0.3rem; }
+    .updated { color: var(--muted); margin: 0 0 2rem; }
+    h2 { font-size: 1.2rem; margin: 2.2rem 0 0.5rem; padding-top: 1.2rem; border-top: 1px solid var(--line); }
+    p, li { margin: 0.5rem 0; }
+    ul { padding-left: 1.3rem; }
+    a { color: var(--accent); }
+    .summary { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 1.1rem 1.4rem; }
+    .summary p { margin: 0.3rem 0; }
+    a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    footer { margin-top: 3rem; padding-top: 1.2rem; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.95rem; }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <a class="brand" href="/"><img src="/icon.svg?v=82" alt="" width="28" height="28">Pagemarks</a>
+
+    <h1>Accessibility</h1>
+    <p class="updated">Last updated: November 24, 2026</p>
+
+    <div class="summary">
+      <p><strong>In short:</strong> Pagemarks is meant to be easy to read and easy to use for everyone, including people who use a keyboard instead of a mouse, a screen reader, or larger text. It aims to meet the Web Content Accessibility Guidelines (WCAG) 2.1, Level AA.</p>
+    </div>
+
+    <h2>What Pagemarks does</h2>
+    <ul>
+      <li><strong>Readable text:</strong> a clear serif typeface at a comfortable size, with dark text on a light, low-glare background.</li>
+      <li><strong>Enough contrast:</strong> text, buttons, link-health dots and stars meet the WCAG contrast levels.</li>
+      <li><strong>Zoom and small screens:</strong> you can zoom to 400% or use a phone, and everything still fits without scrolling sideways.</li>
+      <li><strong>Keyboard:</strong> everything can be reached with the Tab key and used with Enter or Space, with a visible outline showing where you are. A “Skip to your Pagemarks” link jumps past the menus.</li>
+      <li><strong>Screen readers:</strong> buttons, form fields and icons have names; pages have headings and landmarks; messages such as “Saved” are announced.</li>
+      <li><strong>Not by color alone:</strong> each link-health dot also has a name (for example “Working” or “Couldn't check”), and broken or moved pages are labeled in words.</li>
+      <li><strong>Time to read:</strong> messages stay on screen until you click OK, and nothing disappears on a timer.</li>
+      <li><strong>Other ways to do things:</strong> moving folders and Pagemarks by dragging is optional; the <em>Move folder…</em> and <em>Move to folder…</em> buttons do the same without a mouse.</li>
+    </ul>
+
+    <h2>How it was checked</h2>
+    <p>In November 2026, every screen of Pagemarks (sign-in, the list, Organize, Settings, adding and editing, Tidy up, Review suggestions, the browser-button save window and this site's policy pages) was checked with an automated accessibility checker against WCAG 2.1 Level A and AA, and by hand with the keyboard. All issues found were fixed.</p>
+
+    <h2>Known limits</h2>
+    <ul>
+      <li>Pagemarks hasn't yet been tested by people who use screen readers every day. Automated checks can't catch everything.</li>
+      <li>Signing in uses Google's own sign-in window, and the pages you save belong to other websites. Their accessibility is up to them.</li>
+      <li>The optional browser button is a single click or the keyboard shortcut Alt+Shift+P; its small save window follows the same standards as Pagemarks.</li>
+    </ul>
+
+    <h2>Tell us about a problem</h2>
+    <p>If something in Pagemarks is hard to see, read or use, please tell the person who invited you. It will be looked at and, where possible, fixed.</p>
+
+    <footer><a href="/">← Back to Pagemarks</a> · <a href="/privacy/">Privacy policy</a></footer>
+  </main>
+</body>
+</html>

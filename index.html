@@ -9,14 +9,16 @@
   <meta name="description" content="Pagemarks is a private, invitation-only app for saving and organizing web pages.">
   <meta name="application-name" content="Pagemarks">
   <meta property="og:site_name" content="Pagemarks">
-  <link rel="icon" href="favicon.ico?v=79" sizes="any">
-  <link rel="icon" href="favicon.svg?v=79" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=79">
+  <link rel="icon" href="favicon.ico?v=82" sizes="any">
+  <link rel="icon" href="favicon.svg?v=82" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=82">
   <meta name="apple-mobile-web-app-title" content="Pagemarks">
+  <link rel="manifest" href="manifest.webmanifest?v=82">
+  <meta name="theme-color" content="#3f8069">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Gentium+Plus:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=79">
+  <link rel="stylesheet" href="styles.css?v=82">
   <script>
     // "Try Pagemarks" demo (www.pagemarks.com/?demo): the same app, but with a stand-in for the
     // database that keeps everything in this browser tab (demo-fb.js). Nothing is saved to Pagemarks.
@@ -24,7 +26,7 @@
       document.documentElement.classList.add("demo");
       var map = document.createElement("script");
       map.type = "importmap";
-      var fb = "./demo-fb.js?v=79", base = "https://www.gstatic.com/firebasejs/13.4.0/";
+      var fb = "./demo-fb.js?v=82", base = "https://www.gstatic.com/firebasejs/13.4.0/";
       var imports = {};
       imports[base + "firebase-app.js"] = fb;
       imports[base + "firebase-auth.js"] = fb;
@@ -44,12 +46,12 @@
   <!-- Sign in -->
   <section id="screen-signin" class="screen center" role="main" hidden>
     <div class="card welcome">
-      <img src="icon.svg?v=79" alt="" class="welcome-icon">
+      <img src="icon.svg?v=82" alt="" class="welcome-icon">
       <h1>Pagemarks</h1>
       <p class="muted">A private, invitation-only app for saving and organizing web pages.</p>
       <button id="btn-signin" class="btn primary large">Sign in with Google</button>
       <p id="signin-error" class="error" hidden></p>
-      <p class="signin-foot"><a href="privacy.html">Privacy policy</a></p>
+      <p class="signin-foot"><a href="/privacy/">Privacy policy</a></p>
     </div>
   </section>
 
@@ -77,7 +79,7 @@
     <div class="card welcome">
       <p id="saved-mark" class="saved-mark" aria-hidden="true">✓</p>
       <h1 id="saved-title">Saved to Pagemarks</h1>
-      <p class="muted">You can close this window.</p>
+      <p class="muted" id="saved-note">You can close this window.</p>
       <p><a class="btn" href="./">Open Pagemarks</a></p>
     </div>
   </section>
@@ -92,7 +94,7 @@
       <a class="skip-link" href="#view-title">Skip to your Pagemarks</a>
       <div class="topbar-inner">
         <a class="brand" href="#" id="brand-home">
-          <img src="icon.svg?v=79" alt="" width="28" height="28"><span>Pagemarks</span>
+          <img src="icon.svg?v=82" alt="" width="28" height="28"><span>Pagemarks</span>
         </a>
         <div class="topbar-main">
           <div class="search-wrap">
@@ -166,16 +168,16 @@
           </span>
         </div>
         <div id="guide-welcome" class="ext-card guide-welcome" hidden>
-          <img src="icon.svg?v=79" alt="" width="36" height="36">
+          <img src="icon.svg?v=82" alt="" width="36" height="36">
           <div class="ext-card-text">
             <strong>Welcome to Pagemarks</strong>
             <span class="muted">New here? A short guide shows how to save, find and organize your pages, and what the colored marks mean.</span>
           </div>
-          <a id="guide-welcome-read" class="btn primary" href="guide.html" target="_blank" rel="noopener">Read the guide</a>
+          <a id="guide-welcome-read" class="btn primary" href="/guide/" target="_blank" rel="noopener">Read the guide</a>
           <button type="button" id="guide-welcome-no" class="btn">No thanks</button>
         </div>
         <div id="lib-welcome" class="ext-card lib-welcome" hidden>
-          <img src="icon.svg?v=79" alt="" width="36" height="36">
+          <img src="icon.svg?v=82" alt="" width="36" height="36">
           <div class="ext-card-text">
             <strong>The Librarian can help</strong>
             <span class="muted" id="lib-welcome-text"></span>
@@ -184,7 +186,7 @@
           <button type="button" id="lib-welcome-later" class="btn">Not now</button>
         </div>
         <div id="ext-card" class="ext-card" hidden>
-          <img src="favicon.svg?v=79" alt="" width="36" height="36">
+          <img src="favicon.svg?v=82" alt="" width="36" height="36">
           <div class="ext-card-text">
             <strong>Save Pagemarks in one click</strong>
             <span class="muted">Add the Pagemarks button to your browser, then click it on any page you want to keep.</span>
@@ -218,7 +220,7 @@
   <!-- Add / edit dialog -->
   <dialog id="dlg-edit">
     <form id="form-edit" method="dialog">
-      <p class="quick-brand" aria-hidden="true"><img src="icon.svg?v=79" alt="" width="28" height="28"><span>Pagemarks</span></p>
+      <p class="quick-brand" aria-hidden="true"><img src="icon.svg?v=82" alt="" width="28" height="28"><span>Pagemarks</span></p>
       <h2 id="edit-heading">Add Pagemark</h2>
 
       <label>Web address
@@ -376,7 +378,7 @@
         <button type="button" class="btn small" id="btn-signout">Sign out</button>
       </div>
 
-      <p class="guide-link">New here? <a href="guide.html" target="_blank" rel="noopener">Getting started</a>, a 3-minute guide you can also print.</p>
+      <p class="guide-link">New here? <a href="/guide/" target="_blank" rel="noopener">Getting started</a>, a 3-minute guide you can also print.</p>
 
       <section>
         <h3>How Pagemarks works</h3>
@@ -488,6 +490,18 @@
           </div>
         </details>
         <details class="howto owner-only" hidden>
+          <summary>Homepage (not public yet)</summary>
+          <div class="owner-note">
+            <span class="owner-badge">Only you see this</span>
+            <p>A public homepage is ready but not linked anywhere: <em>www.pagemarks.com/welcome</em></p>
+            <ul>
+              <li>It explains Pagemarks to visitors, with a picture of the sample library, and links to the demo, Our promise and the privacy policy.</li>
+              <li>Search engines are told not to list it for now.</li>
+              <li>To launch it: ask Claude to make it the first page visitors see, and to let search engines list it.</li>
+            </ul>
+          </div>
+        </details>
+        <details class="howto owner-only" hidden>
           <summary>Demo (not public yet)</summary>
           <div class="owner-note">
             <span class="owner-badge">Only you see this</span>
@@ -517,12 +531,44 @@
         <p id="ext-get" class="row" hidden><a id="ext-settings-add" class="btn" target="_blank" rel="noopener">Add to browser</a></p>
         <p id="ext-soon" class="muted" hidden>Coming soon to the Chrome Web Store.</p>
         <p class="muted">After adding it, click the puzzle-piece icon next to the address bar and pin Pagemarks (in Edge, click the eye) so the button stays in view.</p>
-        <p class="muted">On an iPhone: in Safari, tap Share → <em>Add to Home Screen</em> to open Pagemarks like an app.</p>
+      </section>
+
+      <section id="phone-section">
+        <h3>Save from your phone</h3>
+        <p class="muted">Save a page from any app's <em>Share</em> menu, the same way you'd send it to someone.</p>
+        <details class="howto">
+          <summary>Android (Chrome)</summary>
+          <ol>
+            <li>Open www.pagemarks.com in Chrome and sign in.</li>
+            <li>Tap <strong>⋮</strong> (top right), then <em>Add to Home screen</em> (it may say <em>Install app</em>), then <em>Install</em>.</li>
+            <li>That's it. In any app, tap <em>Share</em> and choose <strong>Pagemarks</strong>. The <em>Save a Pagemark</em> window opens with the page filled in.</li>
+          </ol>
+        </details>
+        <details class="howto">
+          <summary>iPhone and iPad</summary>
+          <p class="muted">First, to open Pagemarks like an app: in Safari, tap <em>Share</em>, then <em>Add to Home Screen</em>.</p>
+          <p class="muted">To add Pagemarks to the Share menu, make a small Shortcut once (about 2 minutes):</p>
+          <ol>
+            <li>Open the <strong>Shortcuts</strong> app and tap <strong>+</strong>. Name it <em>Save to Pagemarks</em>.</li>
+            <li>Tap <strong>ⓘ</strong> (or the name at the top, then <em>Details</em>) and turn on <em>Show in Share Sheet</em>. Tap <em>Done</em>.</li>
+            <li>At the top, set it to receive <em>URLs</em> and <em>Safari web pages</em>.</li>
+            <li>Add these actions, in order:
+              <ul>
+                <li><em>Get URLs from Input</em> (it uses the Shortcut Input)</li>
+                <li><em>URL Encode</em> (it uses the URLs)</li>
+                <li><em>Text</em>, and type: <strong>https://www.pagemarks.com/share/?url=</strong> then tap <em>Variables</em> (or the ✨ button) and choose <em>URL Encoded Text</em> right after the = sign</li>
+                <li><em>Open URLs</em> (it uses the Text)</li>
+              </ul>
+            </li>
+            <li>Tap <em>Done</em>. Now in Safari or any app, tap <em>Share</em>, then <strong>Save to Pagemarks</strong>.</li>
+          </ol>
+          <p class="muted">Made it once? In the Shortcuts app, press and hold it, then <em>Share → Copy iCloud Link</em>, and send that link to family. They just tap <em>Add Shortcut</em>.</p>
+        </details>
       </section>
 
       <section>
         <h3>Import favorites</h3>
-        <p class="muted">In Chrome or Edge, export your favorites as an HTML file, then choose it here. Each one becomes a Pagemark. Duplicates are skipped.</p>
+        <p class="muted">In Chrome or Edge, export your favorites as an HTML file, then choose it here. Each one becomes a Pagemark. Duplicates are skipped. Each person can keep up to 10,000 Pagemarks.</p>
         <input type="file" id="file-import" accept=".html,.htm,text/html" aria-label="Choose a favorites file to import">
         <p id="import-status" class="status"></p>
       </section>
@@ -554,7 +600,7 @@
       </section>
 
       <section>
-        <p class="muted"><a href="privacy.html" target="_blank" rel="noopener">Privacy policy</a> · <a href="accessibility.html" target="_blank" rel="noopener">Accessibility</a></p>
+        <p class="muted"><a href="/promise/" target="_blank" rel="noopener">Our promise</a> · <a href="/privacy/" target="_blank" rel="noopener">Privacy policy</a> · <a href="/accessibility/" target="_blank" rel="noopener">Accessibility</a></p>
       </section>
     </div>
   </dialog>
@@ -568,6 +614,6 @@
   <div id="toast" class="toast" hidden><span id="toast-text" role="status" aria-live="polite"></span><button type="button" class="btn small primary" id="toast-ok">OK</button></div>
   </aside>
 
-  <script type="module" src="app.js?v=79"></script>
+  <script type="module" src="app.js?v=82"></script>
 </body>
 </html>

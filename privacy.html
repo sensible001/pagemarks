@@ -3,97 +3,11 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Privacy Policy · Pagemarks</title>
-  <link rel="icon" href="favicon.ico?v=79" sizes="any">
-  <link rel="icon" href="favicon.svg?v=79" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=79">
-  <meta name="apple-mobile-web-app-title" content="Pagemarks">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Gentium+Plus:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
-  <style>
-    :root { --paper: #faf8f3; --card: #fff; --ink: #2b2a27; --muted: #6f6a60; --line: #e4dfd4; --accent: #2f5d50; }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0; background: var(--paper); color: var(--ink);
-      font-family: "Gentium Plus", Cambria, Georgia, serif; font-size: 18px; line-height: 1.6;
-    }
-    .page { max-width: 720px; margin: 0 auto; padding: 3rem 1.5rem 4rem; }
-    .brand { display: inline-flex; align-items: center; gap: 0.35rem; color: var(--ink); text-decoration: none; font-weight: 700; font-size: 1.2rem; }
-    h1 { font-size: 2rem; line-height: 1.2; margin: 2rem 0 0.3rem; }
-    .updated { color: var(--muted); margin: 0 0 2rem; }
-    h2 { font-size: 1.2rem; margin: 2.2rem 0 0.5rem; padding-top: 1.2rem; border-top: 1px solid var(--line); }
-    p, li { margin: 0.5rem 0; }
-    ul { padding-left: 1.3rem; }
-    a { color: var(--accent); }
-    .summary { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 1.1rem 1.4rem; }
-    .summary p { margin: 0.3rem 0; }
-    footer { margin-top: 3rem; padding-top: 1.2rem; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.95rem; }
-  </style>
+  <meta name="robots" content="noindex">
+  <title>Pagemarks</title>
+  <link rel="canonical" href="https://www.pagemarks.com/privacy/">
+  <script>location.replace("/privacy/" + location.search + location.hash);</script>
+  <meta http-equiv="refresh" content="0; url=/privacy/">
 </head>
-<body>
-  <main class="page">
-    <a class="brand" href="./"><img src="icon.svg?v=79" alt="" width="28" height="28">Pagemarks</a>
-
-    <h1>Privacy Policy</h1>
-    <p class="updated">Last updated: November 24, 2026 (safety checks added)</p>
-
-    <div class="summary">
-      <p><strong>In short:</strong> Pagemarks is a small, private, invitation-only app for saving web pages. It keeps only what it needs to work, shows your Pagemarks only to you, and never sells, shares or advertises with your information.</p>
-    </div>
-
-    <h2>Who can use Pagemarks</h2>
-    <p>Pagemarks is a personal project for a small circle of family and friends. Only invited Google accounts can sign in. It is not a commercial service.</p>
-
-    <h2>What is stored</h2>
-    <ul>
-      <li><strong>Your Google sign-in:</strong> your email address, name and a Google account ID, used only to sign you in and to check that you were invited.</li>
-      <li><strong>Your Pagemarks:</strong> the web addresses you save and anything you add to them: titles, descriptions, notes, folders, tags and the “Read later” flag.</li>
-      <li><strong>Link checks:</strong> whether each saved page still opens, when it was last checked, and a link to an archived copy when a page is gone.</li>
-      <li><strong>Safety checks:</strong> whether a saved website may have become unsafe (a new owner, a listing on harmful-site lists, a parked page, or sending visitors elsewhere). To find out, the nightly checker looks up website names, never your other information, in public domain registration records and with Cloudflare, and once a week opens each saved address in a browser on GitHub's computers (like the nightly link check). When you open a Pagemark, your browser asks Cloudflare about the website's name first.</li>
-      <li><strong>Small settings on your device:</strong> things like which folders are open and whether Organize mode is on, kept in your browser's local storage.</li>
-    </ul>
-    <p>Pagemarks does not use advertising, analytics or tracking cookies.</p>
-
-    <h2>The browser button</h2>
-    <p>The optional Pagemarks browser button sees only the address and title of the page you're on, and only when you click it. It passes them to the Pagemarks save form so you can choose to save. It stores nothing, reads no other pages and sends nothing anywhere else. On pagemarks.com it also leaves a small marker so Pagemarks knows the button is installed.</p>
-
-    <h2>The Librarian</h2>
-    <p>If you ask the Librarian to suggest folders, the titles and web addresses of your Unfiled Pagemarks (those not in a folder) are sent to an AI service, which uses them only to make the suggestions. Under its terms, they aren't used to train its AI. The suggestions are saved with your Pagemarks until you accept or change them, and nothing is filed until you do. Pagemarks also keeps how many Librarian visits you have left, and a count of the suggestions made, never their content.</p>
-
-    <h2>Content rules</h2>
-    <p>Pagemarks doesn't allow adult, violent, hateful or harmful content. When you save or import a Pagemark, it is checked against a short list of blocked sites, a word filter, and Cloudflare's family-safe service (only the site name, such as example.com, is sent to Cloudflare). If something isn't allowed, it simply isn't saved.</p>
-    <p>When a save is refused under these rules, Pagemarks records only that a refusal happened, as a count on your account. It never records which site or what text was refused. No account is blocked or penalized automatically.</p>
-
-    <h2>Who can see it</h2>
-    <p>Your Pagemarks are visible only to you when you are signed in; database security rules enforce this. The site's owner manages the invite list, which holds the email addresses of invited people. As the owner of the underlying Google Firebase project, the owner could technically view stored data through Google's tools, but does not browse other people's Pagemarks.</p>
-
-    <h2>Services Pagemarks relies on</h2>
-    <ul>
-      <li><strong>Google Firebase:</strong> sign-in and the database that stores your Pagemarks.</li>
-      <li><strong>GitHub:</strong> hosts the website and runs the nightly link check, which visits each saved web address to see whether it still works.</li>
-      <li><strong>Internet Archive (Wayback Machine):</strong> asked for an archived copy of pages that no longer load.</li>
-      <li><strong>Cloudflare (1.1.1.1 for Families):</strong> checks the site name of each Pagemark you save against its list of adult and malware sites.</li>
-      <li><strong>Microlink:</strong> when you add a page, its address may be sent to microlink.io to look up the page title.</li>
-      <li><strong>Google site icons and Google Fonts:</strong> used to show each website's icon and the page lettering.</li>
-      <li><strong>An AI service:</strong> only when you ask the Librarian, it receives the titles and web addresses of your Unfiled Pagemarks, and suggests a folder for each.</li>
-    </ul>
-    <p>These services receive only what they need for that task, such as a web address, and each has its own privacy policy.</p>
-
-    <h2>Keeping and deleting your information</h2>
-    <p>Your Pagemarks stay until you delete them. You can delete any Pagemark at any time, and download all of yours under Settings → Export, as a file any web browser can import, so you can take your Pagemarks with you if you leave. To have your whole account and all of your Pagemarks removed, ask the person who invited you.</p>
-
-    <h2>Children</h2>
-    <p>Pagemarks is not intended for children under 13.</p>
-
-    <h2>Changes</h2>
-    <p>If this policy changes, the date at the top of this page will be updated.</p>
-
-    <h2>Questions</h2>
-    <p>Please contact the person who invited you to Pagemarks.</p>
-
-    <footer><a href="./">← Back to Pagemarks</a></footer>
-  </main>
-</body>
+<body><p>This page has moved to <a href="/privacy/">www.pagemarks.com/privacy/</a>.</p></body>
 </html>

@@ -11,7 +11,7 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, getDocFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=79";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=82";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -1748,6 +1748,8 @@ function quickFinish(saved) {
   setTimeout(() => {
     $("#saved-title").textContent = saved ? "Saved to Pagemarks" : "Nothing was saved";
     $("#saved-mark").hidden = !saved;
+    // Shared from a phone: there's no window to close, just go back to where you were
+    if (QUICK.src === "share") $("#saved-note").textContent = "You can go back to what you were reading.";
     document.body.classList.remove("quick");
     showScreen("saved");
   }, 350);
@@ -1795,8 +1797,18 @@ $("#f-url").addEventListener("change", () => { checkDuplicate(); doLookup(false)
 $("#f-url").addEventListener("paste", () => setTimeout(() => { checkDuplicate(); doLookup(false); }, 0));
 $("#btn-lookup").addEventListener("click", () => doLookup(true));
 
+// Fair use: each person can keep up to 10,000 Pagemarks (far more than everyday use). The nightly
+// checks look at every Pagemark, so this keeps them quick for everyone.
+const PAGEMARK_LIMIT = 10000;
+const limitMessage = () => ask({
+  title: "You've reached 10,000 Pagemarks",
+  text: "That's the most one person can keep, so the nightly checks stay quick for everyone. To add more, delete some you no longer need. Organize → Link health → Broken is a good place to start.",
+  ok: "OK", cancel: null
+});
+
 $("#form-edit").addEventListener("submit", async (e) => {
   e.preventDefault();
+  if (!editingId && pagemarks.length >= PAGEMARK_LIMIT) { await limitMessage(); return; }
   const u = parseUrl($("#f-url").value);
   if (!u) { toast("Please enter a valid web address."); $("#f-url").focus(); return; }
 
@@ -1944,6 +1956,10 @@ $("#file-import").addEventListener("change", async (e) => {
     refused += checked.length - passed.length;
     toAdd.length = 0; toAdd.push(...passed);
     if (refused) countRefusals(refused);
+    // Fair use: keep within 10,000 Pagemarks
+    const room = Math.max(0, PAGEMARK_LIMIT - pagemarks.length);
+    const overLimit = Math.max(0, toAdd.length - room);
+    if (overLimit) toAdd.length = room;
     const toStar = pagemarks.filter((b) => !b.starred && starUrls.has(b.normUrl || normalizeUrl(b.url)));
     if (!toAdd.length && !toStar.length) {
       status.textContent = `Nothing new to import (${skipped} duplicates or unsupported links skipped` + (refused ? `, ${refused} not allowed under the content rules).` : ").");
@@ -1960,7 +1976,8 @@ $("#file-import").addEventListener("change", async (e) => {
       for (const b of toStar.slice(i, i + 400)) batch.update(doc(pmCol(), b.id), { starred: true });
       await batch.commit();
     }
-    status.textContent = `Done: ${toAdd.length} imported, ${skipped} skipped` + (refused ? `, ${refused} not allowed under the content rules.` : ".");
+    status.textContent = `Done: ${toAdd.length} imported, ${skipped} skipped` + (refused ? `, ${refused} not allowed under the content rules.` : ".")
+      + (overLimit ? ` ${overLimit} more weren't added, because each person can keep up to 10,000 Pagemarks.` : "");
   } catch (err) {
     console.error(err);
     status.textContent = "Import failed: " + (err.message || err);
@@ -2117,7 +2134,7 @@ function renderSideLibrarian(st) {
 const libWelcomeKey = () => "pm-lib-welcome-" + (user?.uid || "");
 
 // "Welcome to Pagemarks": shown once on Home, the first time someone signs in on this browser.
-// It points to the Getting started guide (guide.html), which is also linked at the top of Settings.
+// It points to the Getting started guide (/guide/), which is also linked at the top of Settings.
 const guideKey = () => "pm-guide-welcome-" + (user?.uid || "");
 const guideDismissed = () => { try { return !!localStorage.getItem(guideKey()); } catch { return true; } };
 function renderGuideWelcome() {
@@ -2311,7 +2328,7 @@ closeOnOutsideClick($("#dlg-tidy"));
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "79";
+const APP_VERSION = "82";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {

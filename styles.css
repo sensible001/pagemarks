@@ -1011,3 +1011,8 @@ details.owner-only[hidden] { display: none; }
 .guide-link { margin: 0 0 1.1rem; padding: 0.6rem 0.9rem; background: #eef5f0; border: 1px solid #cfe0d6; border-radius: 10px; }
 /* One welcome card at a time: the guide comes first */
 #guide-welcome:not([hidden]) ~ #lib-welcome, #guide-welcome:not([hidden]) ~ #ext-card { display: none !important; }
+
+/* v80: numbered steps in help sections match the bulleted ones */
+.howto ol { margin: 0.45rem 0 0.3rem; padding-left: 1.3rem; font-size: 0.9rem; color: #4a463f; }
+.howto ol ul { font-size: 1em; margin: 0.2rem 0; }
+.howto p.muted { font-size: 0.9rem; }

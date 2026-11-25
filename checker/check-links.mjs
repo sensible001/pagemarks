@@ -316,7 +316,15 @@ async function waybackCopy(url) {
 }
 
 const snap = await db.collectionGroup("pagemarks").get();
-const docs = snap.docs;
+// Fair use: check up to 10,000 Pagemarks per person (the app doesn't let anyone save more)
+const LIMIT = 10000;
+const perUser = new Map();
+const docs = snap.docs.filter((d) => {
+  const owner = d.ref.parent.parent ? d.ref.parent.parent.id : "";
+  const n = (perUser.get(owner) || 0) + 1;
+  perUser.set(owner, n);
+  return n <= LIMIT;
+});
 console.log(`Checking ${docs.length} Pagemarks…`);
 
 const totals = { ok: 0, moved: 0, broken: 0, unknown: 0, skipped: 0 };

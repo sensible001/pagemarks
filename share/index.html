@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<!-- © 2026 The Sensible Studio. All rights reserved. Not licensed for copying, reuse or redistribution. -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Save to Pagemarks</title>
+  <style>
+    body { margin: 0; background: #faf8f3; color: #2b2a27; font: 18px/1.6 "Gentium Plus", Cambria, Georgia, serif; }
+    main { max-width: 32rem; margin: 18vh auto 0; padding: 0 1.5rem; text-align: center; }
+    a { color: #2f5d50; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1 id="msg" style="font-size:1.1rem;font-weight:400">Opening Pagemarks…</h1>
+  </main>
+  <script>
+    // Something was shared to Pagemarks from a phone's Share menu (Android), or from a Shortcut (iPhone).
+    // Apps put the web address in different places, so look for it in all of them, then open the
+    // usual "Save a Pagemark" window with the address and title filled in.
+    (function () {
+      var p = new URLSearchParams(location.search);
+      var url = (p.get("url") || "").trim();
+      var text = (p.get("text") || "").trim();
+      var title = (p.get("title") || "").trim();
+      var raw = url;
+      if (!/^https?:\/\//i.test(url)) {
+        var m = (text + " " + url).match(/https?:\/\/[^\s<>"]+/i);
+        raw = m ? m[0] : "";
+        url = raw.replace(/[).,;!?]+$/, "");
+      }
+      // If no title came with it, use the words around the address (the page title is looked up otherwise)
+      if (!title && text) title = text.replace(raw, " ").replace(/\s+/g, " ").replace(/^[\s\-–—:|.,;]+|[\s\-–—:|.,;]+$/g, "").trim();
+      if (!url) {
+        document.getElementById("msg").innerHTML = "There was no web address in what you shared, so there's nothing to save. <a href=\"/\">Open Pagemarks</a>";
+        return;
+      }
+      location.replace("/#save?" + new URLSearchParams({ u: url, t: title.slice(0, 300), src: "share" }).toString());
+    })();
+  </script>
+</body>
+</html>
