@@ -899,8 +899,9 @@ section.owner-only[hidden] { display: none; }
 /* v57: Ask the Librarian is its own Organize-mode button, under Tidy up */
 .lib-btn { margin-top: 0.5rem; background: var(--card); border-color: var(--line); }
 .lib-btn:disabled { color: var(--muted); font-weight: 400; font-style: italic; cursor: default; opacity: 1; }
-.lib-btn.working { color: var(--muted); font-weight: 400; font-style: italic; }
-.lib-btn.working:hover { color: var(--accent); }
+/* "The Librarian is working…": pastel blue for "in progress", so it isn't mistaken for the green "you are here" */
+.lib-btn.working { background: #eaf1fb; border-color: #c9d9ef; color: #3d5a80; font-weight: 400; font-style: italic; }
+.lib-btn.working:hover { background: #dde8f7; border-color: #b4cae8; }
 
 /* v58: Ask the Librarian sits above Tidy up; the welcome card */
 .lib-btn { margin-top: 1rem; }

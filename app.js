@@ -11,7 +11,7 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, getDocFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=108";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=109";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -2411,7 +2411,7 @@ function renderSideLibrarian(st) {
   const busy = librarian && (librarian.status === "waiting" || librarian.status === "working");
   // While busy the button stays clickable: it shows how the Librarian is getting on
   btn.classList.toggle("working", !!busy);
-  btn.title = busy ? "See how the Librarian is getting on" : "";
+  btn.title = busy ? "View progress" : "";
   if (busy) { btn.textContent = "The Librarian is working…"; btn.disabled = false; btn.hidden = false; return; }
   btn.disabled = false;
   if (st && st.canAsk) { btn.textContent = "Ask the Librarian"; btn.hidden = false; return; }
@@ -2692,7 +2692,7 @@ closeOnOutsideClick($("#dlg-tidy"));
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "108";
+const APP_VERSION = "109";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {
