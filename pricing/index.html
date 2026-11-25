@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<!-- © 2026 The Sensible Studio. All rights reserved. Not licensed for copying, reuse or redistribution. -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="robots" content="noindex">
+  <meta name="description" content="Simple yearly plans for one person or a whole family. No ads, and your Pagemarks are always yours.">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pricing · Pagemarks</title>
+  <link rel="icon" href="/favicon.ico?v=86" sizes="any">
+  <link rel="icon" href="/favicon.svg?v=86" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=86">
+  <meta name="apple-mobile-web-app-title" content="Pagemarks">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Gentium+Plus:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+  <style>
+    :root { --paper: #faf8f3; --card: #fff; --ink: #2b2a27; --muted: #6f6a60; --line: #e4dfd4; --accent: #2f5d50; --green: #3f8069; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--paper); color: var(--ink); font-family: "Gentium Plus", Cambria, Georgia, serif; font-size: 19px; line-height: 1.6; }
+    a { color: var(--accent); }
+    a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+    .wrap { max-width: 1040px; margin: 0 auto; padding: 0 1.5rem; }
+    header.top { display: flex; align-items: center; justify-content: space-between; padding: 1.4rem 0; }
+    .brand { display: inline-flex; align-items: center; gap: 0.45rem; color: var(--ink); text-decoration: none; font-weight: 700; font-size: 1.3rem; }
+    .btn { display: inline-block; text-decoration: none; border-radius: 10px; padding: 0.6rem 1.2rem; font-size: 1rem; border: 1px solid var(--line); background: var(--card); color: var(--ink); }
+    .btn.primary { background: var(--green); border-color: var(--green); color: #fff; }
+    .hero { text-align: center; padding: 3.5rem 0 2.5rem; }
+    .hero h1 { font-size: clamp(2rem, 4.5vw, 3rem); line-height: 1.15; margin: 0 auto 1rem; max-width: 16em; }
+    .hero p { font-size: 1.2rem; color: #4a463f; max-width: 34em; margin: 0 auto 1.8rem; }
+    .actions { display: flex; gap: 0.8rem; justify-content: center; flex-wrap: wrap; }
+    .note { color: var(--muted); font-size: 0.95rem; margin: 1.4rem auto 0 !important; }
+    .shot { margin: 1rem auto 0; max-width: 960px; }
+    .shot img { width: 100%; height: auto; display: block; border-radius: 14px; border: 1px solid var(--line); box-shadow: 0 18px 50px rgba(40, 30, 10, 0.12); }
+    section.points { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.2rem; padding: 4rem 0 1rem; }
+    @media (max-width: 720px) { section.points { grid-template-columns: 1fr; } }
+    .point { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 1.3rem 1.4rem; }
+    .point h2 { font-size: 1.15rem; margin: 0 0 0.4rem; }
+    .point p { margin: 0; color: #4a463f; font-size: 1rem; }
+    .marks { display: flex; gap: 0.45rem; margin-bottom: 0.6rem; }
+    .dot { display: inline-block; width: 11px; height: 11px; border-radius: 50%; }
+    .ok { background: #3c8d5a; } .broken { background: #c0392b; } .moved { background: #a87a12; }
+    .unsafe { background: #a33a2b; border-radius: 2px; transform: rotate(45deg) scale(0.85); }
+    .promise { text-align: center; padding: 3rem 0; max-width: 40em; margin: 0 auto; }
+    .promise h2 { font-size: 1.5rem; margin: 0 0 0.6rem; }
+    .promise p { color: #4a463f; margin: 0 0 0.8rem; }
+    footer { border-top: 1px solid var(--line); padding: 1.6rem 0 2.5rem; color: var(--muted); font-size: 0.92rem; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.6rem; }
+    footer nav a { margin-right: 1rem; }
+    .plans { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.2rem; max-width: 820px; margin: 0 auto; }
+    @media (max-width: 720px) { .plans { grid-template-columns: 1fr; } }
+    .plan { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 1.6rem 1.7rem; }
+    .plan.family { border-color: #9fc4b3; box-shadow: 0 10px 30px rgba(40, 30, 10, 0.08); }
+    .plan h2 { font-size: 1.3rem; margin: 0 0 0.2rem; }
+    .who { color: var(--muted); margin: 0 0 1rem; }
+    .price { font-size: 2.4rem; font-weight: 700; line-height: 1; margin: 0; }
+    .price span { font-size: 1rem; font-weight: 400; color: var(--muted); }
+    .per { color: var(--muted); font-size: 0.95rem; margin: 0.3rem 0 1.1rem; }
+    .plan ul { padding-left: 2.2em; margin: 0; }
+    .plan li { padding-left: 0.25em; margin: 0.4rem 0; font-size: 1rem; }
+    .everyone { max-width: 820px; margin: 2.5rem auto 0; background: #eef5f0; border: 1px solid #cfe0d6; border-radius: 14px; padding: 1.2rem 1.6rem; }
+    .everyone h2 { font-size: 1.15rem; margin: 0 0 0.4rem; }
+    .everyone ul { padding-left: 2.2em; margin: 0.4rem 0 0; }
+    .everyone li { padding-left: 0.25em; margin: 0.35rem 0; font-size: 1rem; }
+    .faq { max-width: 720px; margin: 3.5rem auto 3rem; }
+    .faq h2 { font-size: 1.5rem; text-align: center; margin: 0 0 1.4rem; }
+    .faq h3 { font-size: 1.08rem; margin: 1.5rem 0 0.3rem; }
+    .faq p { margin: 0; color: #4a463f; font-size: 1rem; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="top">
+      <a class="brand" href="/welcome/"><img src="/icon.svg?v=86" alt="" width="30" height="30">Pagemarks</a>
+      <a class="btn" href="/">Sign in</a>
+    </header>
+
+    <main>
+      <section class="hero">
+        <h1>Simple, yearly, no surprises</h1>
+        <p>One plan for one person, one for a whole family. Everything in Pagemarks is included in both.</p>
+      </section>
+
+      <section class="plans" aria-label="Plans">
+        <div class="plan">
+          <h2>Individual</h2>
+          <p class="who">For one person</p>
+          <p class="price">$30 <span>a year</span></p>
+          <p class="per">That's $2.50 a month, billed once a year.</p>
+          <ul>
+            <li>Everything in Pagemarks</li>
+            <li>Up to 10,000 Pagemarks</li>
+            <li>3 Librarian visits a year</li>
+          </ul>
+        </div>
+        <div class="plan family">
+          <h2>Family</h2>
+          <p class="who">For up to 5 people</p>
+          <p class="price">$60 <span>a year</span></p>
+          <p class="per">That's $1 a month per person, for a family of five.</p>
+          <ul>
+            <li>Everything in Pagemarks, for each person</li>
+            <li>Each person has their own private Pagemarks</li>
+            <li>Up to 10,000 Pagemarks each</li>
+            <li>6 Librarian visits a year, shared by the family</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="everyone">
+        <h2>Included in every plan</h2>
+        <ul>
+          <li>Nightly link checks, and safety checks that watch for websites that changed hands or turned harmful</li>
+          <li>Folders, Home, Tidy up, the browser button and saving from your phone</li>
+          <li>No ads, ever. Your information is never sold.</li>
+          <li>Export everything anytime, in a file any browser can open</li>
+        </ul>
+      </section>
+
+      <section class="faq">
+        <h2>Questions</h2>
+        <h3>Can I try it first?</h3>
+        <p>Yes. <a href="/?demo">Try Pagemarks with a sample library</a>. No account is needed, and nothing you do in it is saved.</p>
+        <h3>How does the Family plan work?</h3>
+        <p>The person who pays invites family members by email from Settings. Everyone signs in with their own Google account and has their own private Pagemarks; nobody can see anyone else's. You can add or remove people anytime, up to 5 at once.</p>
+        <h3>What are Librarian visits?</h3>
+        <p>The Librarian is Pagemarks' optional AI helper. Each visit, it looks through your Unfiled Pagemarks (up to 2,000) and suggests a folder for each. Nothing is filed until you accept it.</p>
+        <h3>Why is there a limit of 10,000 Pagemarks?</h3>
+        <p>Every Pagemark is checked every night, and the limit keeps those checks quick for everyone. It's far more than everyday use; most people have a few hundred to a couple of thousand.</p>
+        <h3>Can prices change?</h3>
+        <p>Only with at least 30 days' notice, and what you've already paid for stays as it is. See <a href="/promise/">our promise</a>.</p>
+        <h3>Can I leave anytime?</h3>
+        <p>Yes. Download everything from Settings → Export first; it works with any browser. Your plan stays active until the end of the year you paid for.</p>
+        <h3>Can I sign up now?</h3>
+        <p>Not quite yet. Pagemarks is invitation-only for now.</p>
+      </section>
+    </main>
+
+    <footer>
+      <nav aria-label="More about Pagemarks"><a href="/welcome/">Home</a><a href="/promise/">Our promise</a><a href="/privacy/">Privacy policy</a><a href="/accessibility/">Accessibility</a></nav>
+      <span>© 2026 The Sensible Studio</span>
+    </footer>
+  </div>
+</body>
+</html>
