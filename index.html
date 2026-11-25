@@ -9,16 +9,16 @@
   <meta name="description" content="Pagemarks is a private, invitation-only app for saving and organizing web pages.">
   <meta name="application-name" content="Pagemarks">
   <meta property="og:site_name" content="Pagemarks">
-  <link rel="icon" href="favicon.ico?v=91" sizes="any">
-  <link rel="icon" href="favicon.svg?v=91" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=91">
+  <link rel="icon" href="favicon.ico?v=93" sizes="any">
+  <link rel="icon" href="favicon.svg?v=93" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=93">
   <meta name="apple-mobile-web-app-title" content="Pagemarks">
-  <link rel="manifest" href="manifest.webmanifest?v=91">
+  <link rel="manifest" href="manifest.webmanifest?v=93">
   <meta name="theme-color" content="#3f8069">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Gentium+Plus:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=91">
+  <link rel="stylesheet" href="styles.css?v=93">
   <script>
     // "Try Pagemarks" demo (www.pagemarks.com/?demo): the same app, but with a stand-in for the
     // database that keeps everything in this browser tab (demo-fb.js). Nothing is saved to Pagemarks.
@@ -26,7 +26,7 @@
       document.documentElement.classList.add("demo");
       var map = document.createElement("script");
       map.type = "importmap";
-      var fb = "./demo-fb.js?v=91", base = "https://www.gstatic.com/firebasejs/13.4.0/";
+      var fb = "./demo-fb.js?v=93", base = "https://www.gstatic.com/firebasejs/13.4.0/";
       var imports = {};
       imports[base + "firebase-app.js"] = fb;
       imports[base + "firebase-auth.js"] = fb;
@@ -46,7 +46,7 @@
   <!-- Sign in -->
   <section id="screen-signin" class="screen center" role="main" hidden>
     <div class="card welcome">
-      <img src="icon.svg?v=91" alt="" class="welcome-icon">
+      <img src="icon.svg?v=93" alt="" class="welcome-icon">
       <h1>Pagemarks</h1>
       <p class="muted">A private, invitation-only app for saving and organizing web pages.</p>
       <button id="btn-signin" class="btn primary large">Sign in with Google</button>
@@ -94,7 +94,7 @@
       <a class="skip-link" href="#view-title">Skip to your Pagemarks</a>
       <div class="topbar-inner">
         <a class="brand" href="#" id="brand-home">
-          <img src="icon.svg?v=91" alt="" width="28" height="28"><span>Pagemarks</span>
+          <img src="icon.svg?v=93" alt="" width="28" height="28"><span>Pagemarks</span>
         </a>
         <div class="topbar-main">
           <div class="search-wrap">
@@ -168,7 +168,7 @@
           </span>
         </div>
         <div id="guide-welcome" class="ext-card guide-welcome" hidden>
-          <img src="icon.svg?v=91" alt="" width="36" height="36">
+          <img src="icon.svg?v=93" alt="" width="36" height="36">
           <div class="ext-card-text">
             <strong>Welcome to Pagemarks</strong>
             <span class="muted">New here? A short guide shows how to save, find and organize your pages, and what the colored marks mean.</span>
@@ -177,7 +177,7 @@
           <button type="button" id="guide-welcome-no" class="btn">No thanks</button>
         </div>
         <div id="lib-welcome" class="ext-card lib-welcome" hidden>
-          <img src="icon.svg?v=91" alt="" width="36" height="36">
+          <img src="icon.svg?v=93" alt="" width="36" height="36">
           <div class="ext-card-text">
             <strong>The Librarian can help</strong>
             <span class="muted" id="lib-welcome-text"></span>
@@ -186,7 +186,7 @@
           <button type="button" id="lib-welcome-later" class="btn">Not now</button>
         </div>
         <div id="ext-card" class="ext-card" hidden>
-          <img src="favicon.svg?v=91" alt="" width="36" height="36">
+          <img src="favicon.svg?v=93" alt="" width="36" height="36">
           <div class="ext-card-text">
             <strong>Save Pagemarks in one click</strong>
             <span class="muted">Add the Pagemarks button to your browser, then click it on any page you want to keep.</span>
@@ -220,7 +220,7 @@
   <!-- Add / edit dialog -->
   <dialog id="dlg-edit">
     <form id="form-edit" method="dialog">
-      <p class="quick-brand" aria-hidden="true"><img src="icon.svg?v=91" alt="" width="28" height="28"><span>Pagemarks</span></p>
+      <p class="quick-brand" aria-hidden="true"><img src="icon.svg?v=93" alt="" width="28" height="28"><span>Pagemarks</span></p>
       <h2 id="edit-heading">Add Pagemark</h2>
 
       <label>Web address
@@ -395,9 +395,9 @@
           </ul>
         </details>
         <details class="howto">
-          <summary>The nightly link check</summary>
+          <summary>The daily link check</summary>
           <ul>
-            <li>Runs every night, usually between 2:00 AM and 3:30 AM Eastern Time (ET). To run it now: GitHub → Actions → Check links → Run workflow.</li>
+            <li>Runs once every 24 hours, usually between 2:00 and 3:30 AM Eastern Time (ET). To run it now: GitHub → Actions → Check links → Run workflow.</li>
             <li>A page must fail two checks in a row before it turns red, so a short outage isn't flagged.</li>
             <li>A plain “403 Forbidden” counts as broken. Bot-protection screens stay gray.</li>
             <li>Why some pages show <em>Couldn't check</em>: the checker runs on GitHub's computers in a data center, and many sites turn away every visitor from data centers to keep out bots. The site refuses before saying whether the page exists. Your own browser isn't turned away, so you can tell.</li>
@@ -410,15 +410,15 @@
         <details class="howto">
           <summary>Safety checks</summary>
           <ul>
-            <li>Old websites sometimes expire and are bought by someone else, who uses the old address to send visitors to ads, scams or harmful sites. Each night the checker also looks for signs of that:</li>
+            <li>Old websites sometimes expire and are bought by someone else, who uses the old address to send visitors to ads, scams or harmful sites. Every day the checker also looks for signs of that:</li>
             <li><strong>A new owner:</strong> public registry records show when a website's address was last registered. If that's after you saved the Pagemark, the website has probably changed hands. Checked about once a week.</li>
-            <li><strong>Harmful-site lists:</strong> the website, and anywhere it now sends you, is checked every night against Cloudflare's lists of harmful and adult sites (the same check used when you save).</li>
+            <li><strong>Harmful-site lists:</strong> the website, and anywhere it now sends you, is checked every day against Cloudflare's lists of harmful and adult sites (the same check used when you save).</li>
             <li><strong>Parked or for sale:</strong> pages like “This domain is for sale”. Checked about once a week.</li>
             <li><strong>Sent somewhere unrelated:</strong> a page that now bounces visitors to a different website, especially throwaway-style ones (ending in .site, .top, .xyz and similar).</li>
             <li>A Pagemark that may be unsafe gets a red diamond and a <em>May be unsafe</em> label, even outside Organize. Clicking it asks before opening. You can <em>Look for an archived copy</em> of the original, <em>Mark as broken</em>, or choose <em>It's fine</em> if you're sure.</li>
             <li><strong>Looks different:</strong> once a week the checker compares each page's title now with the title you saved. If they have nothing in common (say, “Jes Liao — Paintings” has become “Best Casino Bonuses”), the Pagemark gets a <em>Looks different</em> note in Organize. Websites do get redesigned, so it's a gentle note rather than a warning, and <em>It's fine</em> clears it.</li>
-            <li><strong>A real browser, weekly:</strong> on Sunday nights every Pagemark is also opened in an invisible Chrome browser on GitHub's computers, which runs the page's scripts and notes where it really ends up and what it's titled. Some harmful sites only redirect real browsers, so this catches more of them. Those computers are wiped after each run.</li>
-            <li><strong>A live check when you open one:</strong> when you click a Pagemark, your browser first asks Cloudflare whether the website is on its harmful or adult list right now, since it may have been added since last night. It takes a moment; if it's listed, Pagemarks asks before opening.</li>
+            <li><strong>A real browser, weekly:</strong> once a week every Pagemark is also opened in an invisible Chrome browser on GitHub's computers, which runs the page's scripts and notes where it really ends up and what it's titled. Some harmful sites only redirect real browsers, so this catches more of them. Those computers are wiped after each run.</li>
+            <li><strong>A live check when you open one:</strong> when you click a Pagemark, your browser first asks Cloudflare whether the website is on its harmful or adult list right now, since it may have been added since the last daily check. It takes a moment; if it's listed, Pagemarks asks before opening.</li>
             <li>Only website names are looked up. Some harmful sites show the checker a harmless page, so no check is perfect: if a Pagemark ever takes you somewhere strange, close it and use <em>Mark as broken</em>.</li>
           </ul>
         </details>
@@ -616,6 +616,6 @@
   <div id="toast" class="toast" hidden><span id="toast-text" role="status" aria-live="polite"></span><button type="button" class="btn small primary" id="toast-ok">OK</button></div>
   </aside>
 
-  <script type="module" src="app.js?v=91"></script>
+  <script type="module" src="app.js?v=93"></script>
 </body>
 </html>

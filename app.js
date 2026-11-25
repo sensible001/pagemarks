@@ -11,7 +11,7 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, getDocFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=91";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=93";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -341,7 +341,7 @@ let expanded = new Set();
 try { expanded = new Set(JSON.parse(localStorage.getItem("pm-expanded") || "[]")); } catch { /* ignore */ }
 const saveExpanded = () => { try { localStorage.setItem("pm-expanded", JSON.stringify([...expanded])); } catch { /* ignore */ } };
 
-// Your own judgement beats the nightly checker. "Mark as broken" always wins.
+// Your own judgement beats the daily checker. "Mark as broken" always wins.
 // "It works" only answers what the checker couldn't: it counts while the checker says
 // "Couldn't check", and lasts 6 months before Pagemarks asks again.
 const CONFIRM_DAYS = 182;
@@ -351,7 +351,7 @@ const confirmedOk = (b) => {
   return !b.markedBroken && !!when && b.link && b.link.status === "unknown"
     && Date.now() - when.getTime() < CONFIRM_DAYS * 24 * 3600 * 1000;
 };
-// "May be unsafe": the nightly checker found signs this is no longer the place you saved
+// "May be unsafe": the daily checker found signs this is no longer the place you saved
 // (a new owner, a harmful-site list, a parked page, or sending visitors elsewhere).
 // It beats everything except your own "Mark as broken"; "It's fine" silences that one reason.
 const riskActive = (b) => !b.markedBroken && !!(b.link && b.link.risk && b.link.risk.kind) && b.riskOk !== b.link.risk.kind;
@@ -514,7 +514,7 @@ function render() {
   $("#count-changed").textContent = count(driftActive);
   $("#li-changed").hidden = $("#count-changed").textContent === "0" && view.type !== "changed";
   const checked = count((b) => linkStatus(b) !== "pending");
-  $("#health-note").textContent = checked ? "" : "Links are checked every night.";
+  $("#health-note").textContent = checked ? "" : "Links are checked every day.";
 
   // Sidebar nav state
   document.querySelectorAll(".nav-item[data-view]").forEach((btn) => {
@@ -1171,9 +1171,9 @@ function checkPreviewCard() {
 window.addEventListener("hashchange", checkPreviewCard);
 
 // Opening a Pagemark, wherever its link appears (list, Home, Tidy up, Review):
-// 1. If the nightly checker found it may be unsafe, ask first.
+// 1. If the daily checker found it may be unsafe, ask first.
 // 2. Otherwise a live check: ask Cloudflare's harmful-site list about the website right now
-//    (it may have been listed since last night). Takes a moment; if the check can't be done, it just opens.
+//    (it may have been listed since the last daily check). Takes a moment; if the check can't be done, it just opens.
 const openTab = (href) => {
   // Open a blank tab, cut its link back to Pagemarks, then go (same protection as rel="noopener")
   const w = window.open("about:blank", "_blank");
@@ -1798,12 +1798,12 @@ $("#f-url").addEventListener("change", () => { checkDuplicate(); doLookup(false)
 $("#f-url").addEventListener("paste", () => setTimeout(() => { checkDuplicate(); doLookup(false); }, 0));
 $("#btn-lookup").addEventListener("click", () => doLookup(true));
 
-// Fair use: each person can keep up to 10,000 Pagemarks (far more than everyday use). The nightly
+// Fair use: each person can keep up to 10,000 Pagemarks (far more than everyday use). The daily
 // checks look at every Pagemark, so this keeps them quick for everyone.
 const PAGEMARK_LIMIT = 10000;
 const limitMessage = () => ask({
   title: "You've reached 10,000 Pagemarks",
-  text: "That's the most one person can keep, so the nightly checks stay quick for everyone. To add more, delete some you no longer need. Organize → Link health → Broken is a good place to start.",
+  text: "That's the most one person can keep, so the daily checks stay quick for everyone. To add more, delete some you no longer need. Organize → Link health → Broken is a good place to start.",
   ok: "OK", cancel: null
 });
 
@@ -2329,7 +2329,7 @@ closeOnOutsideClick($("#dlg-tidy"));
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "91";
+const APP_VERSION = "93";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {

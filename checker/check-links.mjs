@@ -24,7 +24,9 @@ function sameishPlace(a, b) {
     const A = new URL(a), B = new URL(b);
     const host = (u) => u.hostname.replace(/^www\./, "").toLowerCase();
     const path = (u) => u.pathname.replace(/\/+$/, "") || "/";
-    return host(A) === host(B) && path(A) === path(B);
+    if (host(A) === host(B) && path(A) === path(B)) return true;
+    // A site's home page sending visitors to their country's edition (/ca/, /en-us/, /uk/)
+    return host(A) === host(B) && path(A) === "/" && /^\/(?:[a-z]{2}(?:[-_][a-z]{2})?|intl|international|global)$/i.test(path(B));
   } catch { return true; }
 }
 
@@ -194,6 +196,10 @@ async function samplePage(url) {
   finally { clearTimeout(t); }
 }
 const PARKED = /(this|the) domain (name )?(is|may be) for sale|buy this domain|domain is parked|parked (free|domain)|courtesy of godaddy|sedoparking|parkingcrew|bodis\.com|above\.com\/marketplace|afternic\.com|dan\.com\/buy-domain|hugedomains\.com|undeveloped\.com|domainmarket\.com|parklogic|skenzo|trafficz|this web page is parked/i;
+const SALE_HOSTS = /(?:^|\.)(?:forsale\.godaddy\.com|afternic\.com|sedo\.com|dan\.com|hugedomains\.com|undeveloped\.com|atom\.com|squadhelp\.com|brandbucket\.com|domainmarket\.com)$/i;
+function savedForSale(host, title) {
+  return SALE_HOSTS.test(host || "") || /\bfor sale\b|domain (?:is )?(?:available|for sale)/i.test(title || "");
+}
 function scanPage(page, savedHost) {
   if (!page) return null;
   const { html } = page;
@@ -229,7 +235,8 @@ function words(text, host) {
     .split(/[^\p{L}\p{N}]+/u).filter((w) => w.length >= 3 && !COMMON.has(w) && !hostBits.has(w)));
 }
 const NOT_FOUND = /\b404\b|not found|page (?:cannot|can't|could not) be found|doesn'?t exist|does not exist|no longer (?:available|exists)|page (?:is )?missing/i;
-const GATE = /just a moment|attention required|access denied|captcha|verify you are|security check|are you a robot|forbidden|unusual traffic|one more step|please wait/i;
+// Sign-in screens and bot checks: the page is hidden from the checker, not changed
+const GATE = /just a moment|attention required|access denied|captcha|verify you are|security check|are you a robot|forbidden|unusual traffic|one more step|please wait|checking (?:your|the) (?:connection|browser)|pardon our interruption|\bsign[- ]?in\b|\blog[- ]?in\b|\bsign[- ]?on\b|need access|access (?:required|restricted)|(?:members|subscribers) only|request (?:rejected|blocked)|human verification|bot (?:check|protection)|ddos/i;
 // Returns "notFound", "changed" or ""
 function titleDrift(savedTitle, nowTitle, host) {
   if (!nowTitle || GATE.test(nowTitle)) return "";
@@ -289,7 +296,8 @@ async function safetyCheck(data, url, result, prev) {
   if (!risk && finalHost && registered(finalHost) !== domain && riskyEnding(finalHost)) risk = { kind: "strangeRedirect", host: finalHost };
   if (!risk && scan?.kind === "strangeRedirect") risk = { kind: "strangeRedirect", host: scan.host };
   if (!risk && browserHost && registered(browserHost) !== domain && riskyEnding(browserHost)) risk = { kind: "strangeRedirect", host: browserHost };
-  if (!risk && scan?.kind === "parked") risk = { kind: "parked" };
+  // (Not when you saved a "for sale" page on purpose, e.g. a domain listing.)
+  if (!risk && scan?.kind === "parked" && !savedForSale(host, data.title)) risk = { kind: "parked" };
 
   if (risk) safetyTotals[risk.kind]++;
 
@@ -344,6 +352,13 @@ async function worker() {
     const fails = result.status === "broken" ? (prev.fails || 0) + 1 : 0;
     let shown = result.status;
     if (result.status === "broken" && fails < 2) shown = prev.status === "ok" || prev.status === "moved" ? prev.status : "unknown";
+    // Refused (403) or a server error, but a real browser opened it normally this week:
+    // the site only turns away automated checks, so don't call it broken.
+    const br = prev.browser;
+    if (shown === "broken" && (result.code === 403 || result.code >= 500) && br?.title
+        && Date.now() - millis(br.at) < 9 * 24 * 3600 * 1000 && !NOT_FOUND.test(br.title) && !GATE.test(br.title)) {
+      shown = "unknown"; result.reason = "site blocks automated checks";
+    }
 
     const safety = await safetyCheck(data, url, result, prev);
     // A page that answers "OK" but says "page not found" is broken too

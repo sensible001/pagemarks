@@ -46,7 +46,7 @@ function sample() {
   pm("d07", { url: "https://www.almanac.com/gardening/planting-calendar", title: "Planting Calendar | The Old Farmer's Almanac", folder: "Garden", link: ok(), tags: ["spring"] }, 90);
   pm("d08", { url: "https://www.audubon.org/native-plants", title: "Native Plants Database | Audubon", folder: "Garden", link: ok() }, 75);
   pm("d09", { url: "https://www.justinguitar.com/", title: "JustinGuitar: free guitar lessons", folder: "Music / Guitar", starred: true, link: ok() }, 500);
-  // Examples of what the nightly checks find (made-up websites, so no real site is called broken)
+  // Examples of what the daily checks find (made-up websites, so no real site is called broken)
   pm("d10", { url: "https://grandmas-kitchen.example/apple-pie", title: "Grandma's Apple Pie", folder: "Recipes",
     link: { status: "broken", code: 404, reason: "HTTP 404", fails: 2, checkedAt: daysAgo(0), archiveUrl: "https://web.archive.org/web/2019/https://www.allrecipes.com/recipe/12682/apple-pie-by-grandma-ople/" } }, 1400);
   pm("d11", { url: "https://old-chords.example/lesson-12", title: "Fingerpicking lesson 12", folder: "Music / Guitar",
