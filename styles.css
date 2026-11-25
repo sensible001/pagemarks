@@ -719,7 +719,8 @@ body:not(.editing) .bm { grid-template-columns: 36px 1fr auto; }
 .home-group.linked .home-group-title { cursor: pointer; }
 .home-group.linked .home-group-title:hover .hg-name { color: var(--accent); }
 .hg-name { min-width: 0; }
-.hg-pin { margin-left: auto; flex: none; padding: 0.15rem 0.6rem; font-size: 0.82rem; }
+/* Negative margins so showing the button in Organize doesn't push the card's rule down */
+.hg-pin { margin: -0.4rem 0 -0.4rem auto; flex: none; padding: 0.15rem 0.6rem; font-size: 0.82rem; line-height: 1.3; align-self: center; }
 #view-title .home-pin { margin-left: 0.15rem; vertical-align: 0.1em; }
 .hg-parent { color: var(--muted); font-weight: 700; font-size: inherit; }   /* v42: same size and weight; grey shows it's the parent */
 .home-group-title .sub-icon { width: 22px; height: 22px; background: transparent; flex: none; }
