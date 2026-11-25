@@ -11,7 +11,7 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, getDocFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=113";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=114";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -1214,8 +1214,7 @@ function homePinIcon() {
 // On Home, Pin / Unpin appears on each folder card only in Organize; the calm view stays clean
 function homePinButton(g) {
   const on = homePinned(g);
-  // Always in the heading (hidden in the calm view), so names wrap the same way in both views
-  const btn = el("button", { type: "button", class: "btn small hg-pin" + (on ? " on" : ""),
+  const btn = el("button", { type: "button", class: "btn small edit-only hg-pin" + (on ? " on" : ""),
     title: on ? "Unpin from the top of Home" : "Pin this folder to the top of Home",
     "aria-label": (on ? "Unpin " : "Pin ") + g + (on ? " from the top of Home" : " to the top of Home"),
     text: on ? "Unpin" : "Pin" });
@@ -1362,10 +1361,10 @@ function renderHome(items) {
   layoutHome(box, cards);
 }
 
-// Home's columns: each card is placed in the shortest column, in order. Card heights are the same
-// in the calm view and in Organize (the Pin button's space is always kept), so every card stays in the
-// same column when you switch. Pinned folders with nothing starred (Organize only) go at the end,
-// so they never push other cards around.
+// Home's columns: each card is placed in the shortest column, in order, using the card heights of the
+// calm view, even while in Organize. So every card stays in the same column when you switch; in
+// Organize a card may grow a little (Pin buttons, stars) but never jumps to another column.
+// Pinned folders with nothing starred (Organize only) go at the end, so they never push other cards around.
 let homeCols = 0;
 function homeColumnCount(box) {
   const w = box.clientWidth || box.parentElement.clientWidth || 800;
@@ -1378,9 +1377,13 @@ function layoutHome(box, cards) {
   box.replaceChildren(...cols);
   const normal = cards.filter((c) => !c._empty);
   const empties = cards.filter((c) => c._empty);
-  // Measure each card at column width, then deal them out
+  // Measure each card at column width, as it looks in the calm view, then deal them out.
+  // (Measured in one step, before the page is drawn, so nothing flickers.)
   cols[0].append(...normal);
+  const organizing = document.body.classList.contains("editing");
+  if (organizing) document.body.classList.remove("editing");
   const heights = normal.map((c) => c.offsetHeight);
+  if (organizing) document.body.classList.add("editing");
   const colH = new Array(n).fill(0);
   const shortest = () => colH.indexOf(Math.min(...colH));
   normal.forEach((c, i) => { const k = shortest(); cols[k].append(c); colH[k] += heights[i] + 16; });
@@ -2729,7 +2732,7 @@ closeOnOutsideClick($("#dlg-tidy"));
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "113";
+const APP_VERSION = "114";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {
