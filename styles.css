@@ -1064,3 +1064,15 @@ body.quick #dlg-edit form { padding: 1.5rem; }
   #libreview-bar, #libreview-done { flex-wrap: wrap; }
   #libreview-left, #libreview-done-text { flex-basis: 100%; }
 }
+
+/* ---------- v110: a quieter sidebar scrollbar ----------
+   Thin and pale while you're elsewhere; it darkens when the pointer is over the sidebar,
+   and darker still while you drag it, so it's easy to find and grab when you want it. */
+.sidebar { scrollbar-width: thin; scrollbar-color: #e2dccf transparent; scrollbar-gutter: stable; }
+.sidebar:hover { scrollbar-color: #bfb6a3 transparent; }
+.sidebar::-webkit-scrollbar { width: 8px; }
+.sidebar::-webkit-scrollbar-track { background: transparent; }
+.sidebar::-webkit-scrollbar-button { display: none; height: 0; }
+.sidebar::-webkit-scrollbar-thumb { background: #e2dccf; border-radius: 8px; }
+.sidebar:hover::-webkit-scrollbar-thumb { background: #bfb6a3; }
+.sidebar::-webkit-scrollbar-thumb:active { background: #9c937f; }
