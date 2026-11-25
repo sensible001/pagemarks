@@ -1108,11 +1108,14 @@ html:has(body.quick), body.quick { overflow: hidden; height: 100%; }
 body.quick #screen-app { display: none; }
 body.quick #dlg-edit form { scrollbar-width: thin; scrollbar-color: #cfc8b8 transparent; }
 
-/* v117: the logo sits beside "Save a Pagemark" instead of on a line of its own (the window's
-   title bar already says Pagemarks), so the form fits even when "Already saved" appears */
-body.quick .quick-brand { display: none; }
-body.quick #edit-heading { display: flex; align-items: center; gap: 0.55rem; margin: 0 0 0.7rem; }
-body.quick #edit-heading::before {
-  content: ""; flex: none; width: 26px; height: 26px;
-  background: url("icon.svg") center / contain no-repeat;
-}
+/* v118: the logo line on top, then "Save a Pagemark", as before. Spacing is a touch tighter
+   so the form still fits when "Already saved" appears. */
+body.quick #dlg-edit form { padding-top: 0.95rem; }
+body.quick .quick-brand { margin: 0 0 0.55rem; padding-bottom: 0.5rem; }
+body.quick #dlg-edit h2 { margin: 0 0 0.45rem; }
+body.quick #dlg-edit label { margin-bottom: 0.5rem; }
+body.quick #dlg-edit .suggest-line { margin: -0.15rem 0 0.5rem; }
+body.quick #dup-warning { margin: -0.1rem 0 0.5rem; padding: 0.35rem 0.7rem; }
+body.quick #dlg-edit .dlg-actions { padding-top: 0.7rem; }
+body.quick #dlg-edit input[type="text"], body.quick #f-folder-btn { padding-top: 6px; padding-bottom: 6px; }
+body.quick #dlg-edit .dlg-actions { padding-top: 0.55rem; }
