@@ -11,7 +11,7 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, getDocFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=112";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=113";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -1214,7 +1214,8 @@ function homePinIcon() {
 // On Home, Pin / Unpin appears on each folder card only in Organize; the calm view stays clean
 function homePinButton(g) {
   const on = homePinned(g);
-  const btn = el("button", { type: "button", class: "btn small edit-only hg-pin" + (on ? " on" : ""),
+  // Always in the heading (hidden in the calm view), so names wrap the same way in both views
+  const btn = el("button", { type: "button", class: "btn small hg-pin" + (on ? " on" : ""),
     title: on ? "Unpin from the top of Home" : "Pin this folder to the top of Home",
     "aria-label": (on ? "Unpin " : "Pin ") + g + (on ? " from the top of Home" : " to the top of Home"),
     text: on ? "Unpin" : "Pin" });
@@ -1342,7 +1343,7 @@ function renderHome(items) {
   const rank = (g) => { const i = homePins.indexOf(g); return i < 0 ? Infinity : i; };
   const names = [...groups.keys()].sort((a, b) => rank(a) - rank(b)
     || (a === "" ? 1 : b === "" ? -1 : a.localeCompare(b, undefined, { sensitivity: "base" })));
-  box.replaceChildren(...names.map((g) => {
+  const cards = names.map((g) => {
     const list = groups.get(g).sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || (a.title || a.url).localeCompare(b.title || b.url, undefined, { sensitivity: "base" }));
     const parts = g ? g.split(" / ") : ["Unfiled"];
     const heading = el("h3", { class: "home-group-title", "aria-level": "2", title: g || "Unfiled" }, folderIcon(),
@@ -1354,9 +1355,45 @@ function renderHome(items) {
     const body = list.length ? el("ul", { class: "home-list" }, ...list.map(homeTile))
       : el("p", { class: "home-hint", text: "Nothing starred here yet. Open this folder and click ☆ on the Pagemarks you want on Home." });
     // A pinned folder with nothing starred only shows in Organize; the calm view stays clean
-    return el("section", { class: "home-group" + (g ? " linked" : "") + (list.length ? "" : " edit-only") }, heading, body);
-  }));
+    const card = el("section", { class: "home-group" + (g ? " linked" : "") + (list.length ? "" : " edit-only") }, heading, body);
+    card._empty = !list.length;
+    return card;
+  });
+  layoutHome(box, cards);
 }
+
+// Home's columns: each card is placed in the shortest column, in order. Card heights are the same
+// in the calm view and in Organize (the Pin button's space is always kept), so every card stays in the
+// same column when you switch. Pinned folders with nothing starred (Organize only) go at the end,
+// so they never push other cards around.
+let homeCols = 0;
+function homeColumnCount(box) {
+  const w = box.clientWidth || box.parentElement.clientWidth || 800;
+  return Math.max(1, Math.min(3, Math.floor((w + 16) / (250 + 16))));
+}
+function layoutHome(box, cards) {
+  const n = homeColumnCount(box);
+  homeCols = n;
+  const cols = Array.from({ length: n }, () => el("div", { class: "home-col" }));
+  box.replaceChildren(...cols);
+  const normal = cards.filter((c) => !c._empty);
+  const empties = cards.filter((c) => c._empty);
+  // Measure each card at column width, then deal them out
+  cols[0].append(...normal);
+  const heights = normal.map((c) => c.offsetHeight);
+  const colH = new Array(n).fill(0);
+  const shortest = () => colH.indexOf(Math.min(...colH));
+  normal.forEach((c, i) => { const k = shortest(); cols[k].append(c); colH[k] += heights[i] + 16; });
+  for (const c of empties) cols[shortest()].append(c);
+}
+let homeResizeTimer = null;
+window.addEventListener("resize", () => {
+  clearTimeout(homeResizeTimer);
+  homeResizeTimer = setTimeout(() => {
+    const box = $("#home");
+    if (!box.hidden && homeColumnCount(box) !== homeCols) render();
+  }, 150);
+});
 
 function homeTile(b) {
   const host = hostOf(b.url);
@@ -2692,7 +2729,7 @@ closeOnOutsideClick($("#dlg-tidy"));
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "112";
+const APP_VERSION = "113";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {

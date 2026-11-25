@@ -704,10 +704,11 @@ body:not(.editing) .bm { grid-template-columns: 36px 1fr auto; }
 }
 
 /* ---------- v28: Home as masonry cards, one per folder ---------- */
-.home { display: block; columns: 3 250px; column-gap: 1rem; }
-.home > .empty { column-span: all; }
+.home { display: flex; align-items: flex-start; gap: 1rem; }
+.home > .empty { flex: 1 1 100%; }
+.home-col { flex: 1 1 0; min-width: 0; }
 .home-group {
-  break-inside: avoid; display: inline-block; width: 100%;
+  display: block; width: 100%;
   margin: 0 0 1rem; padding: 0.85rem 0.6rem 0.5rem;
   background: var(--card); border: 1px solid var(--line); border-radius: 12px;
 }
@@ -724,7 +725,8 @@ body:not(.editing) .bm { grid-template-columns: 36px 1fr auto; }
 /* "Unpin" (already pinned) gets a soft green fill so pinned folders stand out in Organize */
 .hg-pin.on, #folder-pin.on { background: #e6f0ea; border-color: #b9d3c3; color: var(--accent); }
 .hg-pin.on:hover, #folder-pin.on:hover { background: #dbe9e0; }
-.hg-pin { margin: -0.4rem 0 -0.4rem auto; flex: none; padding: 0.15rem 0.6rem; font-size: 0.82rem; line-height: 1.3; align-self: center; }
+.hg-pin { margin: -0.4rem 0 -0.4rem auto; flex: none; padding: 0.15rem 0.6rem; font-size: 0.82rem; line-height: 1.3; align-self: center; min-width: 4.1rem; }
+body:not(.editing) .hg-pin { visibility: hidden; }   /* space kept, so nothing reflows when Organize opens */
 #view-title .home-pin { margin-left: 0.15rem; vertical-align: 0.1em; }
 .hg-parent { color: var(--muted); font-weight: 700; font-size: inherit; }   /* v42: same size and weight; grey shows it's the parent */
 .home-group-title .sub-icon { width: 22px; height: 22px; background: transparent; flex: none; }
@@ -743,6 +745,8 @@ body:not(.editing) .bm { grid-template-columns: 36px 1fr auto; }
 .home-row:hover .star-btn, .home-row .star-btn:focus-visible { opacity: 1; }
 /* Stars appear only in Organize, on every device; the calm view stays clean */
 body:not(.editing) .star-btn { display: none; }
+/* On Home the star's space is kept (just hidden), so cards are the same height in both views */
+body:not(.editing) .home-row .star-btn { display: inline-flex; visibility: hidden; }
 @media (pointer: coarse) { body.editing .home-row .star-btn { opacity: 1; } }
 @media (max-width: 760px) { .home { columns: 1; } }
 
