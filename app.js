@@ -11,7 +11,7 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, getDocFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=86";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=87";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -1151,7 +1151,8 @@ function pinIcon() {
 // Home: starred Pagemarks as tiles, grouped by their folder
 // ---------- Browser button (extension) ----------
 // Fill in the Chrome Web Store address once the listing is published; until then the Home card stays hidden.
-const EXTENSION_URL = "";
+// The Pagemarks browser button in the Chrome Web Store (Unlisted: only people with this link can find it)
+const EXTENSION_URL = "https://chromewebstore.google.com/detail/pagemarks/nbkhamahlmmlpgddhcjmmmnjnmagkbof";
 const extInstalled = () => document.documentElement.hasAttribute("data-pagemarks-extension");
 // Desktop Chrome, Edge, Brave, Opera and Vivaldi can all install from the Chrome Web Store
 const extSupported = () => /Chrome\//.test(navigator.userAgent) && !/Mobile|Android|CriOS/.test(navigator.userAgent);
@@ -2328,7 +2329,7 @@ closeOnOutsideClick($("#dlg-tidy"));
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "86";
+const APP_VERSION = "87";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {
