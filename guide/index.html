@@ -6,9 +6,9 @@
   <meta name="robots" content="noindex">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Getting started · Pagemarks</title>
-  <link rel="icon" href="/favicon.ico?v=82" sizes="any">
-  <link rel="icon" href="/favicon.svg?v=82" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=82">
+  <link rel="icon" href="/favicon.ico?v=84" sizes="any">
+  <link rel="icon" href="/favicon.svg?v=84" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=84">
   <meta name="apple-mobile-web-app-title" content="Pagemarks">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -26,20 +26,22 @@
     .updated { color: var(--muted); margin: 0 0 2rem; }
     h2 { font-size: 1.2rem; margin: 2.2rem 0 0.5rem; padding-top: 1.2rem; border-top: 1px solid var(--line); }
     p, li { margin: 0.5rem 0; }
-    ul { padding-left: 1.3rem; }
+    /* Standard indentation for every list: markers sit in the margin, text lines up */
+    ul, ol { padding-left: 2.2em; margin: 0.6rem 0; }
+    li { padding-left: 0.25em; }
     a { color: var(--accent); }
     .summary { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 1.1rem 1.4rem; }
     .summary p { margin: 0.3rem 0; }
     footer { margin-top: 3rem; padding-top: 1.2rem; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.95rem; }
     .lead { font-size: 1.1rem; }
-    ol.steps { padding-left: 1.4rem; }
+    ol.steps { list-style-type: lower-alpha; }
     ol.steps li { margin: 0.45rem 0; }
     .key { display: inline-block; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 6px; padding: 0 0.4rem; font-size: 0.9em; background: var(--card); }
     .btnlike { display: inline-block; border: 1px solid var(--line); border-radius: 7px; padding: 0 0.45rem; background: var(--card); font-size: 0.92em; white-space: nowrap; }
     .btnlike.green { background: #2f6f57; border-color: #2f6f57; color: #fff; }
-    ul.marks { list-style: none; padding-left: 0; }
-    ul.marks li { display: flex; gap: 0.7rem; align-items: baseline; }
-    .dot { flex: none; display: inline-block; width: 11px; height: 11px; border-radius: 50%; position: relative; top: 1px; }
+    ul.marks { list-style: none; }
+    ul.marks li { position: relative; }
+    .dot { position: absolute; left: -1.45em; top: 0.62em; width: 11px; height: 11px; border-radius: 50%; }
     .ok { background: #3c8d5a; } .broken { background: #c0392b; } .moved { background: #a87a12; } .unknown { background: #8a8478; }
     .confirmed { background: transparent; border: 2px solid #3c8d5a; }
     .changed { background: transparent; border: 2px solid #a87a12; }
@@ -58,7 +60,7 @@
 </head>
 <body>
   <main class="page">
-    <a class="brand" href="/"><img src="/icon.svg?v=82" alt="" width="28" height="28">Pagemarks</a>
+    <a class="brand" href="/"><img src="/icon.svg?v=84" alt="" width="28" height="28">Pagemarks</a>
 
     <h1>Getting started</h1>
     <p class="updated">A 3-minute guide <button type="button" class="print" onclick="window.print()">Print this guide</button></p>
@@ -86,7 +88,7 @@
     <ul>
       <li><strong>Move</strong> a Pagemark by dragging it onto a folder, or tick it and use <em>Move to folder…</em></li>
       <li><strong>New folder</strong> and <strong>Rename</strong> are in Organize too. Folders can have folders inside them.</li>
-      <li><strong>Pin</strong> keeps a Pagemark at the top of its folder.</li>
+      <li><strong>Pin</strong> keeps a Pagemark at the top of its folder. If it's also starred, it goes to the top of that folder's group on Home too, so your most-used page is always first.</li>
       <li><strong>Tidy up</strong> goes through your <em>Unfiled</em> Pagemarks one at a time, so you can file each one.</li>
       <li>If you've been given visits from <strong>the Librarian</strong>, Pagemarks' AI helper, it can suggest a folder for each Unfiled Pagemark. Nothing is filed until you accept it.</li>
     </ul>
