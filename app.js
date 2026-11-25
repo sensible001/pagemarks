@@ -11,7 +11,7 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, getDocFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=78";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=79";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -489,6 +489,7 @@ function render() {
   for (const id of [...selected]) if (!ids.has(id)) selected.delete(id);
 
   renderLibrarian();
+  renderGuideWelcome();
 
   // Counts
   const count = (fn) => pagemarks.filter(fn).length;
@@ -2114,6 +2115,23 @@ function renderSideLibrarian(st) {
 
 // A one-time welcome on Home after the owner gives someone Librarian visits
 const libWelcomeKey = () => "pm-lib-welcome-" + (user?.uid || "");
+
+// "Welcome to Pagemarks": shown once on Home, the first time someone signs in on this browser.
+// It points to the Getting started guide (guide.html), which is also linked at the top of Settings.
+const guideKey = () => "pm-guide-welcome-" + (user?.uid || "");
+const guideDismissed = () => { try { return !!localStorage.getItem(guideKey()); } catch { return true; } };
+function renderGuideWelcome() {
+  $("#guide-welcome").hidden = !(view.type === "home" && user && !guideDismissed());
+}
+function dismissGuideWelcome() {
+  try { localStorage.setItem(guideKey(), "done"); } catch { /* ignore */ }
+  $("#guide-welcome").hidden = true;
+}
+$("#guide-welcome-read").addEventListener("click", dismissGuideWelcome);
+$("#guide-welcome-no").addEventListener("click", () => {
+  dismissGuideWelcome();
+  toast("You'll always find the guide at the top of Settings (⚙).");
+});
 function libWelcomeDismissed() { try { return localStorage.getItem(libWelcomeKey()) === "done"; } catch { return false; } }
 function renderLibWelcome(st) {
   const onHome = view.type === "home";
@@ -2293,7 +2311,7 @@ closeOnOutsideClick($("#dlg-tidy"));
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "78";
+const APP_VERSION = "79";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {

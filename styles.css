@@ -1006,3 +1006,8 @@ html.demo #account-row-signout-note { display: none !important; }
 
 /* v75: owner-only Settings sections */
 details.owner-only[hidden] { display: none; }
+
+/* ---------- v79: Getting started guide ---------- */
+.guide-link { margin: 0 0 1.1rem; padding: 0.6rem 0.9rem; background: #eef5f0; border: 1px solid #cfe0d6; border-radius: 10px; }
+/* One welcome card at a time: the guide comes first */
+#guide-welcome:not([hidden]) ~ #lib-welcome, #guide-welcome:not([hidden]) ~ #ext-card { display: none !important; }
