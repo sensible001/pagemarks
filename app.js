@@ -11,7 +11,7 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, getDocFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=104";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=108";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -2266,6 +2266,16 @@ function lrButtons(items, label, desc) {
     el("button", { type: "button", class: "btn small", text: "Skip", "aria-label": `Skip: ${desc}`, onclick: () => lrSkip(items) }));
 }
 const quoteName = (p) => `“${p}”`;
+// The review was made from a snapshot; point out anything you've changed yourself since then
+function lrMoveNote(m) {
+  const b = pagemarks.find((x) => x.id === m.id);
+  if (!b) return el("span", { class: "lr-stale", text: "You've deleted this Pagemark since the review started. Click Skip." });
+  const now = b.folder || "";
+  if (now === m.to) return el("span", { class: "lr-stale", text: `You've already put this in “${m.to}” yourself. Click Skip.` });
+  if (now !== m.from) return el("span", { class: "lr-stale", text: `You've moved this since the review started: it's now in “${now || "Unfiled"}”. Click Skip to keep it there, or Accept to move it.` });
+  return el("span", { class: "lr-from", text: "Now in " + m.from });
+}
+const lrFolderGone = (x) => !pagemarks.some((b) => b.folder && isInside(b.folder, x.from)) && !extraFolders.some((p) => isInside(p, x.from));
 const lrFolderText = (x) => x.type === "merge"
   ? `Merge ${quoteName(x.from)} into ${quoteName(x.to)}` + (x.n ? ` (${plural(x.n, "Pagemark")})` : "")
   : `Rename ${quoteName(x.from)} to ${quoteName(x.to)}`;
@@ -2297,6 +2307,7 @@ function renderLibReview() {
       el("ul", { class: "rv-list" }, ...fl.map((x) => el("li", { class: "lr-row" },
         el("div", { class: "lr-main" },
           el("span", { class: "lr-what", text: lrFolderText(x) }),
+          lrFolderGone(x) ? el("span", { class: "lr-stale", text: `You've changed or removed “${x.from}” since the review started, so this no longer applies. Click Skip.` }) : null,
           x.why ? el("span", { class: "lr-why", text: x.why }) : null),
         lrButtons([x], "Accept", lrFolderText(x)))))));
   }
@@ -2318,7 +2329,7 @@ function renderLibReview() {
       el("ul", { class: "rv-list" }, ...list.map((m) => el("li", { class: "lr-row" },
         el("div", { class: "lr-main" },
           el("span", { class: "lr-what", text: m.title }),
-          el("span", { class: "lr-from", text: "Now in " + m.from }),
+          lrMoveNote(m),
           m.why ? el("span", { class: "lr-why", text: m.why }) : null),
         lrButtons([m], "Accept", `move ${m.title} to ${m.to}`))))));
   }
@@ -2398,7 +2409,10 @@ const librarianReady = () => pagemarks.filter((b) => !b.folder && b.suggestedFol
 function renderSideLibrarian(st) {
   const btn = $("#btn-side-librarian");
   const busy = librarian && (librarian.status === "waiting" || librarian.status === "working");
-  if (busy) { btn.textContent = "The Librarian is working…"; btn.disabled = true; btn.hidden = false; return; }
+  // While busy the button stays clickable: it shows how the Librarian is getting on
+  btn.classList.toggle("working", !!busy);
+  btn.title = busy ? "See how the Librarian is getting on" : "";
+  if (busy) { btn.textContent = "The Librarian is working…"; btn.disabled = false; btn.hidden = false; return; }
   btn.disabled = false;
   if (st && st.canAsk) { btn.textContent = "Ask the Librarian"; btn.hidden = false; return; }
   btn.hidden = true;
@@ -2455,10 +2469,32 @@ function renderLibrarian() {
   $("#btn-open-libreview").hidden = !reviewOpen();
 }
 
+// While the Librarian works: when you asked, what stage it's at, and what to expect
+function showLibrarianProgress() {
+  const library = librarian.mode === "library";
+  const asked = librarian.requestedAt && librarian.requestedAt.toDate ? librarian.requestedAt.toDate() : null;
+  const at = asked ? asked.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }) : "";
+  const today = asked && asked.toDateString() === new Date().toDateString();
+  const when = asked ? (today ? `today at ${at}` : `${fmtDate(asked)} at ${at}`) : "";
+  const stage = librarian.status === "working"
+    ? "It has started and is working on it now."
+    : "It's in line and will start shortly. It checks for new requests every 15 minutes.";
+  ask({
+    title: "The Librarian is working",
+    text: `You asked the Librarian to ${library ? "review your whole library" : "file your Unfiled Pagemarks"}${when ? " " + when : ""}. ${stage}\n\n` +
+      `It's usually ready within an hour, often sooner. When it's done, you'll see a message, and ${library ? "the review" : "the suggestions"} will be waiting in Organize.\n\n` +
+      "You can keep using Pagemarks or close it in the meantime; nothing you do will interrupt it." +
+      (library ? " If you move a Pagemark yourself, the review will point that out." : ""),
+    ok: "OK",
+    cancel: null
+  });
+}
+
 // Asking: first choose the job, then confirm (each uses one visit)
 async function askLibrarian() {
-  if (!librarian || !(librarian.left > 0)) return;
-  if (librarian.status === "waiting" || librarian.status === "working") return;
+  if (!librarian) return;
+  if (librarian.status === "waiting" || librarian.status === "working") { showLibrarianProgress(); return; }
+  if (!(librarian.left > 0)) return;
   const n = unsuggestedCount();
   const dlg = $("#dlg-libchoice");
   $("#libc-unfiled").disabled = !n;
@@ -2496,7 +2532,10 @@ async function askLibraryReview() {
     await ask({
       title: "The Librarian is on it",
       text: "The Librarian is looking over your whole library. Usually within an hour, often sooner, the review will be waiting in Organize.\n\n" +
-        "You can keep using Pagemarks or close it while the Librarian works. Nothing changes until you accept it.",
+        "You can keep using Pagemarks or close it while the Librarian works; nothing you do will interrupt it.\n\n" +
+        "One thing to know: the Librarian looks at your library as it is right now, at the moment you asked. It won't see changes you make while it works. " +
+        "So if you move a Pagemark yourself in the meantime, the review might still suggest moving it somewhere else.\n\n" +
+        "Don't worry about keeping track: the review will point out anything you've changed since, with a note such as \u201cYou've moved this since the review started.\u201d Keep your own choice by clicking Skip.",
       ok: "OK",
       cancel: null
     });
@@ -2653,7 +2692,7 @@ closeOnOutsideClick($("#dlg-tidy"));
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "104";
+const APP_VERSION = "108";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {
