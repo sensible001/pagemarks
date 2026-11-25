@@ -11,7 +11,7 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, getDocFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=101";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=102";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -310,7 +310,7 @@ async function toggleHomePin(path) {
   const on = !homePinned(path);
   await saveHomePins(on ? [...homePins, path] : homePins.filter((p) => p !== path));
   if (on && !pagemarks.some((b) => b.starred && b.folder === path))
-    toast("Pinned. Star a Pagemark in this folder and its group will appear at the top of Home.");
+    toast("Pinned. Home shows starred Pagemarks, so click ☆ on the ones in this folder you want there.");
 }
 
 // Every folder stays until you delete it: any folder in use is also recorded in the folder list,
@@ -1302,13 +1302,17 @@ function renderExtSettings() {
 
 function renderHome(items) {
   const box = $("#home");
-  if (!items.length) {
+  // A pinned folder shows on Home even before anything in it is starred, with a hint
+  const folderExists = (p) => extraFolders.includes(p) || pagemarks.some((b) => b.folder === p);
+  const pinnedEmpty = homePins.filter((p) => folderExists(p) && !items.some((b) => b.folder === p));
+  if (!items.length && !pinnedEmpty.length) {
     box.replaceChildren(el("div", { class: "empty" },
       el("p", { text: "Your Home page is empty." }),
       el("p", { class: "muted", text: "Click the ☆ on any Pagemark you visit often, and it will appear here, grouped by folder." })));
     return;
   }
   const groups = new Map();
+  for (const p of pinnedEmpty) groups.set(p, []);
   for (const b of items) {
     const g = b.folder || "";
     if (!groups.has(g)) groups.set(g, []);
@@ -1327,8 +1331,9 @@ function renderHome(items) {
         parts[parts.length - 1]),
       g ? homePinButton(g) : null);
     if (g) heading.addEventListener("click", () => setView({ type: "folder", value: g }));
-    return el("section", { class: "home-group" + (g ? " linked" : "") }, heading,
-      el("ul", { class: "home-list" }, ...list.map(homeTile)));
+    const body = list.length ? el("ul", { class: "home-list" }, ...list.map(homeTile))
+      : el("p", { class: "home-hint", text: "Nothing starred here yet. Open this folder and click ☆ on the Pagemarks you want on Home." });
+    return el("section", { class: "home-group" + (g ? " linked" : "") }, heading, body);
   }));
 }
 
@@ -2390,7 +2395,7 @@ closeOnOutsideClick($("#dlg-tidy"));
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "101";
+const APP_VERSION = "102";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {
