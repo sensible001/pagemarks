@@ -11,7 +11,7 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, getDocFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=95";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=96";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -596,10 +596,12 @@ function subfolderRows(tree, path) {
   return [...node.children.values()]
     .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }))
     .map((k) => {
-      const row = el("li", { class: "sub-row", role: "button", tabindex: "0", title: "Open " + k.name },
+      // Just the number, like the sidebar; screen readers hear "18 Pagemarks"
+      const label = `${k.name}, ${k.count === 1 ? "1 Pagemark" : `${k.count} Pagemarks`}`;
+      const row = el("li", { class: "sub-row", role: "button", tabindex: "0", title: "Open " + label, "aria-label": "Open " + label },
         folderIcon(),
         el("span", { class: "sub-name", text: k.name }),
-        el("span", { class: "count", text: k.count === 1 ? "1 Pagemark" : `${k.count} Pagemarks` }),
+        el("span", { class: "count", "aria-hidden": "true", text: String(k.count) }),
         el("span", { class: "sub-arrow", "aria-hidden": "true", text: "›" })
       );
       const open = () => { expanded.add(path); saveExpanded(); setView({ type: "folder", value: k.path }); };
@@ -2335,7 +2337,7 @@ closeOnOutsideClick($("#dlg-tidy"));
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "95";
+const APP_VERSION = "96";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {
