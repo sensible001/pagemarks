@@ -1101,3 +1101,9 @@ body.quick #dlg-edit .dlg-actions {
   position: sticky; bottom: 0; margin-top: auto;
   padding: 0.9rem 0 1.5rem; background: var(--card);
 }
+
+/* v116: in the save window, the page behind the form never scrolls (its scroll bar did nothing useful).
+   Only the form scrolls, and only when it must, with a slim scroll bar of its own. */
+html:has(body.quick), body.quick { overflow: hidden; height: 100%; }
+body.quick #screen-app { display: none; }
+body.quick #dlg-edit form { scrollbar-width: thin; scrollbar-color: #cfc8b8 transparent; }
