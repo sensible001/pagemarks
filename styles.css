@@ -1080,3 +1080,24 @@ body.quick #dlg-edit form { padding: 1.5rem; }
 .sidebar::-webkit-scrollbar-thumb { background: #e2dccf; border-radius: 8px; }
 .sidebar:hover::-webkit-scrollbar-thumb { background: #bfb6a3; }
 .sidebar::-webkit-scrollbar-thumb:active { background: #9c937f; }
+
+/* ---------- v115: the browser button's save window ----------
+   Fits the window without scrolling. If something extra appears (such as "Already saved"),
+   only the fields scroll; Cancel and Save stay in view at the bottom, with even margins all round. */
+body.quick #dlg-edit { overflow: hidden; }
+body.quick #dlg-edit form {
+  height: 100%; max-width: none; margin: 0; box-sizing: border-box;
+  display: flex; flex-direction: column;
+  padding: 1.1rem 1.5rem 0; overflow-y: auto;
+}
+body.quick .quick-brand { margin: 0 0 0.7rem; padding-bottom: 0.6rem; }
+body.quick #dlg-edit h2 { margin: 0 0 0.6rem; }
+body.quick #dlg-edit label { margin-bottom: 0.6rem; }
+body.quick #dlg-edit .two-col { gap: 0 1rem; }
+body.quick #dlg-edit .suggest-line { margin: -0.2rem 0 0.6rem; }
+body.quick #dlg-edit label.check { margin-bottom: 0; }
+body.quick #dup-warning { margin: -0.2rem 0 0.6rem; padding: 0.45rem 0.7rem; font-size: 0.9rem; }
+body.quick #dlg-edit .dlg-actions {
+  position: sticky; bottom: 0; margin-top: auto;
+  padding: 0.9rem 0 1.5rem; background: var(--card);
+}

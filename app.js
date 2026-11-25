@@ -11,7 +11,7 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, getDocFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=114";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=115";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -1892,8 +1892,8 @@ function checkDuplicate() {
   const dup = n && pagemarks.find((b) => b.id !== editingId && (b.normUrl || normalizeUrl(b.url)) === n);
   if (!dup) { w.hidden = true; return null; }
   w.replaceChildren(
-    `You already saved this on ${fmtDate(dateOf(dup))}` + (dup.folder ? ` in “${dup.folder}”` : "") + ". ",
-    el("button", { type: "button", text: "Open the saved one", onclick: () => openEdit(dup) })
+    `Already saved on ${fmtDate(dateOf(dup))}` + (dup.folder ? ` in “${dup.folder}”` : "") + ". ",
+    el("button", { type: "button", text: "Open it", onclick: () => openEdit(dup) })
   );
   w.hidden = false;
   return dup;
@@ -2732,7 +2732,7 @@ closeOnOutsideClick($("#dlg-tidy"));
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "114";
+const APP_VERSION = "115";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {
