@@ -9,16 +9,16 @@
   <meta name="description" content="Pagemarks is a private, invitation-only app for saving and organizing web pages.">
   <meta name="application-name" content="Pagemarks">
   <meta property="og:site_name" content="Pagemarks">
-  <link rel="icon" href="favicon.ico?v=103" sizes="any">
-  <link rel="icon" href="favicon.svg?v=103" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=103">
+  <link rel="icon" href="favicon.ico?v=104" sizes="any">
+  <link rel="icon" href="favicon.svg?v=104" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=104">
   <meta name="apple-mobile-web-app-title" content="Pagemarks">
-  <link rel="manifest" href="manifest.webmanifest?v=103">
+  <link rel="manifest" href="manifest.webmanifest?v=104">
   <meta name="theme-color" content="#3f8069">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Gentium+Plus:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=103">
+  <link rel="stylesheet" href="styles.css?v=104">
   <script>
     // "Try Pagemarks" demo (www.pagemarks.com/?demo): the same app, but with a stand-in for the
     // database that keeps everything in this browser tab (demo-fb.js). Nothing is saved to Pagemarks.
@@ -26,7 +26,7 @@
       document.documentElement.classList.add("demo");
       var map = document.createElement("script");
       map.type = "importmap";
-      var fb = "./demo-fb.js?v=103", base = "https://www.gstatic.com/firebasejs/13.4.0/";
+      var fb = "./demo-fb.js?v=104", base = "https://www.gstatic.com/firebasejs/13.4.0/";
       var imports = {};
       imports[base + "firebase-app.js"] = fb;
       imports[base + "firebase-auth.js"] = fb;
@@ -46,7 +46,7 @@
   <!-- Sign in -->
   <section id="screen-signin" class="screen center" role="main" hidden>
     <div class="card welcome">
-      <img src="icon.svg?v=103" alt="" class="welcome-icon">
+      <img src="icon.svg?v=104" alt="" class="welcome-icon">
       <h1>Pagemarks</h1>
       <p class="muted">A private, invitation-only app for saving and organizing web pages.</p>
       <button id="btn-signin" class="btn primary large">Sign in with Google</button>
@@ -94,7 +94,7 @@
       <a class="skip-link" href="#view-title">Skip to your Pagemarks</a>
       <div class="topbar-inner">
         <a class="brand" href="#" id="brand-home">
-          <img src="icon.svg?v=103" alt="" width="28" height="28"><span>Pagemarks</span>
+          <img src="icon.svg?v=104" alt="" width="28" height="28"><span>Pagemarks</span>
         </a>
         <div class="topbar-main">
           <div class="search-wrap">
@@ -118,6 +118,7 @@
         </ul>
         <button id="btn-side-librarian" class="btn tidy-btn lib-btn edit-only" hidden>Ask the Librarian</button>
         <button id="btn-review" class="btn tidy-btn review-btn edit-only" hidden>Review suggestions</button>
+        <button id="btn-libreview" class="btn tidy-btn review-btn edit-only" hidden>The Librarian's review</button>
         <button id="btn-tidy" class="btn tidy-btn edit-only" hidden>Tidy up</button>
         <h3 class="edit-only">Link health</h3>
         <ul class="nav-list health-list edit-only">
@@ -169,7 +170,7 @@
           </span>
         </div>
         <div id="guide-welcome" class="ext-card guide-welcome" hidden>
-          <img src="icon.svg?v=103" alt="" width="36" height="36">
+          <img src="icon.svg?v=104" alt="" width="36" height="36">
           <div class="ext-card-text">
             <strong>Welcome to Pagemarks</strong>
             <span class="muted">New here? A short guide shows how to save, find and organize your pages, and what the colored marks mean.</span>
@@ -178,7 +179,7 @@
           <button type="button" id="guide-welcome-no" class="btn">No thanks</button>
         </div>
         <div id="lib-welcome" class="ext-card lib-welcome" hidden>
-          <img src="icon.svg?v=103" alt="" width="36" height="36">
+          <img src="icon.svg?v=104" alt="" width="36" height="36">
           <div class="ext-card-text">
             <strong>The Librarian can help</strong>
             <span class="muted" id="lib-welcome-text"></span>
@@ -187,7 +188,7 @@
           <button type="button" id="lib-welcome-later" class="btn">Not now</button>
         </div>
         <div id="ext-card" class="ext-card" hidden>
-          <img src="favicon.svg?v=103" alt="" width="36" height="36">
+          <img src="favicon.svg?v=104" alt="" width="36" height="36">
           <div class="ext-card-text">
             <strong>Save Pagemarks in one click</strong>
             <span class="muted">Add the Pagemarks button to your browser, then click it on any page you want to keep.</span>
@@ -208,6 +209,26 @@
             <button type="button" id="review-file" class="btn primary">File Pagemarks</button>
           </div>
         </div>
+        <div id="libreview" class="review" hidden>
+          <button type="button" id="libreview-back" class="link-btn review-back">← Back</button>
+          <p class="muted review-intro" id="libreview-intro"></p>
+          <p class="lr-undo" id="libreview-undo-row" hidden>
+            <span id="libreview-undo-text"></span>
+            <button type="button" id="libreview-undo" class="btn small">Undo this review</button>
+          </p>
+          <div id="libreview-groups"></div>
+          <div id="libreview-bar" class="review-bar">
+            <span class="muted" id="libreview-left"></span>
+            <span class="spacer"></span>
+            <button type="button" id="libreview-skip-rest" class="btn">Skip the rest</button>
+            <button type="button" id="libreview-accept-rest" class="btn primary">Accept the rest</button>
+          </div>
+          <div id="libreview-done" class="review-bar" hidden>
+            <span class="muted" id="libreview-done-text"></span>
+            <span class="spacer"></span>
+            <button type="button" id="libreview-finish" class="btn primary">Finish</button>
+          </div>
+        </div>
         <div id="home" class="home" hidden></div>
         <ul id="list" class="bm-list"></ul>
         <div id="empty" class="empty" hidden>
@@ -221,7 +242,7 @@
   <!-- Add / edit dialog -->
   <dialog id="dlg-edit">
     <form id="form-edit" method="dialog">
-      <p class="quick-brand" aria-hidden="true"><img src="icon.svg?v=103" alt="" width="28" height="28"><span>Pagemarks</span></p>
+      <p class="quick-brand" aria-hidden="true"><img src="icon.svg?v=104" alt="" width="28" height="28"><span>Pagemarks</span></p>
       <h2 id="edit-heading">Add Pagemark</h2>
 
       <label>Web address
@@ -269,6 +290,26 @@
   </dialog>
 
   <!-- Confirm dialog (replaces the browser's pop-up) -->
+  <dialog id="dlg-libchoice" class="dlg-confirm dlg-libchoice">
+    <form method="dialog">
+      <h2>What should the Librarian do?</h2>
+      <div class="lib-choices">
+        <button value="unfiled" id="libc-unfiled" class="lib-choice">
+          <strong>File my Unfiled Pagemarks</strong>
+          <span id="libc-unfiled-text">Suggests a folder for each Pagemark that has none. Your folders are left as they are.</span>
+        </button>
+        <button value="library" id="libc-library" class="lib-choice">
+          <strong>Review my whole library</strong>
+          <span>Looks over everything: folders to merge or rename, Pagemarks that seem misplaced, and your Unfiled ones too. Anything you've moved in the last 30 days is left alone.</span>
+        </button>
+      </div>
+      <div class="dlg-actions">
+        <span class="spacer"></span>
+        <button value="cancel" class="btn">Cancel</button>
+      </div>
+    </form>
+  </dialog>
+
   <dialog id="dlg-confirm" class="dlg-confirm">
     <form method="dialog">
       <h2 id="confirm-title">Are you sure?</h2>
@@ -447,8 +488,12 @@
         <details class="howto">
           <summary>The Librarian</summary>
           <ul>
-            <li>The Librarian is Pagemarks' AI helper. It suggests a folder for each <em>Unfiled</em> Pagemark. The suggestions wait in <em>Tidy up</em>, where you can accept them one by one or all at once, and change anything later.</li>
-            <li>Each time you ask, the Librarian looks at up to 2,000 Pagemarks. Suggestions are usually ready within an hour, often sooner, and you can keep using Pagemarks or close it while it works.</li>
+            <li>The Librarian is Pagemarks' AI helper. When you ask, you choose one of two jobs.</li>
+            <li><strong>File my Unfiled Pagemarks</strong> suggests a folder for each <em>Unfiled</em> Pagemark (up to 2,000). The suggestions wait in <em>Review suggestions</em> and <em>Tidy up</em>.</li>
+            <li><strong>Review my whole library</strong> looks over everything. It suggests folders to merge or rename, Pagemarks that seem to be in the wrong folder, and folders for your Unfiled ones. Each suggestion says why, the strongest come first, and there are never more than about 50.</li>
+            <li>The review leaves alone anything you've moved, and any folder you've created, renamed or moved, in the last 30 days.</li>
+            <li>Nothing changes until you accept it. In <em>The Librarian's review</em> (in Organize), accept or skip each suggestion. <em>Undo this review</em> puts everything back as it was, until you click <em>Finish</em>.</li>
+            <li>Suggestions are usually ready within an hour, often sooner, and you can keep using Pagemarks or close it while the Librarian works.</li>
             <li>Each time you ask is one Librarian visit. The owner decides how many visits each person has.</li>
             <li>Suggestions are made with the help of AI. Only the titles and web addresses of Unfiled Pagemarks are sent.</li>
           </ul>
@@ -522,9 +567,10 @@
 
       <section id="librarian-section" hidden>
         <h3>The Librarian</h3>
-        <p class="muted">The Librarian is Pagemarks' AI helper. It looks through your <em>Unfiled</em> Pagemarks and suggests a folder for each. You decide what to keep in <em>Tidy up</em>.</p>
+        <p class="muted">The Librarian is Pagemarks' AI helper. Each visit, it can do one of two jobs: <em>file your Unfiled Pagemarks</em>, suggesting a folder for each, or <em>review your whole library</em>, suggesting folders to merge or rename and Pagemarks that seem misplaced. Nothing changes until you accept it, and a whole-library review can be undone.</p>
         <p id="lib-status" class="lib-status"></p>
-        <p class="row"><button type="button" id="btn-ask-librarian" class="btn primary">Ask the Librarian</button></p>
+        <p class="row"><button type="button" id="btn-ask-librarian" class="btn primary">Ask the Librarian</button>
+          <button type="button" id="btn-open-libreview" class="btn" hidden>Open the review</button></p>
         <p class="muted small-note">Suggestions are made with the help of AI.</p>
       </section>
 
@@ -626,6 +672,6 @@
   </dialog>
   </aside>
 
-  <script type="module" src="app.js?v=103"></script>
+  <script type="module" src="app.js?v=104"></script>
 </body>
 </html>

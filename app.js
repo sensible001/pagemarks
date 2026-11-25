@@ -11,7 +11,7 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, getDocFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=103";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=104";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -233,6 +233,7 @@ onAuthStateChanged(auth, async (u) => {
   if (typeof unsubRefusals === "function") { unsubRefusals(); unsubRefusals = null; }
   if (typeof unsubLibrarian === "function") { unsubLibrarian(); unsubLibrarian = null; }
   if (typeof unsubLibraryAll === "function") { unsubLibraryAll(); unsubLibraryAll = null; }
+  if (typeof unsubReview === "function") { unsubReview(); unsubReview = null; libReview = null; }
   extraFolders = [];
   homePins = [];
   user = u;
@@ -289,15 +290,23 @@ onAuthStateChanged(auth, async (u) => {
   showScreen("app");
   startPagemarks();
   startLibrarian();
+  startReview();
   if (isAdmin) startInvites();
 });
 
 // ---------- Live data ----------
 const metaRef = () => doc(db, "users", user.uid, "meta", "folders");
 function saveExtraFolders(list) {
+  const before = new Set(extraFolders);
   extraFolders = [...new Set(list)].sort((a, b) => a.localeCompare(b));
   render();
-  return setDoc(metaRef(), { paths: extraFolders, updatedAt: serverTimestamp() }, { merge: true });
+  // Note when each folder appeared (created, renamed or moved), so the Librarian's whole-library
+  // review leaves folders you've just arranged alone for 30 days
+  const touched = {};
+  for (const p of extraFolders) if (!before.has(p)) touched[p] = serverTimestamp();
+  const data = { paths: extraFolders, updatedAt: serverTimestamp() };
+  if (Object.keys(touched).length) data.folderTouched = touched;
+  return setDoc(metaRef(), data, { merge: true });
 }
 // Pin a folder's group to the top of Home (newly pinned folders go after those already pinned)
 function saveHomePins(list) {
@@ -527,6 +536,10 @@ function render() {
   $("#btn-review").textContent = `Review suggestions (${suggested})`;
   $("#btn-review").hidden = suggested === 0;
   $("#btn-review").classList.toggle("active", view.type === "review");
+  const lrN = lrLeft().length;
+  $("#btn-libreview").hidden = !reviewOpen();
+  $("#btn-libreview").textContent = lrN ? `The Librarian's review (${lrN})` : "The Librarian's review";
+  $("#btn-libreview").classList.toggle("active", view.type === "libreview");
   $("#btn-tidy").hidden = unfiled === 0;
   for (const s of ["ok", "broken", "moved", "unknown", "unsafe"]) $(`#count-${s}`).textContent = count((b) => linkStatus(b) === s);
   $("#li-unsafe").hidden = $("#count-unsafe").textContent === "0" && view.type !== "unsafe";
@@ -573,6 +586,13 @@ function render() {
   $("#folder-delete").hidden = !(view.type === "folder" && !pagemarks.some((b) => b.folder && isInside(b.folder, view.value)));
   // The Librarian's suggestions, reviewed all at once
   $("#review").hidden = view.type !== "review";
+  $("#libreview").hidden = view.type !== "libreview";
+  $("#btn-filters").hidden = view.type === "libreview" || view.type === "review";   // not needed while reviewing
+  if (view.type === "libreview") {
+    for (const id of ["#home", "#list", "#sort-wrap", "#empty", "#bulk-bar", "#ext-card", "#lib-welcome"]) $(id).hidden = true;
+    renderLibReview();
+    return;
+  }
   if (view.type === "review") {
     for (const id of ["#home", "#list", "#sort-wrap", "#empty", "#bulk-bar", "#ext-card", "#lib-welcome"]) $(id).hidden = true;
     renderReview();
@@ -910,7 +930,7 @@ async function moveFolder(from, destParent) {
 async function movePagemarksTo(ids, folder) {
   for (let i = 0; i < ids.length; i += 400) {
     const batch = writeBatch(db);
-    for (const id of ids.slice(i, i + 400)) batch.update(doc(pmCol(), id), { folder, updatedAt: serverTimestamp() });
+    for (const id of ids.slice(i, i + 400)) batch.update(doc(pmCol(), id), { folder, folderMovedAt: serverTimestamp(), updatedAt: serverTimestamp() });
     await batch.commit();
   }
   for (const id of ids) selected.delete(id);
@@ -1441,7 +1461,7 @@ $("#bulk-move").addEventListener("click", async () => {
   const n = selected.size;
   const folder = await pickFolder({ title: `Move ${plural(n, "Pagemark")} to…`, ok: "Move here", here: view.type === "folder" ? view.value : null });
   if (folder === null) return;
-  await bulkWrite((batch, ref) => batch.update(ref, { folder, updatedAt: serverTimestamp() }),
+  await bulkWrite((batch, ref) => batch.update(ref, { folder, folderMovedAt: serverTimestamp(), updatedAt: serverTimestamp() }),
     (k) => `${plural(k, "Pagemark")} moved to “${folder ? nameOf(folder) : "Unfiled"}”`);
 });
 $("#bulk-tag").addEventListener("click", () => openBulk("tag"));
@@ -1452,7 +1472,7 @@ $("#form-bulk").addEventListener("submit", async (e) => {
   dlgBulk.close();
   if (bulkMode === "move") {
     const folder = cleanFolder(val);
-    await bulkWrite((batch, ref) => batch.update(ref, { folder, updatedAt: serverTimestamp() }),
+    await bulkWrite((batch, ref) => batch.update(ref, { folder, folderMovedAt: serverTimestamp(), updatedAt: serverTimestamp() }),
       (n) => `${n} moved to ${folder || "Unfiled"}`);
   } else {
     const newTags = parseTags(val);
@@ -1733,7 +1753,7 @@ $("#review-file").addEventListener("click", async () => {
   if (!items.length) return;
   for (let i = 0; i < items.length; i += 400) {
     const batch = writeBatch(db);
-    for (const b of items.slice(i, i + 400)) batch.update(doc(pmCol(), b.id), { folder: b.suggestedFolder, suggestedFolder: null, suggestedBy: null, updatedAt: serverTimestamp() });
+    for (const b of items.slice(i, i + 400)) batch.update(doc(pmCol(), b.id), { folder: b.suggestedFolder, suggestedFolder: null, suggestedBy: null, folderMovedAt: serverTimestamp(), updatedAt: serverTimestamp() });
     await batch.commit();
   }
   if (!reviewItems().some((b) => !items.includes(b))) setView(reviewReturn);
@@ -1746,7 +1766,7 @@ async function fileTidy(folderRaw) {
   tidyRecent = [folder, ...tidyRecent.filter((f) => f !== folder)].slice(0, 4);
   tidyDone++;
   nextTidy();
-  await updateDoc(doc(pmCol(), id), { folder, suggestedFolder: null, suggestedBy: null, updatedAt: serverTimestamp() });
+  await updateDoc(doc(pmCol(), id), { folder, suggestedFolder: null, suggestedBy: null, folderMovedAt: serverTimestamp(), updatedAt: serverTimestamp() });
 }
 
 $("#btn-tidy").addEventListener("click", () => {
@@ -1902,12 +1922,13 @@ $("#form-edit").addEventListener("submit", async (e) => {
   try {
     if (editingId) {
       const before = pagemarks.find((x) => x.id === editingId);
+      if (before && (before.folder || "") !== data.folder) data.folderMovedAt = serverTimestamp();
       if (before && normalizeUrl(before.url) !== data.normUrl) { data.link = { status: "pending" }; data.markedBroken = false; data.confirmedWorking = null; data.riskOk = null; data.changeOk = null; }
       await updateDoc(doc(pmCol(), editingId), data);
       
     } else {
       const ref = doc(pmCol());
-      await setDoc(ref, { ...data, createdAt: serverTimestamp() });
+      await setDoc(ref, { ...data, createdAt: serverTimestamp(), ...(data.folder ? { folderMovedAt: serverTimestamp() } : {}) });
       
     }
     quickSaved = true;
@@ -2131,6 +2152,185 @@ $("#btn-export-json").addEventListener("click", () => {
   download(`pagemarks-${stamp()}.json`, JSON.stringify(data, null, 2), "application/json");
 });
 
+// ---------- The Librarian's whole-library review ----------
+// The Librarian (librarian.mjs, "library" mode) writes users/{uid}/meta/review:
+//   folders: [{ k, type: "merge" | "rename", from, to, why, n }], moves: [{ k, id, title, from, to, why, isNew }],
+//   filed (how many Unfiled Pagemarks got a suggestion, shown in Review suggestions), decided: { k: "accepted" | "skipped" },
+//   undo: { pm: { id: folderBefore }, paths, pins } — everything needed to put the library back as it was.
+// Nothing changes until you accept a suggestion; "Undo this review" reverses everything accepted.
+var libReview = null;     // var: read by render(), which can run before this part of the file
+var unsubReview = null;
+let libReviewReturn = { type: "home", value: null };
+const reviewRef = () => doc(db, "users", user.uid, "meta", "review");
+
+function startReview() {
+  if (unsubReview) unsubReview();
+  unsubReview = onSnapshot(reviewRef(), (s) => { libReview = s.exists() ? s.data() : null; render(); renderLibrarian(); },
+    () => { libReview = null; });
+}
+function reviewOpen() { return !!libReview && libReview.status === "ready"; }
+function lrAll() { return libReview ? [...(libReview.folders || []), ...(libReview.moves || [])] : []; }
+function lrDecided(k) { return (libReview && libReview.decided && libReview.decided[k]) || ""; }
+function lrLeft() { return lrAll().filter((x) => !lrDecided(x.k)); }
+function lrAccepted() { return lrAll().filter((x) => lrDecided(x.k) === "accepted").length; }
+
+function openLibReview() {
+  if (view.type !== "libreview") libReviewReturn = view;
+  setView({ type: "libreview", value: null });
+}
+$("#btn-libreview").addEventListener("click", openLibReview);
+$("#btn-open-libreview").addEventListener("click", () => { $("#dlg-settings")?.close?.(); openLibReview(); });
+$("#libreview-back").addEventListener("click", () => setView(libReviewReturn));
+
+// Before changing anything, remember how it was (only the first time each Pagemark is touched)
+async function lrRemember(ids, k, verdict) {
+  const undo = (libReview && libReview.undo) || {};
+  const pm = {};
+  for (const id of ids) {
+    if (undo.pm && id in undo.pm) continue;
+    const b = pagemarks.find((x) => x.id === id);
+    if (b) pm[id] = b.folder || "";
+  }
+  const data = { decided: { [k]: verdict } };
+  const u = {};
+  if (Object.keys(pm).length) u.pm = pm;
+  if (!undo.paths) { u.paths = [...extraFolders]; u.pins = [...homePins]; }
+  if (Object.keys(u).length) data.undo = u;
+  await setDoc(reviewRef(), data, { merge: true });
+}
+
+async function lrAccept(item) {
+  if (item.type) {
+    const affected = pagemarks.filter((b) => b.folder && isInside(b.folder, item.from)).map((b) => b.id);
+    const exists = affected.length || extraFolders.some((p) => isInside(p, item.from));
+    if (!exists) { await setDoc(reviewRef(), { decided: { [item.k]: "skipped" } }, { merge: true }); return false; }
+    await lrRemember(affected, item.k, "accepted");
+    await relocateFolder(item.from, item.to);
+  } else {
+    const b = pagemarks.find((x) => x.id === item.id);
+    if (!b) { await setDoc(reviewRef(), { decided: { [item.k]: "skipped" } }, { merge: true }); return false; }
+    await lrRemember([b.id], item.k, "accepted");
+    await updateDoc(doc(pmCol(), b.id), { folder: item.to, folderMovedAt: serverTimestamp(), updatedAt: serverTimestamp() });
+  }
+  return true;
+}
+const lrSkip = (items) => setDoc(reviewRef(), { decided: Object.fromEntries(items.map((x) => [x.k, "skipped"])) }, { merge: true });
+
+async function lrAcceptMany(items) {
+  // Folder changes first, so moves land in the folders as they'll be
+  const sorted = [...items].sort((a, b) => (b.type ? 1 : 0) - (a.type ? 1 : 0));
+  try { for (const it of sorted) await lrAccept(it); }
+  catch (e) { console.error(e); toast("Couldn't finish that. Please try again."); }
+}
+
+async function lrUndo() {
+  const ok = await ask({
+    title: "Undo this review?",
+    text: `This puts back the ${plural(lrAccepted(), "change")} you accepted from the Librarian's review, so your folders are exactly as they were before. Changes you made yourself since then are kept.`,
+    ok: "Undo the review"
+  });
+  if (!ok) return;
+  const undo = libReview.undo || {};
+  relocating++;
+  try {
+    const entries = Object.entries(undo.pm || {}).filter(([id]) => pagemarks.some((b) => b.id === id));
+    for (let i = 0; i < entries.length; i += 400) {
+      const batch = writeBatch(db);
+      for (const [id, folder] of entries.slice(i, i + 400)) batch.update(doc(pmCol(), id), { folder, updatedAt: serverTimestamp() });
+      await batch.commit();
+    }
+    if (undo.paths) await saveExtraFolders(undo.paths);
+    if (undo.pins) await saveHomePins(undo.pins);
+    await setDoc(reviewRef(), { status: "undone", undoneAt: serverTimestamp() }, { merge: true });
+    setView(libReviewReturn.type === "libreview" ? { type: "home", value: null } : libReviewReturn);
+    toast("Done. Your library is back the way it was before the review.");
+  } catch (e) {
+    console.error(e); toast("Couldn't undo everything. Please try again.");
+  } finally { relocating--; syncFolders(); }
+}
+$("#libreview-undo").addEventListener("click", lrUndo);
+$("#libreview-skip-rest").addEventListener("click", () => lrSkip(lrLeft()));
+$("#libreview-accept-rest").addEventListener("click", async () => {
+  const left = lrLeft();
+  const ok = await ask({ title: `Accept all ${left.length}?`, text: "You can still undo the whole review afterwards.", ok: "Accept all" });
+  if (ok) lrAcceptMany(left);
+});
+$("#libreview-finish").addEventListener("click", async () => {
+  await setDoc(reviewRef(), { status: "closed" }, { merge: true });
+  setView(libReviewReturn.type === "libreview" ? { type: "home", value: null } : libReviewReturn);
+});
+
+function lrButtons(items, label, desc) {
+  return el("span", { class: "lr-actions" },
+    el("button", { type: "button", class: "btn small primary", text: label || "Accept", "aria-label": `${label || "Accept"}: ${desc}`, onclick: () => lrAcceptMany(items) }),
+    el("button", { type: "button", class: "btn small", text: "Skip", "aria-label": `Skip: ${desc}`, onclick: () => lrSkip(items) }));
+}
+const quoteName = (p) => `“${p}”`;
+const lrFolderText = (x) => x.type === "merge"
+  ? `Merge ${quoteName(x.from)} into ${quoteName(x.to)}` + (x.n ? ` (${plural(x.n, "Pagemark")})` : "")
+  : `Rename ${quoteName(x.from)} to ${quoteName(x.to)}`;
+
+function renderLibReview() {
+  $("#view-title").textContent = "The Librarian's review";
+  if (!reviewOpen()) {
+    $("#libreview-intro").textContent = "There's no review waiting.";
+    for (const id of ["#libreview-groups"]) $(id).replaceChildren();
+    $("#libreview-bar").hidden = true; $("#libreview-done").hidden = true; $("#libreview-undo-row").hidden = true;
+    return;
+  }
+  const left = lrLeft();
+  const accepted = lrAccepted();
+  const filed = libReview.filed || 0;
+  const unfiledNote = filed && pagemarks.some((b) => !b.folder && b.suggestedFolder)
+    ? ` It also suggested folders for ${plural(filed, "Unfiled Pagemark")}; you'll find those under Review suggestions.` : "";
+  $("#libreview-intro").textContent = lrAll().length
+    ? "The Librarian looked over your whole library. The strongest suggestions come first, each with its reason. Accept what helps and skip the rest. Nothing changes until you accept it." + unfiledNote
+    : "The Librarian looked over your whole library and found nothing that clearly needs changing." + unfiledNote;
+  $("#libreview-undo-row").hidden = !accepted;
+  $("#libreview-undo-text").textContent = `You've accepted ${plural(accepted, "change")}. Changed your mind?`;
+
+  const groups = [];
+  const fl = left.filter((x) => x.type);
+  if (fl.length) {
+    groups.push(el("section", { class: "rv-group" },
+      el("div", { class: "rv-head" }, folderIcon(), el("span", { class: "rv-name", text: "Folders" }), el("span", { class: "rv-count", text: String(fl.length) })),
+      el("ul", { class: "rv-list" }, ...fl.map((x) => el("li", { class: "lr-row" },
+        el("div", { class: "lr-main" },
+          el("span", { class: "lr-what", text: lrFolderText(x) }),
+          x.why ? el("span", { class: "lr-why", text: x.why }) : null),
+        lrButtons([x], "Accept", lrFolderText(x)))))));
+  }
+  const byDest = new Map();
+  for (const m of left.filter((x) => !x.type)) {
+    if (!byDest.has(m.to)) byDest.set(m.to, []);
+    byDest.get(m.to).push(m);
+  }
+  const known = new Set(allFolderPaths());
+  for (const [dest, list] of [...byDest.entries()].sort((a, b) => b[1].length - a[1].length)) {
+    const parts = dest.split(" / "); const name = parts.pop();
+    groups.push(el("section", { class: "rv-group" },
+      el("div", { class: "rv-head" }, folderIcon(),
+        el("span", { class: "rv-name" }, el("span", { class: "hg-parent", text: "Move to " }),
+          parts.length ? el("span", { class: "hg-parent", text: parts.join(" / ") + " / " }) : null, name),
+        el("span", { class: "rv-count", text: String(list.length) }),
+        known.has(dest) ? null : el("span", { class: "rv-new", text: "new folder" }),
+        list.length > 1 ? el("span", { class: "lr-group-actions" }, lrButtons(list, `Accept all ${list.length}`, "all moves to " + dest)) : null),
+      el("ul", { class: "rv-list" }, ...list.map((m) => el("li", { class: "lr-row" },
+        el("div", { class: "lr-main" },
+          el("span", { class: "lr-what", text: m.title }),
+          el("span", { class: "lr-from", text: "Now in " + m.from }),
+          m.why ? el("span", { class: "lr-why", text: m.why }) : null),
+        lrButtons([m], "Accept", `move ${m.title} to ${m.to}`))))));
+  }
+  $("#libreview-groups").replaceChildren(...groups);
+  $("#libreview-bar").hidden = !left.length;
+  $("#libreview-left").textContent = `${plural(left.length, "suggestion")} left`;
+  $("#libreview-done").hidden = !!left.length;
+  $("#libreview-done-text").textContent = lrAll().length
+    ? `You've been through every suggestion and accepted ${plural(accepted, "change")}.` + (accepted ? " You can still undo them until you click Finish." : "")
+    : "";
+}
+
 // ---------- The Librarian ----------
 // Suggests a folder for each Pagemark that has none. The work happens on GitHub (librarian.yml);
 // here a person asks, and sees how it's going. The owner gives each person a number of visits.
@@ -2148,7 +2348,10 @@ function startLibrarian() {
     (s) => {
       librarian = s.exists() ? s.data() : null;
       const now = librarian ? librarian.status : null;
-      if ((before === "waiting" || before === "working") && now === "done") toast("The Librarian's suggestions are ready. Open Organize, then Review suggestions.");
+      if ((before === "waiting" || before === "working") && now === "done")
+        toast(librarian.lastMode === "library"
+          ? "The Librarian's review is ready. Open Organize, then The Librarian's review."
+          : "The Librarian's suggestions are ready. Open Organize, then Review suggestions.");
       if (dlgTidy.open && before !== now) nextTidy();
       before = now;
       renderLibrarian();
@@ -2169,7 +2372,10 @@ function librarianState() {
     lines.push("The Librarian is looking through your Pagemarks. Suggestions are usually ready within an hour, often sooner. You can keep using Pagemarks or close it.");
   } else if (status === "done") {
     const made = librarian.made || 0;
-    lines.push(made
+    if (librarian.lastMode === "library") lines.push(made
+      ? `The Librarian reviewed your library and made ${plural(made, "suggestion")}.` + (reviewOpen() ? " They're waiting in The Librarian's review." : "")
+      : "The Librarian reviewed your library and found nothing that clearly needs changing.");
+    else lines.push(made
       ? `The Librarian made suggestions for ${plural(made, "Pagemark")}. They're waiting in Tidy up.`
       : "The Librarian didn't find any Pagemarks that needed a folder.");
     const more = unsuggestedCount();
@@ -2181,7 +2387,7 @@ function librarianState() {
     if (left > 0) lines.push(`You have ${plural(left, "Librarian visit")} left.`);
     else lines.push("You've used all your Librarian visits.");
   }
-  const canAsk = !busy && left > 0 && unsuggestedCount() > 0;
+  const canAsk = !busy && left > 0 && (unsuggestedCount() > 0 || pagemarks.some((b) => b.folder));
   const again = status === "done" && (librarian.made || 0) > 0;
   return { lines, canAsk, label: again ? "Ask the Librarian again" : "Ask the Librarian" };
 }
@@ -2226,7 +2432,7 @@ function renderLibWelcome(st) {
   if (!show) return;
   const left = librarian.left || 0;
   $("#lib-welcome-text").textContent =
-    `You've been given ${plural(left, "Librarian visit")}. The Librarian is Pagemarks' AI helper: it can suggest a folder for each Unfiled Pagemark, and you decide what to keep in Tidy up.`;
+    `You've been given ${plural(left, "Librarian visit")}. The Librarian is Pagemarks' AI helper: it can file your Unfiled Pagemarks or review your whole library, and you decide what to keep.`;
   $("#lib-welcome-ask").hidden = !(st && st.canAsk);
   $("#lib-welcome-later").textContent = st && st.canAsk ? "Not now" : "Got it";
 }
@@ -2246,11 +2452,62 @@ function renderLibrarian() {
   $("#lib-status").replaceChildren(...st.lines.map((t) => el("span", { class: "lib-line", text: t })));
   $("#btn-ask-librarian").hidden = !st.canAsk;
   $("#btn-ask-librarian").textContent = st.label;
+  $("#btn-open-libreview").hidden = !reviewOpen();
 }
 
+// Asking: first choose the job, then confirm (each uses one visit)
 async function askLibrarian() {
+  if (!librarian || !(librarian.left > 0)) return;
+  if (librarian.status === "waiting" || librarian.status === "working") return;
   const n = unsuggestedCount();
-  if (!librarian || !(librarian.left > 0) || !n) return;
+  const dlg = $("#dlg-libchoice");
+  $("#libc-unfiled").disabled = !n;
+  $("#libc-unfiled-text").textContent = n
+    ? (n === 1 ? "Suggests a folder for your Unfiled Pagemark." : `Suggests a folder for each of your ${n.toLocaleString()} Unfiled Pagemarks.`) + " Your folders are left as they are."
+    : "Nothing to do: every Unfiled Pagemark already has a suggestion, or there are none.";
+  $("#libc-library").disabled = !pagemarks.some((b) => b.folder);
+  const choice = await new Promise((resolve) => {
+    dlg.returnValue = "cancel";
+    dlg.addEventListener("close", () => resolve(dlg.returnValue), { once: true });
+    dlg.showModal();
+    (n ? $("#libc-unfiled") : $("#libc-library")).focus();
+  });
+  if (choice === "unfiled") return askUnfiled(n);
+  if (choice === "library") return askLibraryReview();
+}
+
+async function askLibraryReview() {
+  const total = pagemarks.length;
+  const folderCount = allFolderPaths().length;
+  const replacing = reviewOpen() && lrLeft().length;
+  const ok = await ask({
+    title: librarian.left === 1 ? "Use your last Librarian visit?" : "Use a Librarian visit?",
+    text: `The Librarian will look over your whole library (${plural(total, "Pagemark")} in ${plural(folderCount, "folder")}) and suggest folders to merge or rename, Pagemarks that seem misplaced, and folders for your Unfiled ones. Anything you've moved or arranged in the last 30 days is left alone. ` +
+      (librarian.left === 1 ? "This uses your last Librarian visit.\n\n" : `This uses 1 of your ${librarian.left} Librarian visits.\n\n`) +
+      "Titles, web addresses and folder names are sent to an AI service, which doesn't use them to train its AI. The review is usually ready within an hour, often sooner. Nothing changes until you accept it, and you can undo the whole review." +
+      (replacing ? "\n\nThis replaces the review you haven't finished." : ""),
+    ok: "Review my library"
+  });
+  if (!ok) return;
+  try {
+    await updateDoc(doc(db, "librarian", (user.email || "").toLowerCase()), {
+      left: librarian.left - 1, status: "waiting", uid: user.uid, requestedAt: serverTimestamp(), mode: "library"
+    });
+    await ask({
+      title: "The Librarian is on it",
+      text: "The Librarian is looking over your whole library. Usually within an hour, often sooner, the review will be waiting in Organize.\n\n" +
+        "You can keep using Pagemarks or close it while the Librarian works. Nothing changes until you accept it.",
+      ok: "OK",
+      cancel: null
+    });
+  } catch (err) {
+    console.error(err);
+    toast("Couldn't reach the Librarian. Please try again.");
+  }
+}
+
+async function askUnfiled(n) {
+  if (!n) return;
   const take = Math.min(n, LIBRARIAN_MAX);
   const ok = await ask({
     title: librarian.left === 1 ? "Use your last Librarian visit?" : "Use a Librarian visit?",
@@ -2396,7 +2653,7 @@ closeOnOutsideClick($("#dlg-tidy"));
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "103";
+const APP_VERSION = "104";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {

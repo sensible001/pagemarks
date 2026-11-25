@@ -1029,3 +1029,34 @@ details.owner-only[hidden] { display: none; }
 /* v89: the browser button's save window has the same margin on every side.
    The window is now tall enough that the form fits without a scroll bar. */
 body.quick #dlg-edit form { padding: 1.5rem; }
+
+/* ---------- v104: the Librarian's two jobs, and the whole-library review ---------- */
+.dlg-libchoice { width: min(500px, calc(100vw - 2rem)); }
+.lib-choices { display: grid; gap: 0.7rem; margin-top: 0.4rem; }
+.lib-choice {
+  display: grid; gap: 0.3rem; text-align: left; font: inherit; color: var(--ink); cursor: pointer;
+  background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 0.85rem 1rem;
+}
+.lib-choice strong { font-size: 1.02rem; }
+.lib-choice span { color: #4a463f; font-size: 0.93rem; line-height: 1.45; }
+.lib-choice:hover:not(:disabled) { border-color: #b9d3c3; background: #f4f8f5; }
+.lib-choice:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.lib-choice:disabled { cursor: default; opacity: 0.55; }
+
+.lr-undo { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; margin: 0 0 1rem;
+  padding: 0.6rem 0.9rem; background: #eef5f0; border: 1px solid #cfe0d6; border-radius: 10px; }
+.lr-row { display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.55rem 0.4rem; border-radius: 8px; }
+.lr-row + .lr-row { border-top: 1px solid var(--line); border-radius: 0; }
+.lr-main { display: grid; gap: 0.15rem; flex: 1; min-width: 0; }
+.lr-what { overflow-wrap: anywhere; }
+.lr-from { color: var(--muted); font-size: 0.86rem; }
+.lr-why { color: #4a463f; font-size: 0.9rem; font-style: italic; }
+.lr-actions { display: inline-flex; gap: 0.4rem; flex: none; }
+.lr-group-actions { margin-left: auto; font-weight: 400; }
+@media (max-width: 560px) {
+  .lr-row { flex-direction: column; }
+  .lr-group-actions { margin-left: 0; }
+  .rv-head { flex-wrap: wrap; }
+  #libreview-bar, #libreview-done { flex-wrap: wrap; }
+  #libreview-left, #libreview-done-text { flex-basis: 100%; }
+}
