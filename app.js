@@ -11,7 +11,7 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, getDocFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=96";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=97";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -34,6 +34,7 @@ let unsubInvites = null;
 let view = { type: "all", value: null };   // all | later | unfiled | folder | tag | broken | moved | unknown
 let editingId = null;
 let extraFolders = [];       // folders you created that may still be empty (synced in Firestore)
+let homePins = [];           // folders pinned to the top of Home, in the order you pinned them
 let unsubMeta = null;
 
 // ---------- Helpers ----------
@@ -233,6 +234,7 @@ onAuthStateChanged(auth, async (u) => {
   if (typeof unsubLibrarian === "function") { unsubLibrarian(); unsubLibrarian = null; }
   if (typeof unsubLibraryAll === "function") { unsubLibraryAll(); unsubLibraryAll = null; }
   extraFolders = [];
+  homePins = [];
   user = u;
   pagemarks = [];
   if (!u) { showScreen("signin"); return; }
@@ -295,7 +297,20 @@ const metaRef = () => doc(db, "users", user.uid, "meta", "folders");
 function saveExtraFolders(list) {
   extraFolders = [...new Set(list)].sort((a, b) => a.localeCompare(b));
   render();
-  return setDoc(metaRef(), { paths: extraFolders, updatedAt: serverTimestamp() });
+  return setDoc(metaRef(), { paths: extraFolders, updatedAt: serverTimestamp() }, { merge: true });
+}
+// Pin a folder's group to the top of Home (newly pinned folders go after those already pinned)
+function saveHomePins(list) {
+  homePins = [...new Set(list)];
+  render();
+  return setDoc(metaRef(), { homePins, updatedAt: serverTimestamp() }, { merge: true });
+}
+const homePinned = (path) => homePins.includes(path);
+async function toggleHomePin(path) {
+  const on = !homePinned(path);
+  await saveHomePins(on ? [...homePins, path] : homePins.filter((p) => p !== path));
+  if (on && !pagemarks.some((b) => b.starred && b.folder === path))
+    toast("Pinned. Star a Pagemark in this folder and its group will appear at the top of Home.");
 }
 
 // Every folder stays until you delete it: any folder in use is also recorded in the folder list,
@@ -316,6 +331,7 @@ function startPagemarks() {
   metaLoaded = false; pmLoaded = false;
   unsubMeta = onSnapshot(metaRef(), (s) => {
     extraFolders = s.exists() ? (s.data().paths || []) : [];
+    homePins = s.exists() ? (s.data().homePins || []) : [];
     metaLoaded = true;
     render();
     syncFolders();
@@ -547,7 +563,9 @@ function render() {
 
   // List
   $("#view-title").textContent = viewTitle();
+  if (view.type === "folder" && homePinned(view.value)) $("#view-title").append(" ", homePinIcon());
   $("#folder-tools").hidden = view.type !== "folder";
+  if (view.type === "folder") $("#folder-pin").textContent = homePinned(view.value) ? "Unpin from Home" : "Pin on Home";
   $("#folder-delete").hidden = !(view.type === "folder" && !pagemarks.some((b) => b.folder && isInside(b.folder, view.value)));
   // The Librarian's suggestions, reviewed all at once
   $("#review").hidden = view.type !== "review";
@@ -856,6 +874,7 @@ async function relocateFolderNow(from, to) {
   // Update the folder list first so the old folder doesn't linger as an empty copy
   if (extraFolders.some((p) => isInside(p, from))) {
     await saveExtraFolders(extraFolders.map((p) => (isInside(p, from) ? to + p.slice(from.length) : p)));
+    if (homePins.some((p) => isInside(p, from))) await saveHomePins(homePins.map((p) => (isInside(p, from) ? to + p.slice(from.length) : p)));
   }
   for (let i = 0; i < affected.length; i += 400) {
     const batch = writeBatch(db);
@@ -965,9 +984,11 @@ $("#folder-delete").addEventListener("click", async () => {
   const path = view.value;
   if (!(await ask({ title: `Delete the folder “${nameOf(path)}”?`, text: "It's empty, so nothing else is deleted.", ok: "Delete", danger: true }))) return;
   await saveExtraFolders(extraFolders.filter((p) => !isInside(p, path)));
+  if (homePins.some((p) => isInside(p, path))) await saveHomePins(homePins.filter((p) => !isInside(p, path)));
   setView(parentOf(path) ? { type: "folder", value: parentOf(path) } : { type: "all", value: null });
 });
 $("#folder-rename").addEventListener("click", () => openFolderDialog("rename"));
+$("#folder-pin").addEventListener("click", () => { if (view.type === "folder") toggleHomePin(view.value).catch((e) => { console.error(e); toast("Couldn't save that. Please try again."); }); });
 $("#folder-cancel").addEventListener("click", () => dlgFolder.close());
 
 $("#form-folder").addEventListener("submit", async (e) => {
@@ -1156,6 +1177,13 @@ function pinIcon() {
   return s;
 }
 
+function homePinIcon() {
+  const s = pinIcon();
+  s.title = "Pinned to the top of Home";
+  s.classList.add("home-pin");
+  return s;
+}
+
 // Home: starred Pagemarks as tiles, grouped by their folder
 // ---------- Browser button (extension) ----------
 // Fill in the Chrome Web Store address once the listing is published; until then the Home card stays hidden.
@@ -1265,14 +1293,18 @@ function renderHome(items) {
     if (!groups.has(g)) groups.set(g, []);
     groups.get(g).push(b);
   }
-  const names = [...groups.keys()].sort((a, b) => (a === "" ? 1 : b === "" ? -1 : a.localeCompare(b, undefined, { sensitivity: "base" })));
+  // Pinned folders first (in the order you pinned them), then A–Z, then Unfiled
+  const rank = (g) => { const i = homePins.indexOf(g); return i < 0 ? Infinity : i; };
+  const names = [...groups.keys()].sort((a, b) => rank(a) - rank(b)
+    || (a === "" ? 1 : b === "" ? -1 : a.localeCompare(b, undefined, { sensitivity: "base" })));
   box.replaceChildren(...names.map((g) => {
     const list = groups.get(g).sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || (a.title || a.url).localeCompare(b.title || b.url, undefined, { sensitivity: "base" }));
     const parts = g ? g.split(" / ") : ["Unfiled"];
     const heading = el("h3", { class: "home-group-title", "aria-level": "2", title: g || "Unfiled" }, folderIcon(),
       el("span", { class: "hg-name" },
         parts.length > 1 ? el("span", { class: "hg-parent", text: parts.slice(0, -1).join(" / ") + " / " }) : null,
-        parts[parts.length - 1]));
+        parts[parts.length - 1]),
+      homePinned(g) ? homePinIcon() : null);
     if (g) heading.addEventListener("click", () => setView({ type: "folder", value: g }));
     return el("section", { class: "home-group" + (g ? " linked" : "") }, heading,
       el("ul", { class: "home-list" }, ...list.map(homeTile)));
@@ -2337,7 +2369,7 @@ closeOnOutsideClick($("#dlg-tidy"));
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "96";
+const APP_VERSION = "97";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {
