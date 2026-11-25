@@ -11,7 +11,7 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, getDocFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=102";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=103";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -1305,7 +1305,7 @@ function renderHome(items) {
   // A pinned folder shows on Home even before anything in it is starred, with a hint
   const folderExists = (p) => extraFolders.includes(p) || pagemarks.some((b) => b.folder === p);
   const pinnedEmpty = homePins.filter((p) => folderExists(p) && !items.some((b) => b.folder === p));
-  if (!items.length && !pinnedEmpty.length) {
+  if (!items.length && (!pinnedEmpty.length || !editing)) {
     box.replaceChildren(el("div", { class: "empty" },
       el("p", { text: "Your Home page is empty." }),
       el("p", { class: "muted", text: "Click the ☆ on any Pagemark you visit often, and it will appear here, grouped by folder." })));
@@ -1333,7 +1333,8 @@ function renderHome(items) {
     if (g) heading.addEventListener("click", () => setView({ type: "folder", value: g }));
     const body = list.length ? el("ul", { class: "home-list" }, ...list.map(homeTile))
       : el("p", { class: "home-hint", text: "Nothing starred here yet. Open this folder and click ☆ on the Pagemarks you want on Home." });
-    return el("section", { class: "home-group" + (g ? " linked" : "") }, heading, body);
+    // A pinned folder with nothing starred only shows in Organize; the calm view stays clean
+    return el("section", { class: "home-group" + (g ? " linked" : "") + (list.length ? "" : " edit-only") }, heading, body);
   }));
 }
 
@@ -2395,7 +2396,7 @@ closeOnOutsideClick($("#dlg-tidy"));
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "102";
+const APP_VERSION = "103";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {
