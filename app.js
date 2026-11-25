@@ -11,7 +11,7 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, getDocFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=118";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=119";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -1854,6 +1854,9 @@ $("#btn-add").addEventListener("click", () => openEdit());
 
 function openQuick() {
   // The save address stays in the window's address, so reloading (Ctrl+R) brings back this form
+  // In the small window, "Already saved" takes the place of the Suggested line, so the form
+  // is the same height either way
+  $("#f-suggest").before($("#dup-warning"));
   openEdit();
   $("#edit-heading").textContent = "Save a Pagemark";
   $("#f-url").value = QUICK.url;
@@ -1896,6 +1899,7 @@ function checkDuplicate() {
     el("button", { type: "button", text: "Open it", onclick: () => openEdit(dup) })
   );
   w.hidden = false;
+  if (QUICK) $("#f-suggest").hidden = true;
   return dup;
 }
 
@@ -2732,7 +2736,7 @@ closeOnOutsideClick($("#dlg-tidy"));
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "118";
+const APP_VERSION = "119";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {

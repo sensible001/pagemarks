@@ -1108,14 +1108,21 @@ html:has(body.quick), body.quick { overflow: hidden; height: 100%; }
 body.quick #screen-app { display: none; }
 body.quick #dlg-edit form { scrollbar-width: thin; scrollbar-color: #cfc8b8 transparent; }
 
-/* v118: the logo line on top, then "Save a Pagemark", as before. Spacing is a touch tighter
-   so the form still fits when "Already saved" appears. */
-body.quick #dlg-edit form { padding-top: 0.95rem; }
-body.quick .quick-brand { margin: 0 0 0.55rem; padding-bottom: 0.5rem; }
-body.quick #dlg-edit h2 { margin: 0 0 0.45rem; }
-body.quick #dlg-edit label { margin-bottom: 0.5rem; }
-body.quick #dlg-edit .suggest-line { margin: -0.15rem 0 0.5rem; }
-body.quick #dup-warning { margin: -0.1rem 0 0.5rem; padding: 0.35rem 0.7rem; }
-body.quick #dlg-edit .dlg-actions { padding-top: 0.7rem; }
-body.quick #dlg-edit input[type="text"], body.quick #f-folder-btn { padding-top: 6px; padding-bottom: 6px; }
-body.quick #dlg-edit .dlg-actions { padding-top: 0.55rem; }
+/* v119: the save window, spaced evenly and calmly.
+   One fixed layout: "Already saved" sits where the Suggested line would be, so nothing grows,
+   and Cancel and Save follow the form instead of being pushed to the bottom. */
+body.quick #dlg-edit form { padding: 0.9rem 1.5rem 0; }
+body.quick .quick-brand { margin: 0 0 0.75rem; padding-bottom: 0.6rem; }
+body.quick #dlg-edit h2 { margin: 0 0 0.8rem; }
+body.quick #dlg-edit label { margin-bottom: 0.7rem; }
+body.quick #dlg-edit .suggest-line, body.quick #dup-warning { margin: -0.2rem 0 0.7rem; min-height: 2rem; }
+body.quick #dup-warning { display: flex; align-items: center; flex-wrap: wrap; gap: 0 0.3rem; padding: 0.3rem 0.7rem; font-size: 0.9rem; }
+body.quick #dup-warning[hidden] { display: none; }
+body.quick #dlg-edit .dlg-actions { margin-top: 0.3rem; padding: 0.5rem 0 1.5rem; }
+body.quick #dup-warning:not([hidden]) + #f-suggest { display: none !important; }
+
+/* v119: a field inside a row (Title + Look up) sits the same distance below its label as the others,
+   and Look up is exactly as tall as the Title field */
+dialog label .row { align-items: stretch; }
+dialog label .row input { margin-top: 0; }
+dialog label .row .btn { display: flex; align-items: center; }
