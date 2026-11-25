@@ -11,7 +11,7 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, getDocFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=97";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=99";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -563,7 +563,6 @@ function render() {
 
   // List
   $("#view-title").textContent = viewTitle();
-  if (view.type === "folder" && homePinned(view.value)) $("#view-title").append(" ", homePinIcon());
   $("#folder-tools").hidden = view.type !== "folder";
   if (view.type === "folder") $("#folder-pin").textContent = homePinned(view.value) ? "Unpin from Home" : "Pin on Home";
   $("#folder-delete").hidden = !(view.type === "folder" && !pagemarks.some((b) => b.folder && isInside(b.folder, view.value)));
@@ -1184,6 +1183,20 @@ function homePinIcon() {
   return s;
 }
 
+// On Home, Pin / Unpin appears on each folder card only in Organize; the calm view stays clean
+function homePinButton(g) {
+  const on = homePinned(g);
+  const btn = el("button", { type: "button", class: "btn small edit-only hg-pin" + (on ? " on" : ""),
+    title: on ? "Unpin from the top of Home" : "Pin this folder to the top of Home",
+    "aria-label": (on ? "Unpin " : "Pin ") + g + (on ? " from the top of Home" : " to the top of Home"),
+    text: on ? "Unpin" : "Pin" });
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    toggleHomePin(g).catch((err) => { console.error(err); toast("Couldn't save that. Please try again."); });
+  });
+  return btn;
+}
+
 // Home: starred Pagemarks as tiles, grouped by their folder
 // ---------- Browser button (extension) ----------
 // Fill in the Chrome Web Store address once the listing is published; until then the Home card stays hidden.
@@ -1304,7 +1317,7 @@ function renderHome(items) {
       el("span", { class: "hg-name" },
         parts.length > 1 ? el("span", { class: "hg-parent", text: parts.slice(0, -1).join(" / ") + " / " }) : null,
         parts[parts.length - 1]),
-      homePinned(g) ? homePinIcon() : null);
+      g ? homePinButton(g) : null);
     if (g) heading.addEventListener("click", () => setView({ type: "folder", value: g }));
     return el("section", { class: "home-group" + (g ? " linked" : "") }, heading,
       el("ul", { class: "home-list" }, ...list.map(homeTile)));
@@ -2369,7 +2382,7 @@ closeOnOutsideClick($("#dlg-tidy"));
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "97";
+const APP_VERSION = "99";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {
