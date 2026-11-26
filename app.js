@@ -11,8 +11,8 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, getDocFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=123";
-import { ALLOWED_SITES, setExtraAllowed } from "./allowed-sites.js?v=123";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=124";
+import { ALLOWED_SITES, setExtraAllowed } from "./allowed-sites.js?v=124";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -735,6 +735,8 @@ function renderItem(b) {
 
   const body = el("div", { class: "bm-body" }, titleLine, meta);
 
+  // Delete right from the problem list (Organize only; asks first, like Edit → Delete)
+  const delBtn = () => el("button", { class: "btn small danger edit-only", text: "Delete", onclick: () => deleteOne(b) });
   const archiveLink = () => (b.link && b.link.archiveUrl)
     ? el("a", { href: b.link.archiveUrl, target: "_blank", rel: "noopener noreferrer", text: "Open the archived copy" })
     : el("a", { href: "https://web.archive.org/web/*/" + b.url, target: "_blank", rel: "noopener noreferrer", text: "Look for an archived copy" });
@@ -743,19 +745,20 @@ function renderItem(b) {
       el("span", { text: `This page looks very different from when you saved it. It's now titled “${b.link.drift.title}”. If it's not what you saved:` }), " ",
       archiveLink(), " ",
       el("button", { class: "btn small", text: "Mark as broken", onclick: () => setMarkedBroken(b, true) }), " ",
-      el("button", { class: "btn small", text: "It's fine", onclick: () => setChangeOk(b) })));
+      el("button", { class: "btn small", text: "It's fine", onclick: () => setChangeOk(b) }), " ", delBtn()));
   }
   if (s === "unsafe") {
     body.append(el("div", { class: "fix-row unsafe-row" },
       el("span", { text: riskText(b) + " Opening it isn't recommended." }), " ",
       archiveLink(), " ",
       el("button", { class: "btn small", text: "Mark as broken", onclick: () => setMarkedBroken(b, true) }), " ",
-      el("button", { class: "btn small", text: "It's fine", onclick: () => setRiskOk(b) })));
+      el("button", { class: "btn small", text: "It's fine", onclick: () => setRiskOk(b) }), " ", delBtn()));
   }
   if (s === "broken") {
     const fix = el("div", { class: "fix-row" },
       el("span", { text: b.markedBroken ? "You marked this page as broken." : "This page no longer loads." }), " ", archiveLink());
     if (b.markedBroken) fix.append(" ", el("button", { class: "btn small", text: "Not broken", onclick: () => setMarkedBroken(b, false) }));
+    fix.append(" ", delBtn());
     body.append(fix);
     if (!b.markedBroken && weakBroken(b)) body.append(el("div", { class: "fix-row" },
       el("span", { text: `Some sites turn away automated checks (HTTP ${b.link.code}). If it opens for you:` }), " ",
@@ -2011,6 +2014,12 @@ $("#form-edit").addEventListener("submit", async (e) => {
   }
 });
 
+async function deleteOne(b) {
+  if (!(await ask({ title: "Delete this Pagemark?", text: `“${b.title || hostOf(b.url)}” will be deleted. This can't be undone.`, ok: "Delete", danger: true }))) return;
+  try { await deleteDoc(doc(pmCol(), b.id)); }
+  catch (e) { console.error(e); toast("Couldn't delete it. Are you online?"); }
+}
+
 $("#btn-delete").addEventListener("click", async () => {
   if (!editingId) return;
   if (!(await ask({ title: "Delete this Pagemark?", text: "This can't be undone.", ok: "Delete", danger: true }))) return;
@@ -2858,7 +2867,7 @@ closeOnOutsideClick($("#dlg-tidy"));
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "123";
+const APP_VERSION = "124";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {
