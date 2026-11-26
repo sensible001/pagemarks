@@ -4,6 +4,7 @@
 // Layers: a test address, a short list of blocked sites, a word filter, and
 // Cloudflare's family-safe DNS (1.1.1.1 for Families), which flags adult and malware sites.
 // Nothing here is perfect; clear rules and the owner's judgement back it up.
+import { allowedSite } from "./allowed-sites.js?v=123";
 
 // Always refused, so the check can be tested without visiting a bad site.
 export const TEST_HOST = "blocked-test.pagemarks.com";
@@ -55,7 +56,7 @@ export function quickCheck({ url = "", title = "", description = "", notes = "",
 // Only the site name (e.g. example.com) is sent, never the full address.
 const dnsCache = new Map();
 export async function familyDnsAllows(host) {
-  if (!host) return true;
+  if (!host || allowedSite(host)) return true;
   if (dnsCache.has(host)) return dnsCache.get(host);
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 4000);

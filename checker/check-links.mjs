@@ -6,6 +6,7 @@
 
 import { initializeApp, cert } from "firebase-admin/app";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
+import { allowedSite, setExtraAllowed } from "../allowed-sites.js";
 
 const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
 if (!raw) {
@@ -14,6 +15,9 @@ if (!raw) {
 }
 initializeApp({ credential: cert(JSON.parse(raw)) });
 const db = getFirestore();
+// Sites the owner allowed in Settings skip the family-safe list here too
+try { const a = await db.doc("config/allowedSites").get(); setExtraAllowed(a.exists ? a.data().sites : []); }
+catch (e) { console.warn("Allowed sites not loaded:", e.message); }
 
 const TIMEOUT_MS = 20000;
 const PARALLEL = 8;
@@ -287,7 +291,7 @@ async function safetyCheck(data, url, result, prev) {
     if (await blocked(h, "security")) { risk = { kind: "malware", host: h }; break; }
   }
   if (!risk) for (const h of hosts) {
-    if (await blocked(h, "family")) { risk = { kind: "adult", host: h }; break; }
+    if (!allowedSite(h) && await blocked(h, "family")) { risk = { kind: "adult", host: h }; break; }
   }
   // Registered again after you saved it: the website probably has a new owner
   const saved = millis(data.createdAt);

@@ -1135,3 +1135,10 @@ dialog label .row .btn { display: flex; align-items: center; }
 .import-details ul { margin: 0; padding-left: 1.4em; max-height: 14rem; overflow-y: auto; }
 .import-details li { margin: 0.15rem 0; overflow-wrap: anywhere; }
 .import-details .imp-why { color: var(--warn-ink); }
+
+/* v123: owner's allowed sites */
+.mini-head { font-size: 0.85rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin: 0.8rem 0 0.3rem; }
+.allowed-list { list-style: none; padding: 0; margin: 0 0 0.6rem; }
+.allowed-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.5rem; padding: 0.3rem 0; border-bottom: 1px solid var(--line); }
+#allowed-add input { max-width: 16rem; }
+#allowed-add { padding: 0; margin: 0.4rem 0 0; max-width: none; }

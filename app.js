@@ -11,7 +11,8 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, getDocFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=121";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=123";
+import { ALLOWED_SITES, setExtraAllowed } from "./allowed-sites.js?v=123";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -111,9 +112,35 @@ function countRefusals(n) {
   setDoc(doc(db, "refusals", user.uid), { email: user.email, count: increment(Math.min(n, 1000)) }, { merge: true })
     .catch((e) => console.warn("Refusal count not saved", e));
 }
-async function refuse(n, title = "This can't be saved") {
+async function refuse(n, title = "This can't be saved", host = "") {
   countRefusals(n);
-  await ask({ title, text: REFUSAL_MESSAGE, ok: "OK", cancel: null });
+  if (!host) { await ask({ title, text: REFUSAL_MESSAGE, ok: "OK", cancel: null }); return; }
+  const wantsReview = await ask({
+    title,
+    text: REFUSAL_MESSAGE + `\n\nThink ${host} was refused by mistake? You can ask for a review. Only the site's name is sent, nothing about you or the page.`,
+    ok: "OK", cancel: "Ask for a review"
+  });
+  if (!wantsReview) requestReview(host);
+}
+
+// "Ask for a review": sends only the site's name, by the person's choice. The owner sees these in Settings.
+async function requestReview(host) {
+  try {
+    await setDoc(doc(collection(db, "reviewRequests")), { host: String(host).slice(0, 253), at: serverTimestamp() });
+    toast(`Thanks. ${host} will be reviewed. If it's allowed, you'll be able to save it.`);
+  } catch (e) {
+    console.error(e);
+    toast("Couldn't send that. Please try again.");
+  }
+}
+
+// Sites approved by the owner, on top of the built-in list (allowed-sites.js)
+async function loadAllowedSites() {
+  try {
+    const s = await getDoc(doc(db, "config", "allowedSites"));
+    setExtraAllowed(s.exists() ? s.data().sites : []);
+    return s.exists() ? (s.data().sites || []) : [];
+  } catch { return []; }
 }
 
 // ---------- Organize mode ----------
@@ -287,6 +314,7 @@ onAuthStateChanged(auth, async (u) => {
   $("#invite-section").hidden = !isAdmin;
   document.querySelectorAll(".owner-only").forEach(el => { el.hidden = !isAdmin; });
   checkPreviewCard();
+  loadAllowedSites();
   showScreen("app");
   startPagemarks();
   startLibrarian();
@@ -1961,7 +1989,7 @@ $("#form-edit").addEventListener("submit", async (e) => {
   saveBtn.disabled = true; saveBtn.textContent = "Checking…";
   const verdict = await checkPagemark(data);
   saveBtn.disabled = false; saveBtn.textContent = "Save";
-  if (!verdict.ok) { await refuse(1); return; }
+  if (!verdict.ok) { await refuse(1, undefined, verdict.why === "test" ? "" : hostOf(data.url)); return; }
 
   try {
     if (editingId) {
@@ -1993,7 +2021,7 @@ $("#btn-delete").addEventListener("click", async () => {
 
 // ---------- Settings ----------
 const dlgSettings = $("#dlg-settings");
-$("#btn-settings").addEventListener("click", () => { $("#import-status").textContent = ""; renderExtSettings(); dlgSettings.showModal(); });
+$("#btn-settings").addEventListener("click", () => { $("#import-status").textContent = ""; renderExtSettings(); renderAllowedSites(); dlgSettings.showModal(); });
 $("#btn-close-settings").addEventListener("click", () => dlgSettings.close());
 
 // Import (Chrome / Edge / Firefox favorites HTML export)
@@ -2147,6 +2175,7 @@ $("#file-import").addEventListener("change", async (e) => {
   }
 });
 
+const TEST_HOST_NAME = "blocked-test.pagemarks.com";
 // After an import: a "Show details" list of what didn't come in and why.
 // Built from the file you chose, shown on this screen only, and never saved.
 function showImportDetails(notes) {
@@ -2164,9 +2193,53 @@ function showImportDetails(notes) {
     el("ul", {}, ...list.map((x) => el("li", {},
       el("span", { class: "imp-title", text: x.title }),
       x.where ? el("span", { class: "muted", text: " · " + x.where }) : null,
-      why && x.why ? el("span", { class: "imp-why", text: " — " + x.why }) : null))))));
+      why && x.why ? el("span", { class: "imp-why", text: " — " + x.why }) : null,
+      why && x.where && x.where !== TEST_HOST_NAME ? el("span", {}, " ", el("button", { type: "button", class: "link-btn", text: "Ask for a review",
+        onclick: (ev) => { ev.target.replaceWith(el("span", { class: "muted", text: "Review asked" })); requestReview(x.where); } })) : null))))));
   box.open = false;
 }
+
+// ---------- Owner: allowed sites and review requests ----------
+async function renderAllowedSites() {
+  if (!isAdmin) return;
+  const sites = await loadAllowedSites();
+  const list = $("#allowed-list");
+  const all = [...ALLOWED_SITES.map((s) => ({ s, builtIn: true })), ...sites.filter((s) => !ALLOWED_SITES.includes(s)).map((s) => ({ s }))];
+  list.replaceChildren(...all.map(({ s, builtIn }) => el("li", {}, el("span", { text: s }), " ",
+    builtIn ? el("span", { class: "muted", text: "(built in)" })
+      : el("button", { type: "button", class: "link-btn", text: "Remove", onclick: () => saveAllowed(sites.filter((x) => x !== s)) }))));
+  // Review requests, grouped by site
+  let reqs = [];
+  try { reqs = (await getDocsFromServer(collection(db, "reviewRequests"))).docs.map((d) => ({ id: d.id, ...d.data() })); }
+  catch (e) { console.warn(e); }
+  const byHost = new Map();
+  for (const r of reqs) { if (!byHost.has(r.host)) byHost.set(r.host, []); byHost.get(r.host).push(r); }
+  const box = $("#review-requests");
+  box.replaceChildren(...(byHost.size ? [...byHost].map(([host, rs]) => el("li", {},
+    el("a", { href: "https://" + host, target: "_blank", rel: "noopener noreferrer", text: host }),
+    el("span", { class: "muted", text: rs.length > 1 ? ` (asked ${rs.length} times)` : "" }), " ",
+    el("button", { type: "button", class: "btn small primary", text: "Allow", onclick: async () => { await saveAllowed([...sites, host]); await clearRequests(rs); } }), " ",
+    el("button", { type: "button", class: "btn small", text: "Dismiss", onclick: () => clearRequests(rs) })))
+    : [el("li", { class: "muted", text: "No requests waiting." })]));
+}
+async function saveAllowed(list) {
+  const clean = [...new Set(list.map((s) => String(s).trim().toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/.*$/, "")).filter(Boolean))].sort();
+  try { await setDoc(doc(db, "config", "allowedSites"), { sites: clean, updatedAt: serverTimestamp() }); }
+  catch (e) { console.error(e); toast("Couldn't save the allowed sites. Please try again."); return; }
+  await renderAllowedSites();
+}
+async function clearRequests(rs) {
+  try { for (const r of rs) await deleteDoc(doc(db, "reviewRequests", r.id)); } catch (e) { console.error(e); }
+  await renderAllowedSites();
+}
+$("#allowed-add").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const v = $("#allowed-input").value.trim();
+  if (!v) return;
+  $("#allowed-input").value = "";
+  const sites = await loadAllowedSites();
+  await saveAllowed([...sites, v]);
+});
 
 // Export
 function download(name, text, type) {
@@ -2785,7 +2858,7 @@ closeOnOutsideClick($("#dlg-tidy"));
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "121";
+const APP_VERSION = "123";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {
