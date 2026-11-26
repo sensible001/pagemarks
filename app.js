@@ -11,8 +11,8 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, getDocFromServer, query, limit, increment, where
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=146";
-import { ALLOWED_SITES, setExtraAllowed } from "./allowed-sites.js?v=146";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=147";
+import { ALLOWED_SITES, setExtraAllowed } from "./allowed-sites.js?v=147";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -606,7 +606,7 @@ function saveHomePins(list, wideMap) {
   return setDoc(metaRef(), data, { merge: true });
 }
 // Wide: a pinned folder's card spans the whole width of Home, in its own row at the top or bottom,
-// one Pagemark per row so long names don't wrap. Saved with your account, next to your pins.
+// its Pagemarks in two columns. Saved with your account, next to your pins.
 const homeWideOf = (path) => homeWide.find((w) => w.p === path) || null;
 function saveHomeWide(path, at) {   // at: "top" | "bottom" | null (not wide)
   homeWide = homeWide.filter((w) => w.p !== path);
@@ -1731,7 +1731,7 @@ function layoutHome(box, cards) {
   const n = homeColumnCount(box);
   homeCols = n;
   const cols = Array.from({ length: n }, () => el("div", { class: "home-col" }));
-  // Wide cards get their own full-width rows above or below the columns, one Pagemark per row
+  // Wide cards get their own full-width rows above or below the columns, with their Pagemarks in two columns
   const top = cards.filter((c) => c._wide === "top"), bottom = cards.filter((c) => c._wide === "bottom");
   cards = cards.filter((c) => !c._wide);
   box.replaceChildren(
@@ -3293,7 +3293,7 @@ closeOnOutsideClick($("#dlg-tidy"));
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "146";
+const APP_VERSION = "147";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {
