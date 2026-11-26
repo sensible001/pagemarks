@@ -1299,3 +1299,18 @@ html.mw560 #libreview-left, html.mw560 #libreview-done-text { flex-basis: 100%; 
 .main-head:has(.holiday-line:not([hidden])) #view-title, .holiday-line { align-self: baseline; }
 .holiday-icon { font-style: normal; }
 body.quiet .holiday-line { display: none; }
+
+/* v136: faith checkboxes sit in one indented row under "Holidays of all faiths" */
+#dlg-settings .faith-row { display: flex; flex-wrap: wrap; gap: 0.2rem 1.2rem; margin-left: 1.6rem; }
+.holiday-sep { font-style: normal; }
+/* Owner-only list of every holiday */
+.holiday-all { margin-top: 0.9rem; }
+.holiday-all summary { cursor: pointer; font-size: var(--set-text, 0.92rem); }
+.holiday-all-list { list-style: none; margin: 0.6rem 0 0; padding: 0; font-size: var(--set-text, 0.92rem); }
+.holiday-all-list li { display: grid; grid-template-columns: 7.5rem 1fr auto; gap: 0.75rem; padding: 0.28rem 0; border-bottom: 1px solid var(--line); }
+.holiday-all-list li.hl-year { display: block; border: 0; padding-top: 0.8rem; font-weight: 700; }
+.hl-date, .hl-kind { color: var(--muted); }
+.hl-kind { font-size: 0.85em; }
+#dlg-settings .faith-row label.check { margin-top: 0.2rem; }
+.holiday-all-list li { align-items: baseline; }
+#dlg-settings label.check input[type="checkbox"] { accent-color: var(--brand); }

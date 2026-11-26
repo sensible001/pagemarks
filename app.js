@@ -11,8 +11,8 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, getDocFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=134";
-import { ALLOWED_SITES, setExtraAllowed } from "./allowed-sites.js?v=134";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=136";
+import { ALLOWED_SITES, setExtraAllowed } from "./allowed-sites.js?v=136";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -287,6 +287,7 @@ $("#btn-signout-ni").addEventListener("click", doSignOut);
 // page can apply them before it draws. Text size zooms the whole page, like Ctrl and + in a browser.
 const PREFS_KEY = "pm-prefs";
 let prefs = (() => { try { return JSON.parse(localStorage.getItem(PREFS_KEY) || "{}") || {}; } catch { return {}; } })();
+if (prefs.religious && prefs.christian === undefined) prefs.christian = true;   // the earlier single "Religious" box
 const darkQuery = matchMedia("(prefers-color-scheme: dark)");
 function applyPrefs() {
   if (window.pmApplyDisplay) window.pmApplyDisplay(prefs);
@@ -295,25 +296,32 @@ function applyPrefs() {
   document.querySelector('meta[name="theme-color"]')?.setAttribute("content", dark ? "#161513" : "#3f8069");
   for (const r of document.querySelectorAll('input[name="pref-size"]')) r.checked = r.value === (prefs.size || "standard");
   for (const r of document.querySelectorAll('input[name="pref-theme"]')) r.checked = r.value === theme;
-  const c = document.getElementById("pref-civic"), g = document.getElementById("pref-religious");
-  if (c) c.checked = !!prefs.civic;
-  if (g) g.checked = !!prefs.religious;
+  for (const k of HOLIDAY_KINDS) { const c = document.getElementById("pref-" + k); if (c) c.checked = !!prefs[k]; }
+  const all = document.getElementById("pref-allfaiths");
+  if (all) {
+    const n = FAITHS.filter((k) => prefs[k]).length;
+    all.checked = n === FAITHS.length;
+    all.indeterminate = n > 0 && n < FAITHS.length;
+  }
   renderHoliday();
   if (typeof layoutHome === "function" && user && view && view.type === "home") { try { render(); } catch { /* ignore */ } }
 }
 function storePrefsLocally() { try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)); } catch { /* ignore */ } }
-function setPref(key, value) {
-  prefs = { ...prefs, [key]: value };
+function setPrefs(changes) {
+  prefs = { ...prefs, ...changes };
   storePrefsLocally();
   applyPrefs();
-  if (user) setDoc(doc(db, "users", user.uid, "meta", "prefs"), { [key]: value, updatedAt: serverTimestamp() }, { merge: true }).catch(() => {});
+  if (user) setDoc(doc(db, "users", user.uid, "meta", "prefs"), { ...changes, updatedAt: serverTimestamp() }, { merge: true }).catch(() => {});
 }
+const setPref = (key, value) => setPrefs({ [key]: value });
 async function loadPrefs() {
   try {
     const snap = await getDoc(doc(db, "users", user.uid, "meta", "prefs"));
     if (snap.exists()) {
       const d = snap.data();
-      prefs = { size: d.size, theme: d.theme, civic: !!d.civic, religious: !!d.religious };
+      prefs = { size: d.size, theme: d.theme };
+      for (const k of HOLIDAY_KINDS) prefs[k] = !!d[k];
+      if (d.christian === undefined && d.religious) prefs.christian = true;   // the earlier single "Religious" box
       storePrefsLocally();
       applyPrefs();
     }
@@ -324,8 +332,12 @@ let prefsResize = 0;
 window.addEventListener("resize", () => { if (prefs.size && prefs.size !== "standard") { clearTimeout(prefsResize); prefsResize = setTimeout(() => window.pmApplyDisplay?.(prefs), 120); } });
 document.querySelectorAll('input[name="pref-size"]').forEach((r) => r.addEventListener("change", () => setPref("size", r.value)));
 document.querySelectorAll('input[name="pref-theme"]').forEach((r) => r.addEventListener("change", () => setPref("theme", r.value)));
-document.getElementById("pref-civic")?.addEventListener("change", (e) => setPref("civic", e.target.checked));
-document.getElementById("pref-religious")?.addEventListener("change", (e) => setPref("religious", e.target.checked));
+for (const k of ["civic", "everyday", "christian", "jewish", "muslim", "hindu"]) {
+  document.getElementById("pref-" + k)?.addEventListener("change", (e) => setPref(k, e.target.checked));
+}
+document.getElementById("pref-allfaiths")?.addEventListener("change", (e) => {
+  setPrefs({ christian: e.target.checked, jewish: e.target.checked, muslim: e.target.checked, hindu: e.target.checked });
+});
 
 // Holidays: worked out in this browser from its region (language setting, then time zone).
 // Nothing about where you are is saved or sent anywhere.
@@ -349,32 +361,98 @@ function easter(y) {                                // Western (Gregorian) Easte
   const month = Math.floor((h + l - 7 * m + 114) / 31), day = ((h + l - 7 * m + 114) % 31) + 1;
   return new Date(y, month - 1, day);
 }
+// Dates from other calendars (Jewish, Islamic, Chinese), worked out by the browser itself
+const calCache = new Map();
+function calendarDays(y, cal) {
+  const key = y + cal;
+  if (calCache.has(key)) return calCache.get(key);
+  const fm = new Intl.DateTimeFormat("en-US-u-ca-" + cal, { month: cal === "hebrew" ? "long" : "numeric", day: "numeric", timeZone: "UTC" });
+  const map = new Map();
+  try {
+    for (let d = new Date(Date.UTC(y, 0, 1)); d.getUTCFullYear() === y; d.setUTCDate(d.getUTCDate() + 1)) {
+      const p = Object.fromEntries(fm.formatToParts(d).map((x) => [x.type, x.value]));
+      const k = p.month + " " + p.day;
+      if (!map.has(k)) map.set(k, new Date(y, d.getUTCMonth(), d.getUTCDate()));
+    }
+  } catch { /* calendar not available in this browser: those days are simply skipped */ }
+  calCache.set(key, map);
+  return map;
+}
+// Diwali follows the Hindu lunar calendar, which browsers don't have, so its dates are listed here
+// (the main day, Lakshmi Puja). Some US temples observe it a day earlier. Add years as they come.
+const DIWALI = { 2026: [10, 8], 2027: [9, 29], 2028: [9, 17], 2029: [10, 5], 2030: [9, 26], 2031: [10, 14], 2032: [10, 2], 2033: [9, 22], 2034: [10, 10], 2035: [9, 30] };
+// kind: civic | everyday | christian | jewish | muslim | hindu (each matches a checkbox in Settings → Display)
 function holidaysFor(y, region) {
   const list = [];
-  const civic = (date, icon, text) => list.push({ date, icon, text, kind: "civic" });
-  const faith = (date, icon, text) => list.push({ date, icon, text, kind: "religious" });
-  civic(new Date(y, 0, 1), "🎉", "Happy New Year");
-  if (region === "US") {
-    civic(nthWeekday(y, 0, 1, 3), "🕊️", "Martin Luther King Jr. Day");
-    civic(nthWeekday(y, 1, 1, 3), "🏛️", "Happy Presidents' Day");
-    civic(nthWeekday(y, 4, 1, -1), "🕯️", "Memorial Day, remembering those who gave their lives");
-    civic(new Date(y, 6, 4), "🎆", "Happy Independence Day");
-    civic(nthWeekday(y, 8, 1, 1), "🛠️", "Happy Labor Day");
-    civic(new Date(y, 10, 11), "🎖️", "Veterans Day, thank you to all who served");
-    civic(nthWeekday(y, 10, 4, 4), "🍂", "Happy Thanksgiving");
+  const add = (kind, date, icon, text) => { if (date) list.push({ date, icon, text, kind }); };
+  const us = region === "US";
+  const day = (m, d) => new Date(y, m, d);
+  // Civic: US federal holidays (New Year's Day everywhere)
+  add("civic", day(0, 1), "🎉", "Happy New Year");
+  if (us) {
+    add("civic", nthWeekday(y, 0, 1, 3), "🤝", "Martin Luther King Jr. Day");
+    add("civic", nthWeekday(y, 1, 1, 3), "🏛️", "Happy Presidents' Day");
+    add("civic", nthWeekday(y, 4, 1, -1), "🎗️", "Memorial Day, remembering those who gave their lives");
+    add("civic", day(5, 19), "🔔", "Juneteenth, celebrating freedom");
+    add("civic", day(6, 4), "🎆", "Happy Independence Day");
+    add("civic", nthWeekday(y, 8, 1, 1), "🛠️", "Happy Labor Day");
+    add("civic", nthWeekday(y, 9, 1, 2), "🌎", "Columbus Day and Indigenous Peoples' Day");
+    add("civic", day(10, 11), "🎖️", "Veterans Day, thank you to all who served");
+    add("civic", nthWeekday(y, 10, 4, 4), "🍂", "Happy Thanksgiving");
   }
+  // Everyday celebrations
+  const lunar = calendarDays(y, "chinese").get("1 1");
+  add("everyday", lunar, "🧧", "Happy Lunar New Year");
+  add("everyday", day(1, 14), "💝", "Happy Valentine's Day");
+  add("everyday", day(2, 17), "☘️", "Happy St. Patrick's Day");
+  if (us) {
+    add("everyday", nthWeekday(y, 4, 0, 2), "💐", "Happy Mother's Day");
+    add("everyday", day(5, 14), "⭐", "Flag Day");
+    add("everyday", nthWeekday(y, 5, 0, 3), "👔", "Happy Father's Day");
+    const firstMon = nthWeekday(y, 10, 1, 1);
+    add("everyday", new Date(y, 10, firstMon.getDate() + 1), "🗳️", "Election Day");
+  }
+  add("everyday", day(9, 31), "🎃", "Happy Halloween");
+  add("everyday", day(11, 31), "🥂", "Happy New Year's Eve");
+  // Christian
   const e = easter(y);
-  faith(new Date(y, e.getMonth(), e.getDate() - 2), "✝️", "Good Friday");
-  faith(e, "🌷", "He is risen, Happy Easter");
-  faith(new Date(y, 11, 24), "⭐", "Christmas Eve");
-  faith(new Date(y, 11, 25), "🎄", "Merry Christmas");
-  return list;
+  const fromEaster = (n) => new Date(y, e.getMonth(), e.getDate() + n);
+  add("christian", day(0, 6), "👑", "Epiphany");
+  add("christian", fromEaster(-46), "✝️", "Ash Wednesday");
+  add("christian", fromEaster(-7), "🌿", "Palm Sunday");
+  add("christian", fromEaster(-3), "🍞", "Holy Thursday");
+  add("christian", fromEaster(-2), "✝️", "Good Friday");
+  add("christian", e, "🌷", "He is risen, Happy Easter");
+  add("christian", fromEaster(49), "🕊️", "Pentecost");
+  add("christian", day(7, 15), "💙", "The Assumption of Mary");
+  add("christian", day(10, 1), "✨", "All Saints' Day");
+  const xmas = day(11, 25);
+  add("christian", new Date(y, 11, 25 - (xmas.getDay() || 7) - 21), "🕯️", "The First Sunday of Advent");
+  add("christian", day(11, 8), "🌹", "The Immaculate Conception");
+  add("christian", day(11, 24), "🌟", "Christmas Eve");
+  add("christian", xmas, "🎄", "Merry Christmas");
+  // Jewish (each begins at sundown the evening before; this is its first full day)
+  const heb = calendarDays(y, "hebrew");
+  add("jewish", heb.get("Nisan 15"), "🫓", "Happy Passover");
+  add("jewish", heb.get("Tishri 1"), "🍎", "Shanah Tovah, Happy Rosh Hashanah");
+  add("jewish", heb.get("Tishri 10"), "✡️", "Yom Kippur");
+  add("jewish", heb.get("Kislev 25"), "🕎", "Happy Hanukkah");
+  // Muslim (by the calculated calendar; local moon sighting can shift these by a day)
+  const isl = calendarDays(y, "islamic-umalqura");
+  add("muslim", isl.get("9 1"), "🌙", "Ramadan Mubarak");
+  add("muslim", isl.get("10 1"), "☪️", "Eid al-Fitr, Eid Mubarak");
+  add("muslim", isl.get("12 10"), "🕋", "Eid al-Adha, Eid Mubarak");
+  // Hindu
+  const dw = DIWALI[y];
+  add("hindu", dw && day(dw[0], dw[1]), "🪔", "Happy Diwali");
+  return list.sort((a, b) => a.date - b.date);
 }
-function todaysHoliday(now = new Date()) {
-  if (!prefs.civic && !prefs.religious) return null;
-  const region = holidayRegion();
+const HOLIDAY_KINDS = ["civic", "everyday", "christian", "jewish", "muslim", "hindu"];
+const FAITHS = ["christian", "jewish", "muslim", "hindu"];
+function todaysHolidays(now = new Date()) {
+  if (!HOLIDAY_KINDS.some((k) => prefs[k])) return [];
   const same = (a) => a.getFullYear() === now.getFullYear() && a.getMonth() === now.getMonth() && a.getDate() === now.getDate();
-  return holidaysFor(now.getFullYear(), region).find((h) => same(h.date) && prefs[h.kind]) || null;
+  return holidaysFor(now.getFullYear(), holidayRegion()).filter((h) => same(h.date) && prefs[h.kind]);
 }
 function renderHoliday() {
   const line = document.getElementById("holiday-line");
@@ -386,10 +464,35 @@ function renderHoliday() {
     regionNote.textContent = name ? ` (${name === "United States" ? "the United States" : name}, from your browser's settings)` : "";
   }
   if (!line) return;
-  const h = (typeof view !== "undefined" && view && view.type === "home") ? todaysHoliday() : null;
-  line.replaceChildren(...(h ? [el("span", { class: "holiday-icon", "aria-hidden": "true", text: h.icon }), " " + h.text] : []));
-  line.hidden = !h;
+  const hs = (typeof view !== "undefined" && view && view.type === "home") ? todaysHolidays() : [];
+  const parts = [];
+  hs.forEach((h, i) => {
+    if (i) parts.push(el("span", { class: "holiday-sep", "aria-hidden": "true", text: " · " }));
+    parts.push(el("span", { class: "holiday-icon", "aria-hidden": "true", text: h.icon }), " " + h.text);
+  });
+  line.replaceChildren(...parts);
+  line.hidden = !hs.length;
 }
+// Owner only: every day on the list this year, to check the dates and wording
+const KIND_LABEL = { civic: "Civic", everyday: "Everyday", christian: "Christian", jewish: "Jewish", muslim: "Muslim", hindu: "Hindu" };
+function renderHolidayList() {
+  const box = document.getElementById("holiday-all-list");
+  if (!box || !isAdmin) return;
+  const y = new Date().getFullYear();
+  const fmt = new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric" });
+  const rows = [y, y + 1].flatMap((yy) => holidaysFor(yy, holidayRegion()).map((h) => ({ ...h, yy })));
+  let lastYear = null;
+  box.replaceChildren(...rows.flatMap((h) => {
+    const out = [];
+    if (h.yy !== lastYear) { lastYear = h.yy; out.push(el("li", { class: "hl-year", text: String(h.yy) })); }
+    out.push(el("li", {},
+      el("span", { class: "hl-date", text: fmt.format(h.date) }),
+      el("span", { class: "hl-text" }, el("span", { class: "holiday-icon", text: h.icon }), " " + h.text),
+      el("span", { class: "hl-kind", text: KIND_LABEL[h.kind] + (prefs[h.kind] ? "" : " (off)") })));
+    return out;
+  }));
+}
+document.getElementById("holiday-all")?.addEventListener("toggle", (e) => { if (e.target.open) renderHolidayList(); });
 applyPrefs();
 
 const DEMO = document.documentElement.classList.contains("demo");
@@ -3116,7 +3219,7 @@ closeOnOutsideClick($("#dlg-tidy"));
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "134";
+const APP_VERSION = "136";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {
