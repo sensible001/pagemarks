@@ -1143,3 +1143,29 @@ dialog label .row .btn { display: flex; align-items: center; }
 #allowed-add input { max-width: 16rem; }
 #allowed-add { padding: 0; margin: 0.4rem 0 0; max-width: none; }
 .lr-section { font-size: 1.05rem; margin: 1.6rem 0 0.6rem; }
+
+/* ---------- v128: Settings, one calm text size throughout ----------
+   Body text, lists, inputs and status lines share one petite size; buttons share one size;
+   sections and buttons get even, airy spacing. Section headings and the How-it-works
+   summaries keep their own styles. */
+#dlg-settings { --set-text: 0.92rem; --set-btn: 0.86rem; }
+#dlg-settings p, #dlg-settings li, #dlg-settings label, #dlg-settings .status,
+#dlg-settings .guide-link, #dlg-settings .tribute, #dlg-settings .owner-note,
+#dlg-settings input[type="text"], #dlg-settings input[type="email"], #dlg-settings input[type="file"],
+#dlg-settings .allowed-list li, #dlg-settings #invite-list li {
+  font-size: var(--set-text); line-height: 1.6;
+}
+#dlg-settings p { margin: 0 0 0.75rem; }
+#dlg-settings section { margin-top: 1.4rem; padding: 1.4rem 0 0; }
+#dlg-settings section > :last-child { margin-bottom: 0; }
+#dlg-settings section h3 { margin: 0 0 0.75rem; }
+#dlg-settings .btn { font-size: var(--set-btn); padding: 0.42rem 0.9rem; line-height: 1.3; }
+#dlg-settings .btn.small { font-size: var(--set-btn); padding: 0.32rem 0.75rem; }
+#dlg-settings #btn-close-settings { padding: 0.32rem 0.6rem; }
+#dlg-settings .row { gap: 0.6rem; }
+#dlg-settings p.row, #dlg-settings div.row { margin: 0.4rem 0 0.75rem; }
+#dlg-settings input[type="text"], #dlg-settings input[type="email"] { padding: 0.45rem 0.75rem; }
+#dlg-settings .guide-link { margin: 1rem 0 0.25rem; padding: 0.7rem 1rem; }
+#dlg-settings .mini-head { font-size: 0.75rem; letter-spacing: 0.08em; margin: 1rem 0 0.35rem; }
+#dlg-settings .refusal-note { font-size: 0.84rem; }
+#dlg-settings .owner-badge { font-size: 0.68rem; }

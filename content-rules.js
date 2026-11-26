@@ -4,7 +4,7 @@
 // Layers: a test address, a short list of blocked sites, a word filter, and
 // Cloudflare's family-safe DNS (1.1.1.1 for Families), which flags adult and malware sites.
 // Nothing here is perfect; clear rules and the owner's judgement back it up.
-import { allowedSite } from "./allowed-sites.js?v=127";
+import { allowedSite } from "./allowed-sites.js?v=128";
 
 // Always refused, so the check can be tested without visiting a bad site.
 export const TEST_HOST = "blocked-test.pagemarks.com";

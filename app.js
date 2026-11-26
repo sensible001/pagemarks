@@ -11,8 +11,8 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, getDocFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=127";
-import { ALLOWED_SITES, setExtraAllowed } from "./allowed-sites.js?v=127";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=128";
+import { ALLOWED_SITES, setExtraAllowed } from "./allowed-sites.js?v=128";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -2250,7 +2250,7 @@ function showImportDetails(notes) {
   const box = $("#import-details");
   const groups = [
     ["Already in Pagemarks", notes.already, false],
-    ["In the file more than once (the first copy was imported)", notes.repeated, false],
+    ["Duplicates in your file (one copy of each was kept)", notes.repeated, false],
     ["Not a web page (such as a browser's own list or a bookmarklet)", notes.notWeb, false],
     ["Not allowed under the content rules", notes.refused, true]
   ].filter(([, list]) => list.length);
@@ -2960,7 +2960,7 @@ closeOnOutsideClick($("#dlg-tidy"));
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "127";
+const APP_VERSION = "128";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {
