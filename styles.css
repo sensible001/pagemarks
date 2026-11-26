@@ -1342,3 +1342,7 @@ html.mw760 .home-group.wide .home-list { columns: 1; }
 .hw-btn { padding: 0.12rem 0.6rem; font-size: 0.8rem; line-height: 1.3; }
 .hw-btn.on { background: var(--pin-bg); border-color: var(--green-line-2); color: var(--accent); }
 .hw-btn.on:hover { background: var(--pin-hover); }
+
+/* v149: "1.) " at the start of a title sets your own order; hidden except in Organize */
+.order-num { display: none; }
+body.editing .order-num { display: inline; color: var(--dim); font-weight: 400; }

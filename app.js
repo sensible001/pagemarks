@@ -11,8 +11,8 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, getDocFromServer, query, limit, increment, where
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=148";
-import { ALLOWED_SITES, setExtraAllowed } from "./allowed-sites.js?v=148";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=149";
+import { ALLOWED_SITES, setExtraAllowed } from "./allowed-sites.js?v=149";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -677,6 +677,17 @@ async function startQuickPagemarks() {
   if (!quickOpened) { quickOpened = true; openQuick(); }
 }
 
+// ---------- Your own order ----------
+// A title that starts with a number, a period and a closing parenthesis, then a space ("1.) Weather")
+// sorts by that number (natural sorting puts 2 before 10) and shows without it, so you see "Weather".
+// The number shows, in gray, in Organize; the Edit window always has the full title.
+const ORDER_RE = /^(\d{1,3})\.\)\s+/;
+function titleParts(t) {
+  const m = t && t.match(ORDER_RE);
+  return m ? [el("span", { class: "order-num", text: m[0] }), t.slice(m[0].length)] : [t];
+}
+const plainTitle = (t) => (t || "").replace(ORDER_RE, "");
+
 // ---------- Rendering ----------
 let unsafeHrefs = new Map();   // links that ask before opening (see the click handler below)
 let pmHrefs = new Map();       // every Pagemark's link, for the live check when you open one
@@ -1010,7 +1021,7 @@ function renderItem(b) {
     fav.append(img);
   } else fav.textContent = "?";
 
-  const title = el("a", { class: "bm-title", href: safeHref, target: "_blank", rel: "noopener noreferrer", text: b.title || host || b.url });
+  const title = el("a", { class: "bm-title", href: safeHref, target: "_blank", rel: "noopener noreferrer" }, ...titleParts(b.title || host || b.url));
   // The status dot sits in its own column, so a long title wraps beside it instead of below it
   const titleText = el("div", { class: "title-text" }, title);
   if (b.pinned) titleText.prepend(pinIcon());
@@ -1775,7 +1786,7 @@ function homeTile(b) {
   return el("li", { class: "home-row" },
     el("a", { class: "home-link", href, target: "_blank", rel: "noopener noreferrer", title: host },
       fav,
-      el("span", { class: "home-title", text: b.title || host || b.url })),
+      el("span", { class: "home-title" }, ...titleParts(b.title || host || b.url))),
     starButton(b));
 }
 
@@ -2092,7 +2103,7 @@ function nextTidy() {
   $("#tidy-lib-note").hidden = !libBusy;
   $("#tidy-card").replaceChildren(
     el("div", { class: "title-line" }, linkBadge(b),
-      el("div", { class: "title-text" }, el("a", { class: "bm-title", href: parseUrl(b.url)?.href || "#", target: "_blank", rel: "noopener noreferrer", text: b.title || host }))),
+      el("div", { class: "title-text" }, el("a", { class: "bm-title", href: parseUrl(b.url)?.href || "#", target: "_blank", rel: "noopener noreferrer" }, ...titleParts(b.title || host)))),
     el("div", { class: "bm-meta", text: host + " · saved " + fmtDate(dateOf(b)) + (s !== "pending" ? " · " + LINK_LABEL[s] : "") })
   );
   $("#tidy-controls").hidden = false;
@@ -2186,7 +2197,7 @@ function renderReview() {
       box.addEventListener("change", () => { box.checked ? reviewOff.delete(b.id) : reviewOff.add(b.id); renderReview(); });
       return el("li", { class: "rv-row" + (off ? " off" : "") },
         el("label", { class: "rv-label" }, box,
-          el("span", { class: "rv-title", text: b.title || b.url }),
+          el("span", { class: "rv-title" }, ...titleParts(b.title || b.url)),
           el("span", { class: "rv-site", text: hostOf(b.url) })),
         el("button", {
           type: "button", class: "rv-row-change", text: "Change…",
@@ -2408,7 +2419,7 @@ $("#form-edit").addEventListener("submit", async (e) => {
 });
 
 async function deleteOne(b) {
-  if (!(await ask({ title: "Delete this Pagemark?", text: `“${b.title || hostOf(b.url)}” will be deleted. This can't be undone.`, ok: "Delete", danger: true }))) return;
+  if (!(await ask({ title: "Delete this Pagemark?", text: `“${plainTitle(b.title) || hostOf(b.url)}” will be deleted. This can't be undone.`, ok: "Delete", danger: true }))) return;
   try { await deleteDoc(doc(pmCol(), b.id)); await dropEmptiedFolders([b]); }
   catch (e) { console.error(e); toast("Couldn't delete it. Are you online?"); }
 }
@@ -3296,7 +3307,7 @@ closeOnOutsideClick($("#dlg-tidy"));
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "148";
+const APP_VERSION = "149";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {
