@@ -11,8 +11,8 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, getDocFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=142";
-import { ALLOWED_SITES, setExtraAllowed } from "./allowed-sites.js?v=142";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=143";
+import { ALLOWED_SITES, setExtraAllowed } from "./allowed-sites.js?v=143";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -36,6 +36,7 @@ let view = { type: "all", value: null };   // all | later | unfiled | folder | t
 let editingId = null;
 let extraFolders = [];       // folders you created that may still be empty (synced in Firestore)
 let homePins = [];           // folders pinned to the top of Home, in the order you pinned them
+let homeWide = [];           // pinned folders shown full width on Home: [{ p: path, at: "top" | "bottom" }]
 let unsubMeta = null;
 
 // ---------- Helpers ----------
@@ -517,6 +518,7 @@ onAuthStateChanged(auth, async (u) => {
   if (typeof unsubReview === "function") { unsubReview(); unsubReview = null; libReview = null; }
   extraFolders = [];
   homePins = [];
+  homeWide = [];
   user = u;
   pagemarks = [];
   if (!u) { showScreen("signin"); return; }
@@ -592,10 +594,25 @@ function saveExtraFolders(list) {
   return setDoc(metaRef(), data, { merge: true });
 }
 // Pin a folder's group to the top of Home (newly pinned folders go after those already pinned)
-function saveHomePins(list) {
+function saveHomePins(list, wideMap) {
   homePins = [...new Set(list)];
+  // Only pinned folders can be wide: drop any that are no longer pinned (renamed paths are mapped by the caller)
+  const before = homeWide.length;
+  if (wideMap) homeWide = homeWide.map((w) => ({ ...w, p: wideMap(w.p) }));
+  homeWide = homeWide.filter((w) => homePins.includes(w.p));
   render();
-  return setDoc(metaRef(), { homePins, updatedAt: serverTimestamp() }, { merge: true });
+  const data = { homePins, updatedAt: serverTimestamp() };
+  if (wideMap || homeWide.length !== before) data.homeWide = homeWide;
+  return setDoc(metaRef(), data, { merge: true });
+}
+// Wide: a pinned folder's card spans the whole width of Home, in its own row at the top or bottom,
+// with its links in columns. Saved with your account, next to your pins.
+const homeWideOf = (path) => homeWide.find((w) => w.p === path) || null;
+function saveHomeWide(path, at) {   // at: "top" | "bottom" | null (not wide)
+  homeWide = homeWide.filter((w) => w.p !== path);
+  if (at) homeWide.push({ p: path, at });
+  render();
+  return setDoc(metaRef(), { homeWide, updatedAt: serverTimestamp() }, { merge: true });
 }
 const homePinned = (path) => homePins.includes(path);
 async function toggleHomePin(path) {
@@ -625,6 +642,7 @@ function startPagemarks() {
   unsubMeta = onSnapshot(metaRef(), (s) => {
     extraFolders = s.exists() ? (s.data().paths || []) : [];
     homePins = s.exists() ? (s.data().homePins || []) : [];
+    homeWide = s.exists() ? (s.data().homeWide || []) : [];
     metaLoaded = true;
     render();
     syncFolders();
@@ -1194,7 +1212,7 @@ async function relocateFolderNow(from, to) {
   // Update the folder list first so the old folder doesn't linger as an empty copy
   if (extraFolders.some((p) => isInside(p, from))) {
     await saveExtraFolders(extraFolders.map((p) => (isInside(p, from) ? to + p.slice(from.length) : p)));
-    if (homePins.some((p) => isInside(p, from))) await saveHomePins(homePins.map((p) => (isInside(p, from) ? to + p.slice(from.length) : p)));
+    if (homePins.some((p) => isInside(p, from))) { const move = (p) => (isInside(p, from) ? to + p.slice(from.length) : p); await saveHomePins(homePins.map(move), move); }
   }
   for (let i = 0; i < affected.length; i += 400) {
     const batch = writeBatch(db);
@@ -1658,8 +1676,11 @@ function renderHome(items) {
     const body = list.length ? el("ul", { class: "home-list" }, ...list.map(homeTile))
       : el("p", { class: "home-hint", text: "Nothing starred here yet. Open this folder and click ☆ on the Pagemarks you want on Home." });
     // A pinned folder with nothing starred only shows in Organize; the calm view stays clean
-    const card = el("section", { class: "home-group" + (g ? " linked" : "") + (list.length ? "" : " edit-only") }, heading, body);
+    const wide = g && homePinned(g) && list.length ? homeWideOf(g) : null;
+    const card = el("section", { class: "home-group" + (g ? " linked" : "") + (list.length ? "" : " edit-only") + (wide ? " wide" : "") },
+      heading, body, g && homePinned(g) && list.length ? homeWideControls(g) : null);
     card._empty = !list.length;
+    card._wide = wide ? wide.at : null;
     return card;
   });
   layoutHome(box, cards);
@@ -1674,11 +1695,32 @@ function homeColumnCount(box) {
   const w = box.clientWidth || box.parentElement.clientWidth || 800;
   return Math.max(1, Math.min(3, Math.floor((w + 16) / (250 + 16))));
 }
+// Organize only: Wide on a pinned card, then where the wide card goes (Top or Bottom of Home)
+function homeWideControls(g) {
+  const w = homeWideOf(g);
+  const save = (at) => (e) => {
+    e.stopPropagation();
+    saveHomeWide(g, at).catch((err) => { console.error(err); toast("Couldn't save that. Please try again."); });
+  };
+  const btn = (text, on, at, title) => el("button", { type: "button", class: "btn small hw-btn" + (on ? " on" : ""), "aria-pressed": on ? "true" : "false", title, text, onclick: save(at) });
+  return el("div", { class: "hw-controls edit-only" },
+    btn("Wide", !!w, w ? null : "top", w ? "Show this card in a column like the others" : "Show this card across the whole width of Home"),
+    w ? btn("Top", w.at === "top", "top", "Put this wide card above the others") : null,
+    w ? btn("Bottom", w.at === "bottom", "bottom", "Put this wide card below the others") : null);
+}
+
 function layoutHome(box, cards) {
   const n = homeColumnCount(box);
   homeCols = n;
   const cols = Array.from({ length: n }, () => el("div", { class: "home-col" }));
-  box.replaceChildren(...cols);
+  // Wide cards get their own full-width rows above or below the columns; their links flow into columns
+  const top = cards.filter((c) => c._wide === "top"), bottom = cards.filter((c) => c._wide === "bottom");
+  for (const c of [...top, ...bottom]) c.style.setProperty("--wide-cols", String(n));
+  cards = cards.filter((c) => !c._wide);
+  box.replaceChildren(
+    top.length ? el("div", { class: "home-wide" }, ...top) : "",
+    el("div", { class: "home-cols" }, ...cols),
+    bottom.length ? el("div", { class: "home-wide" }, ...bottom) : "");
   const normal = cards.filter((c) => !c._empty);
   const empties = cards.filter((c) => c._empty);
   // Measure each card at column width, as it looks in the calm view, then deal them out.
@@ -3234,7 +3276,7 @@ closeOnOutsideClick($("#dlg-tidy"));
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "142";
+const APP_VERSION = "143";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {

@@ -755,7 +755,7 @@ body:not(.editing) .bm { grid-template-columns: 36px 1fr auto; }
 /* Stars appear only in Organize, on every device; the calm view stays clean */
 body:not(.editing) .star-btn { display: none; }
 @media (pointer: coarse) { body.editing .home-row .star-btn { opacity: 1; } }
-@media (max-width: 760px) { .home { columns: 1; } }
+@media (max-width: 760px) { .home-cols { columns: 1; } }
 
 /* ---------- v29: site icon lines up with the first line of a long title ---------- */
 .home-row { align-items: flex-start; }
@@ -1272,7 +1272,7 @@ html.mw760 .topbar-main > .icon-btn { width: 2.3rem; padding: 0; }
 html.mw760 .tiles { grid-template-columns: 1fr 1fr; }
 html.mw760 body:not(.editing) .bm { grid-template-columns: 32px 1fr auto; }
 html.mw760 body.editing .bm-side { grid-column: 3; }
-html.mw760 .home { columns: 1; }
+html.mw760 .home-cols { columns: 1; }
 html.mw700 .ext-card { flex-wrap: wrap; }
 html.mw700 .ext-card-text { flex-basis: calc(100% - 36px - 3.5rem); }
 html.mw700 .ext-card .btn { margin-left: calc(36px + 0.9rem); }
@@ -1326,3 +1326,15 @@ body.quiet .holiday-line { display: none; }
 .check-row label.check { margin: 0; }
 body:not(.quick) .check-row .quick-only { display: none; }
 #f-star, #f-pin, #f-later { accent-color: var(--brand); }
+
+/* ---------- v143: Home columns, plus Wide cards in their own rows above or below them ---------- */
+.home { display: block; }
+.home-cols { display: flex; align-items: flex-start; gap: 1rem; }
+.home-wide { display: block; }
+.home-group.wide .home-list { columns: var(--wide-cols, 1); column-gap: 1.6rem; }
+.home-group.wide .home-row { break-inside: avoid; }
+/* Organize only: Wide · Top · Bottom, in a small row at the foot of a pinned card */
+.hw-controls { display: flex; gap: 0.35rem; justify-content: flex-end; margin: 0.45rem 0.4rem 0.2rem; padding-top: 0.5rem; border-top: 1px solid var(--line); }
+.hw-btn { padding: 0.12rem 0.6rem; font-size: 0.8rem; line-height: 1.3; }
+.hw-btn.on { background: var(--pin-bg); border-color: var(--green-line-2); color: var(--accent); }
+.hw-btn.on:hover { background: var(--pin-hover); }
