@@ -1294,5 +1294,8 @@ html.mw560 #libreview-left, html.mw560 #libreview-done-text { flex-basis: 100%; 
 .seg label:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* The holiday line beside the Home heading: small, muted, never in the way */
-.holiday-line { color: var(--muted); font-style: italic; font-size: 0.95rem; margin-right: auto; align-self: center; }
+.holiday-line { color: var(--muted); font-style: italic; font-size: 0.95rem; margin-right: auto; }
+/* Heading and holiday line sit on the same baseline */
+.main-head:has(.holiday-line:not([hidden])) #view-title, .holiday-line { align-self: baseline; }
+.holiday-icon { font-style: normal; }
 body.quiet .holiday-line { display: none; }

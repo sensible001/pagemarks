@@ -11,8 +11,8 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, getDocFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=131";
-import { ALLOWED_SITES, setExtraAllowed } from "./allowed-sites.js?v=131";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=133";
+import { ALLOWED_SITES, setExtraAllowed } from "./allowed-sites.js?v=133";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -351,23 +351,23 @@ function easter(y) {                                // Western (Gregorian) Easte
 }
 function holidaysFor(y, region) {
   const list = [];
-  const civic = (date, text) => list.push({ date, text, kind: "civic" });
-  const faith = (date, text) => list.push({ date, text, kind: "religious" });
-  civic(new Date(y, 0, 1), "Happy New Year.");
+  const civic = (date, icon, text) => list.push({ date, icon, text, kind: "civic" });
+  const faith = (date, icon, text) => list.push({ date, icon, text, kind: "religious" });
+  civic(new Date(y, 0, 1), "🎉", "Happy New Year");
   if (region === "US") {
-    civic(nthWeekday(y, 0, 1, 3), "Martin Luther King Jr. Day.");
-    civic(nthWeekday(y, 1, 1, 3), "Presidents' Day.");
-    civic(nthWeekday(y, 4, 1, -1), "Memorial Day. Remembering those who gave their lives in service.");
-    civic(new Date(y, 6, 4), "Happy Independence Day.");
-    civic(nthWeekday(y, 8, 1, 1), "Happy Labor Day.");
-    civic(new Date(y, 10, 11), "Veterans Day. Thank you to all who served.");
-    civic(nthWeekday(y, 10, 4, 4), "Happy Thanksgiving.");
+    civic(nthWeekday(y, 0, 1, 3), "🕊️", "Martin Luther King Jr. Day");
+    civic(nthWeekday(y, 1, 1, 3), "🏛️", "Happy Presidents' Day");
+    civic(nthWeekday(y, 4, 1, -1), "🕯️", "Memorial Day, remembering those who gave their lives");
+    civic(new Date(y, 6, 4), "🎆", "Happy Independence Day");
+    civic(nthWeekday(y, 8, 1, 1), "🛠️", "Happy Labor Day");
+    civic(new Date(y, 10, 11), "🎖️", "Veterans Day, thank you to all who served");
+    civic(nthWeekday(y, 10, 4, 4), "🍂", "Happy Thanksgiving");
   }
   const e = easter(y);
-  faith(new Date(y, e.getMonth(), e.getDate() - 2), "Good Friday.");
-  faith(e, "He is risen. Happy Easter.");
-  faith(new Date(y, 11, 24), "Christmas Eve.");
-  faith(new Date(y, 11, 25), "Merry Christmas.");
+  faith(new Date(y, e.getMonth(), e.getDate() - 2), "✝️", "Good Friday");
+  faith(e, "🌷", "He is risen, Happy Easter");
+  faith(new Date(y, 11, 24), "⭐", "Christmas Eve");
+  faith(new Date(y, 11, 25), "🎄", "Merry Christmas");
   return list;
 }
 function todaysHoliday(now = new Date()) {
@@ -387,7 +387,7 @@ function renderHoliday() {
   }
   if (!line) return;
   const h = (typeof view !== "undefined" && view && view.type === "home") ? todaysHoliday() : null;
-  line.textContent = h ? h.text : "";
+  line.replaceChildren(...(h ? [el("span", { class: "holiday-icon", "aria-hidden": "true", text: h.icon }), " " + h.text] : []));
   line.hidden = !h;
 }
 applyPrefs();
@@ -1410,9 +1410,19 @@ function homePinButton(g) {
 // Fill in the Chrome Web Store address once the listing is published; until then the Home card stays hidden.
 // The Pagemarks browser button in the Chrome Web Store (Unlisted: only people with this link can find it)
 const EXTENSION_URL = "https://chromewebstore.google.com/detail/pagemarks/nbkhamahlmmlpgddhcjmmmnjnmagkbof";
+// Firefox: the signed add-on is kept on this site (www.pagemarks.com/firefox/), not listed on Mozilla's site.
+// Firefox checks firefox/updates.json for new versions on its own.
+const FIREFOX_URL = "https://www.pagemarks.com/firefox/pagemarks-1.7.xpi";
 const extInstalled = () => document.documentElement.hasAttribute("data-pagemarks-extension");
-// Desktop Chrome, Edge, Brave, Opera and Vivaldi can all install from the Chrome Web Store
-const extSupported = () => /Chrome\//.test(navigator.userAgent) && !/Mobile|Android|CriOS/.test(navigator.userAgent);
+const isFirefox = () => /Firefox\//.test(navigator.userAgent) && !/Mobile|Android|FxiOS/.test(navigator.userAgent);
+// Desktop Chrome, Edge, Brave, Opera and Vivaldi install from the Chrome Web Store; desktop Firefox from this site
+const extSupported = () => isFirefox() || (/Chrome\//.test(navigator.userAgent) && !/Mobile|Android|CriOS/.test(navigator.userAgent));
+const extUrl = () => isFirefox() ? FIREFOX_URL : EXTENSION_URL;
+// The Firefox file installs in place (Firefox asks first), so it opens in the same tab
+function setExtLink(a) {
+  a.href = extUrl() || "#";
+  if (isFirefox()) { a.removeAttribute("target"); a.textContent = "Add to Firefox"; }
+}
 function extCardDismissed() { try { return localStorage.getItem("pm-ext-card") === "dismissed"; } catch { return false; } }
 
 // Owner-only preview: www.pagemarks.com/#preview-card shows the card even when it would normally be hidden
@@ -1480,7 +1490,7 @@ function renderExtCard(onHome) {
   const normal = !!EXTENSION_URL && extSupported() && !extInstalled() && !extCardDismissed();
   const show = onHome && (normal || previewCard);
   $("#ext-card").hidden = !show;
-  if (show) $("#ext-card-add").href = EXTENSION_URL || "#";
+  if (show) setExtLink($("#ext-card-add"));
 }
 $("#ext-card-add").addEventListener("click", (e) => {
   if (!EXTENSION_URL) { e.preventDefault(); toast("Preview: this will open the Chrome Web Store once the button is published"); }
@@ -1497,7 +1507,8 @@ function renderExtSettings() {
   $("#ext-installed").hidden = !installed;
   $("#ext-get").hidden = installed || !EXTENSION_URL;
   $("#ext-soon").hidden = installed || !!EXTENSION_URL;
-  if (EXTENSION_URL) $("#ext-settings-add").href = EXTENSION_URL;
+  if (EXTENSION_URL) setExtLink($("#ext-settings-add"));
+  $("#ext-firefox-note").hidden = installed || !isFirefox();
 }
 
 function renderHome(items) {
@@ -3105,7 +3116,7 @@ closeOnOutsideClick($("#dlg-tidy"));
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "131";
+const APP_VERSION = "133";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {

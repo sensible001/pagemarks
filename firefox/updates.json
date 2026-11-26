@@ -1,0 +1,9 @@
+{
+  "addons": {
+    "pagemarks@thesensiblestudio": {
+      "updates": [
+        { "version": "1.7", "update_link": "https://www.pagemarks.com/firefox/pagemarks-1.7.xpi" }
+      ]
+    }
+  }
+}
