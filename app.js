@@ -8,11 +8,11 @@ import {
 import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
   collection, doc, onSnapshot, setDoc, updateDoc, deleteDoc, getDoc,
-  writeBatch, serverTimestamp, Timestamp, getDocsFromServer, getDocFromServer, query, limit, increment
+  writeBatch, serverTimestamp, Timestamp, getDocsFromServer, getDocFromServer, query, limit, increment, where
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=145";
-import { ALLOWED_SITES, setExtraAllowed } from "./allowed-sites.js?v=145";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=146";
+import { ALLOWED_SITES, setExtraAllowed } from "./allowed-sites.js?v=146";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -645,8 +645,9 @@ function startPagemarks() {
     homeWide = s.exists() ? (s.data().homeWide || []) : [];
     metaLoaded = true;
     render();
-    syncFolders();
+    if (!QUICK) syncFolders();
   }, (err) => console.error(err));
+  if (QUICK) { startQuickPagemarks(); return; }
   unsubPagemarks = onSnapshot(pmCol(), (snap) => {
     pagemarks = snap.docs.map((d) => ({ id: d.id, ...d.data({ serverTimestamps: "estimate" }) }));
     if (!pmLoaded && pagemarks.some((b) => b.starred) && view.type === "all") view = { type: "home", value: null };
@@ -658,6 +659,23 @@ function startPagemarks() {
     console.error(err);
     toast("Could not load Pagemarks. Check the Firestore rules.");
   });
+}
+
+// The save window doesn't need your whole library, only the folder list (above) and whether this
+// one page is already saved. Looking up just that page costs a few reads instead of one per
+// Pagemark, which keeps Pagemarks well inside Firebase's daily allowance.
+async function startQuickPagemarks() {
+  const n = normalizeUrl(QUICK.url || "");
+  const found = new Map();
+  if (n) {
+    for (const q of [query(pmCol(), where("normUrl", "==", n), limit(5)), query(pmCol(), where("url", "==", QUICK.url), limit(5))]) {
+      try { (await getDocsFromServer(q)).forEach((d) => found.set(d.id, { id: d.id, ...d.data() })); }
+      catch (e) { console.error(e); }   // couldn't check: the form still opens, just without "Already saved"
+    }
+  }
+  pagemarks = [...found.values()];
+  pmLoaded = true;
+  if (!quickOpened) { quickOpened = true; openQuick(); }
 }
 
 // ---------- Rendering ----------
@@ -3275,7 +3293,7 @@ closeOnOutsideClick($("#dlg-tidy"));
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "145";
+const APP_VERSION = "146";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {

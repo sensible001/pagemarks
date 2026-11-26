@@ -6,6 +6,7 @@
 // Runs on a throwaway GitHub machine that's wiped afterwards. Downloads and pop-ups are blocked.
 // Privacy: this repository is public, so the log only prints totals, never web addresses.
 
+import "./quiet-quota.mjs";   // first, so it covers everything below
 const PARALLEL = 4;
 const PAGE_TIMEOUT_MS = 25000;
 const SETTLE_MS = 6000;   // time for scripted redirects to happen

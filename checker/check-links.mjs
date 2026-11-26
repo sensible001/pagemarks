@@ -4,6 +4,7 @@
 // have become unsafe (new owner, harmful-site lists, parked, or sending visitors elsewhere).
 // Privacy: this repository is public, so the log only prints totals, never web addresses.
 
+import "./quiet-quota.mjs";   // first, so it covers everything below
 import { initializeApp, cert } from "firebase-admin/app";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { allowedSite, setExtraAllowed } from "../allowed-sites.js";

@@ -7,6 +7,7 @@
 // It only does anything when someone has asked the Librarian in Pagemarks.
 // Privacy: this repository is public, so the log only prints counts, never emails, titles or web addresses.
 
+import { isQuota } from "./quiet-quota.mjs";   // first, so it covers everything below
 import { initializeApp, cert } from "firebase-admin/app";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 
@@ -122,6 +123,11 @@ async function serve(ref) {
     await ref.update({ status: "done", made, lastMode: "unfiled", mode: FieldValue.delete(), finishedAt: FieldValue.serverTimestamp() });
     console.log(`Made ${made} suggestions.`);
   } catch (err) {
+    // Firebase's daily limit: put the ask back in line untouched, and try again on a later run
+    if (isQuota(err)) {
+      try { await ref.update({ status: "waiting" }); } catch { /* the limit may block this too; it's picked up later either way */ }
+      throw err;
+    }
     // Give the ask back, so a failure never costs the person anything
     await ref.update({ status: "error", left: FieldValue.increment(1), lastMode: claimed.mode === "library" ? "library" : "unfiled",
       mode: FieldValue.delete(), finishedAt: FieldValue.serverTimestamp() });

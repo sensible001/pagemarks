@@ -6,6 +6,7 @@
 // To bring a library back, the owner runs "Restore Pagemarks" (restore.mjs) on GitHub.
 // Privacy: this repository is public, so the log only prints totals, never titles or addresses.
 
+import "./quiet-quota.mjs";   // first, so it covers everything below
 import { initializeApp, cert } from "firebase-admin/app";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 
