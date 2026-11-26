@@ -11,8 +11,8 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, getDocFromServer, query, limit, increment, where
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=147";
-import { ALLOWED_SITES, setExtraAllowed } from "./allowed-sites.js?v=147";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=148";
+import { ALLOWED_SITES, setExtraAllowed } from "./allowed-sites.js?v=148";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -594,20 +594,19 @@ function saveExtraFolders(list) {
   return setDoc(metaRef(), data, { merge: true });
 }
 // Pin a folder's group to the top of Home (newly pinned folders go after those already pinned)
-function saveHomePins(list, wideMap) {
+function saveHomePins(list) {
   homePins = [...new Set(list)];
-  // Only pinned folders can be wide: drop any that are no longer pinned (renamed paths are mapped by the caller)
-  const before = homeWide.length;
-  if (wideMap) homeWide = homeWide.map((w) => ({ ...w, p: wideMap(w.p) }));
-  homeWide = homeWide.filter((w) => homePins.includes(w.p));
   render();
-  const data = { homePins, updatedAt: serverTimestamp() };
-  if (wideMap || homeWide.length !== before) data.homeWide = homeWide;
-  return setDoc(metaRef(), data, { merge: true });
+  return setDoc(metaRef(), { homePins, updatedAt: serverTimestamp() }, { merge: true });
 }
-// Wide: a pinned folder's card spans the whole width of Home, in its own row at the top or bottom,
+// Wide: a folder's card spans the whole width of Home (pinned or not; Wide is about room, not importance), in its own row at the top or bottom,
 // its Pagemarks in two columns. Saved with your account, next to your pins.
 const homeWideOf = (path) => homeWide.find((w) => w.p === path) || null;
+function saveHomeWideList(list) {
+  homeWide = list;
+  render();
+  return setDoc(metaRef(), { homeWide, updatedAt: serverTimestamp() }, { merge: true });
+}
 function saveHomeWide(path, at) {   // at: "top" | "bottom" | null (not wide)
   homeWide = homeWide.filter((w) => w.p !== path);
   if (at) homeWide.push({ p: path, at });
@@ -1230,7 +1229,9 @@ async function relocateFolderNow(from, to) {
   // Update the folder list first so the old folder doesn't linger as an empty copy
   if (extraFolders.some((p) => isInside(p, from))) {
     await saveExtraFolders(extraFolders.map((p) => (isInside(p, from) ? to + p.slice(from.length) : p)));
-    if (homePins.some((p) => isInside(p, from))) { const move = (p) => (isInside(p, from) ? to + p.slice(from.length) : p); await saveHomePins(homePins.map(move), move); }
+    const move = (p) => (isInside(p, from) ? to + p.slice(from.length) : p);
+    if (homePins.some((p) => isInside(p, from))) await saveHomePins(homePins.map(move));
+    if (homeWide.some((w) => isInside(w.p, from))) await saveHomeWideList(homeWide.map((w) => ({ ...w, p: move(w.p) })));
   }
   for (let i = 0; i < affected.length; i += 400) {
     const batch = writeBatch(db);
@@ -1341,6 +1342,7 @@ $("#folder-delete").addEventListener("click", async () => {
   if (!(await ask({ title: `Delete the folder “${nameOf(path)}”?`, text: "It's empty, so nothing else is deleted.", ok: "Delete", danger: true }))) return;
   await saveExtraFolders(extraFolders.filter((p) => !isInside(p, path)));
   if (homePins.some((p) => isInside(p, path))) await saveHomePins(homePins.filter((p) => !isInside(p, path)));
+  if (homeWide.some((w) => isInside(w.p, path))) await saveHomeWideList(homeWide.filter((w) => !isInside(w.p, path)));
   setView(parentOf(path) ? { type: "folder", value: parentOf(path) } : { type: "all", value: null });
 });
 $("#folder-rename").addEventListener("click", () => openFolderDialog("rename"));
@@ -1694,9 +1696,9 @@ function renderHome(items) {
     const body = list.length ? el("ul", { class: "home-list" }, ...list.map(homeTile))
       : el("p", { class: "home-hint", text: "Nothing starred here yet. Open this folder and click ☆ on the Pagemarks you want on Home." });
     // A pinned folder with nothing starred only shows in Organize; the calm view stays clean
-    const wide = g && homePinned(g) && list.length ? homeWideOf(g) : null;
+    const wide = g && list.length ? homeWideOf(g) : null;
     const card = el("section", { class: "home-group" + (g ? " linked" : "") + (list.length ? "" : " edit-only") + (wide ? " wide" : "") },
-      heading, body, g && homePinned(g) && list.length ? homeWideControls(g) : null);
+      heading, body, g && list.length ? homeWideControls(g) : null);
     card._empty = !list.length;
     card._wide = wide ? wide.at : null;
     return card;
@@ -1713,7 +1715,7 @@ function homeColumnCount(box) {
   const w = box.clientWidth || box.parentElement.clientWidth || 800;
   return Math.max(1, Math.min(3, Math.floor((w + 16) / (250 + 16))));
 }
-// Organize only: Wide on a pinned card, then where the wide card goes (Top or Bottom of Home)
+// Organize only: Wide on any folder card, then where the wide card goes (Top or Bottom of Home)
 function homeWideControls(g) {
   const w = homeWideOf(g);
   const save = (at) => (e) => {
@@ -1925,6 +1927,7 @@ async function removeFolders(paths) {
   try {
     await saveExtraFolders(extraFolders.filter((p) => !gone(p)));
     if (homePins.some(gone)) await saveHomePins(homePins.filter((p) => !gone(p)));
+    if (homeWide.some((w) => gone(w.p))) await saveHomeWideList(homeWide.filter((w) => !gone(w.p)));
   } catch (e) { console.error(e); }
   finally { relocating--; }
   if (view.type === "folder" && gone(view.value)) setView({ type: "all", value: null });
@@ -3293,7 +3296,7 @@ closeOnOutsideClick($("#dlg-tidy"));
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "147";
+const APP_VERSION = "148";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {
