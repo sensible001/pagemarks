@@ -9,16 +9,16 @@
   <meta name="description" content="Pagemarks is a private, invitation-only app for saving and organizing web pages.">
   <meta name="application-name" content="Pagemarks">
   <meta property="og:site_name" content="Pagemarks">
-  <link rel="icon" href="favicon.ico?v=136" sizes="any">
-  <link rel="icon" href="favicon.svg?v=136" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=136">
+  <link rel="icon" href="favicon.ico?v=138" sizes="any">
+  <link rel="icon" href="favicon.svg?v=138" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=138">
   <meta name="apple-mobile-web-app-title" content="Pagemarks">
-  <link rel="manifest" href="manifest.webmanifest?v=136">
+  <link rel="manifest" href="manifest.webmanifest?v=138">
   <meta name="theme-color" content="#3f8069">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Gentium+Plus:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=136">
+  <link rel="stylesheet" href="styles.css?v=138">
   <script>
     // Apply your Display choices (text size, Light/Dark) before the page draws, so it doesn't flash.
     // The account copy (Settings → Display) is the real one; this is the copy kept in this browser.
@@ -48,7 +48,7 @@
       document.documentElement.classList.add("demo");
       var map = document.createElement("script");
       map.type = "importmap";
-      var fb = "./demo-fb.js?v=136", base = "https://www.gstatic.com/firebasejs/13.4.0/";
+      var fb = "./demo-fb.js?v=138", base = "https://www.gstatic.com/firebasejs/13.4.0/";
       var imports = {};
       imports[base + "firebase-app.js"] = fb;
       imports[base + "firebase-auth.js"] = fb;
@@ -68,7 +68,7 @@
   <!-- Sign in -->
   <section id="screen-signin" class="screen center" role="main" hidden>
     <div class="card welcome">
-      <img src="icon.svg?v=136" alt="" class="welcome-icon">
+      <img src="icon.svg?v=138" alt="" class="welcome-icon">
       <h1>Pagemarks</h1>
       <p class="muted">A private, invitation-only app for saving and organizing web pages.</p>
       <button id="btn-signin" class="btn primary large">Sign in with Google</button>
@@ -116,7 +116,7 @@
       <a class="skip-link" href="#view-title">Skip to your Pagemarks</a>
       <div class="topbar-inner">
         <a class="brand" href="#" id="brand-home">
-          <img src="icon.svg?v=136" alt="" width="28" height="28"><span>Pagemarks</span>
+          <img src="icon.svg?v=138" alt="" width="28" height="28"><span>Pagemarks</span>
         </a>
         <div class="topbar-main">
           <div class="search-wrap">
@@ -194,7 +194,7 @@
           </span>
         </div>
         <div id="guide-welcome" class="ext-card guide-welcome" hidden>
-          <img src="icon.svg?v=136" alt="" width="36" height="36">
+          <img src="icon.svg?v=138" alt="" width="36" height="36">
           <div class="ext-card-text">
             <strong>Welcome to Pagemarks</strong>
             <span class="muted">New here? A short guide shows how to save, find and organize your pages, and what the colored marks mean.</span>
@@ -203,7 +203,7 @@
           <button type="button" id="guide-welcome-no" class="btn">No thanks</button>
         </div>
         <div id="lib-welcome" class="ext-card lib-welcome" hidden>
-          <img src="icon.svg?v=136" alt="" width="36" height="36">
+          <img src="icon.svg?v=138" alt="" width="36" height="36">
           <div class="ext-card-text">
             <strong>The Librarian can help</strong>
             <span class="muted" id="lib-welcome-text"></span>
@@ -212,7 +212,7 @@
           <button type="button" id="lib-welcome-later" class="btn">Not now</button>
         </div>
         <div id="ext-card" class="ext-card" hidden>
-          <img src="favicon.svg?v=136" alt="" width="36" height="36">
+          <img src="favicon.svg?v=138" alt="" width="36" height="36">
           <div class="ext-card-text">
             <strong>Save Pagemarks in one click</strong>
             <span class="muted">Add the Pagemarks button to your browser, then click it on any page you want to keep.</span>
@@ -266,7 +266,7 @@
   <!-- Add / edit dialog -->
   <dialog id="dlg-edit">
     <form id="form-edit" method="dialog">
-      <p class="quick-brand" aria-hidden="true"><img src="icon.svg?v=136" alt="" width="28" height="28"><span>Pagemarks</span></p>
+      <p class="quick-brand" aria-hidden="true"><img src="icon.svg?v=138" alt="" width="28" height="28"><span>Pagemarks</span></p>
       <h2 id="edit-heading">Add Pagemark</h2>
 
       <label>Web address
@@ -600,7 +600,8 @@
 
       <section id="ext-section">
         <h3>Browser button</h3>
-        <p class="muted">The Pagemarks button saves the page you're on in one click: click it, or press <strong>Alt+P</strong>, then <em>Save</em>. From any page, <strong>Alt+K</strong> takes you to Pagemarks (to your open Pagemarks tab, or a new one). It works in Chrome, Edge, Firefox, Brave, Opera and Vivaldi on a computer.</p>
+        <p class="muted">The Pagemarks button saves the page you're on in one click: click it, or press <strong>Alt+P</strong>, then <em>Save</em>. It works in Chrome, Edge, Firefox, Brave, Opera and Vivaldi on a computer.</p>
+        <p class="muted owner-only" hidden><span class="owner-badge">Only you see this</span> From any page, <strong>Alt+K</strong> takes you to Pagemarks (to your open Pagemarks tab, or a new one).</p>
         <p id="ext-installed" class="ext-installed" hidden>✓ Installed in this browser</p>
         <p id="ext-get" class="row" hidden><a id="ext-settings-add" class="btn" target="_blank" rel="noopener">Add to browser</a></p>
         <p id="ext-firefox-note" class="muted" hidden>Firefox will ask whether to allow pagemarks.com to install an add-on. Click <em>Continue to Installation</em>, then <em>Add</em>.</p>
@@ -680,9 +681,9 @@
         </fieldset>
       </section>
 
-      <section>
-        <h3>Quiet mode</h3>
-        <p class="muted">For sharing your screen: hides the Pagemarks name and logo, the welcome cards and the Librarian, and the browser tab just says “Links”. Everything else works as usual. Press <span class="key">Alt</span> + <span class="key">Q</span> on the Pagemarks page to turn it on or off. It stays on in this browser until you turn it off.</p>
+      <section class="owner-only" hidden>
+        <h3>Quiet mode <span class="owner-badge">Only you see this</span></h3>
+        <p class="muted">For sharing your screen: shows only Home, centered on its own like a simple page of links, with no header, sidebar or Pagemarks name, and the browser tab just says “Links”. Press <span class="key">Alt</span> + <span class="key">Q</span> on the Pagemarks page to turn it on or off. It stays on in this browser until you turn it off.</p>
         <label class="check"><input type="checkbox" id="quiet-toggle"> Quiet mode</label>
       </section>
 
@@ -770,6 +771,6 @@
   </dialog>
   </aside>
 
-  <script type="module" src="app.js?v=136"></script>
+  <script type="module" src="app.js?v=138"></script>
 </body>
 </html>

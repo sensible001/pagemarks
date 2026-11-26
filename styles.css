@@ -1179,10 +1179,16 @@ dialog label .row .btn { display: flex; align-items: center; }
 #dlg-settings .refusal-note { font-size: 0.84rem; }
 #dlg-settings .owner-badge { font-size: 0.68rem; }
 
-/* v130: Quiet mode, for screen sharing. Branding hidden, everything else unchanged. */
-body.quiet .brand { visibility: hidden; }
+/* v138: Quiet mode, for screen sharing. Home on its own, as a centered page of links:
+   no header, sidebar, welcome cards, Librarian or update note. Alt+Q turns it off. */
+body.quiet .topbar, body.quiet .sidebar, body.quiet .skip-link, body.quiet .demo-bar,
+body.quiet #btn-filters, body.quiet #sort-wrap, body.quiet #bulk-bar, body.quiet #folder-tools, body.quiet .edit-only,
 body.quiet #guide-welcome, body.quiet #lib-welcome, body.quiet #ext-card,
 body.quiet #btn-side-librarian, body.quiet #btn-libreview, body.quiet #update-bar { display: none !important; }
+html body.quiet .layout { display: block; max-width: 1060px; padding: 4.5rem 2.5rem 4rem; }
+body.quiet .main-head { margin-bottom: 1.6rem; }
+body.quiet #view-title { font-size: 1.9rem; }
+@media (max-width: 760px) { html body.quiet .layout { padding: 2rem 1.1rem 3rem; } }
 #dlg-settings .key { display: inline-block; padding: 0 0.35rem; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; font-size: 0.82rem; line-height: 1.45; background: var(--card); }
 
 /* ---------- v131: themes ----------

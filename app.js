@@ -11,8 +11,8 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, getDocFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=136";
-import { ALLOWED_SITES, setExtraAllowed } from "./allowed-sites.js?v=136";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=138";
+import { ALLOWED_SITES, setExtraAllowed } from "./allowed-sites.js?v=138";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -66,8 +66,9 @@ if (QUICK) document.body.classList.add("quick");
 let quickOpened = false, quickSaved = false, quickFinished = false;
 
 // ---------- Quiet mode (Alt+Q) ----------
-// For screen sharing: hides Pagemarks' branding (name, logo, welcome cards, the Librarian, the update
-// note) and the tab says "Links" with a plain icon. Everything else works. Remembered per browser.
+// For screen sharing: Home on its own, centered like a simple page of links. The header, sidebar,
+// welcome cards, Librarian and update note are hidden, and the tab says "Links" with a plain icon.
+// Alt+Q turns it on and off. Remembered per browser.
 const QUIET_KEY = "pm-quiet";
 function quietOn() { try { return localStorage.getItem(QUIET_KEY) === "on"; } catch { return false; } }
 const QUIET_ICON = "data:image/svg+xml," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect x="5" y="4" width="22" height="24" rx="4" fill="#8a8578"/><rect x="10" y="10" width="12" height="2.5" rx="1.2" fill="#fff"/><rect x="10" y="15" width="12" height="2.5" rx="1.2" fill="#fff"/><rect x="10" y="20" width="8" height="2.5" rx="1.2" fill="#fff"/></svg>');
@@ -87,6 +88,13 @@ function applyQuiet() {
 function setQuiet(on) {
   try { localStorage.setItem(QUIET_KEY, on ? "on" : "off"); } catch { /* ignore */ }
   applyQuiet();
+  if (on) {
+    // Quiet mode is Home on its own: close Settings and any open dialog, leave Organize
+    document.querySelectorAll("dialog[open]").forEach((d) => { try { d.close(); } catch { /* ignore */ } });
+    if (typeof editing !== "undefined" && editing && user) setEditing(false);
+    if (typeof clearSearch === "function") clearSearch();
+    window.scrollTo(0, 0);
+  }
   if (typeof render === "function" && user) render();
 }
 document.addEventListener("keydown", (e) => {
@@ -790,6 +798,7 @@ function renderTree(node, depth) {
 }
 
 function render() {
+  if (quietOn() && view.type !== "home") view = { type: "home", value: null };   // Quiet mode shows Home only
   // Drop selections that no longer exist
   const ids = new Set(pagemarks.map((b) => b.id));
   for (const id of [...selected]) if (!ids.has(id)) selected.delete(id);
@@ -3219,7 +3228,7 @@ closeOnOutsideClick($("#dlg-tidy"));
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "136";
+const APP_VERSION = "138";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {
