@@ -11,8 +11,8 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, getDocFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=143";
-import { ALLOWED_SITES, setExtraAllowed } from "./allowed-sites.js?v=143";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=144";
+import { ALLOWED_SITES, setExtraAllowed } from "./allowed-sites.js?v=144";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -606,7 +606,7 @@ function saveHomePins(list, wideMap) {
   return setDoc(metaRef(), data, { merge: true });
 }
 // Wide: a pinned folder's card spans the whole width of Home, in its own row at the top or bottom,
-// with its links in columns. Saved with your account, next to your pins.
+// one Pagemark per row so long names don't wrap. Saved with your account, next to your pins.
 const homeWideOf = (path) => homeWide.find((w) => w.p === path) || null;
 function saveHomeWide(path, at) {   // at: "top" | "bottom" | null (not wide)
   homeWide = homeWide.filter((w) => w.p !== path);
@@ -1713,9 +1713,8 @@ function layoutHome(box, cards) {
   const n = homeColumnCount(box);
   homeCols = n;
   const cols = Array.from({ length: n }, () => el("div", { class: "home-col" }));
-  // Wide cards get their own full-width rows above or below the columns; their links flow into columns
+  // Wide cards get their own full-width rows above or below the columns, one Pagemark per row
   const top = cards.filter((c) => c._wide === "top"), bottom = cards.filter((c) => c._wide === "bottom");
-  for (const c of [...top, ...bottom]) c.style.setProperty("--wide-cols", String(n));
   cards = cards.filter((c) => !c._wide);
   box.replaceChildren(
     top.length ? el("div", { class: "home-wide" }, ...top) : "",
@@ -3276,7 +3275,7 @@ closeOnOutsideClick($("#dlg-tidy"));
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "143";
+const APP_VERSION = "144";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {
