@@ -11,8 +11,8 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, getDocFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=124";
-import { ALLOWED_SITES, setExtraAllowed } from "./allowed-sites.js?v=124";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=125";
+import { ALLOWED_SITES, setExtraAllowed } from "./allowed-sites.js?v=125";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -562,7 +562,7 @@ function render() {
   $("#count-unfiled").closest("li").hidden = unfiled === 0 && view.type !== "unfiled";
   const suggested = count((b) => !b.folder && b.suggestedFolder);
   $("#btn-review").textContent = `Review suggestions (${suggested})`;
-  $("#btn-review").hidden = suggested === 0;
+  $("#btn-review").hidden = suggested === 0 || reviewOpen();
   $("#btn-review").classList.toggle("active", view.type === "review");
   const lrN = lrLeft().length;
   $("#btn-libreview").hidden = !reviewOpen();
@@ -2344,10 +2344,15 @@ function startReview() {
     () => { libReview = null; });
 }
 function reviewOpen() { return !!libReview && libReview.status === "ready"; }
-function lrAll() { return libReview ? [...(libReview.folders || []), ...(libReview.moves || [])] : []; }
+// Unfiled Pagemarks with a suggested folder join the review as its last section ("u" + id)
+function lrUnfiled() {
+  return pagemarks.filter((b) => !b.folder && b.suggestedFolder)
+    .map((b) => ({ k: "u" + b.id, id: b.id, title: b.title || hostOf(b.url), from: "", to: b.suggestedFolder, unfiled: true }));
+}
+function lrAll() { return libReview ? [...(libReview.folders || []), ...(libReview.moves || []), ...lrUnfiled()] : []; }
 function lrDecided(k) { return (libReview && libReview.decided && libReview.decided[k]) || ""; }
 function lrLeft() { return lrAll().filter((x) => !lrDecided(x.k)); }
-function lrAccepted() { return lrAll().filter((x) => lrDecided(x.k) === "accepted").length; }
+function lrAccepted() { return Object.values((libReview && libReview.decided) || {}).filter((v) => v === "accepted").length; }
 
 function openLibReview() {
   if (view.type !== "libreview") libReviewReturn = view;
@@ -2385,11 +2390,20 @@ async function lrAccept(item) {
     const b = pagemarks.find((x) => x.id === item.id);
     if (!b) { await setDoc(reviewRef(), { decided: { [item.k]: "skipped" } }, { merge: true }); return false; }
     await lrRemember([b.id], item.k, "accepted");
-    await updateDoc(doc(pmCol(), b.id), { folder: item.to, folderMovedAt: serverTimestamp(), updatedAt: serverTimestamp() });
+    await updateDoc(doc(pmCol(), b.id), { folder: item.to, suggestedFolder: null, suggestedBy: null, folderMovedAt: serverTimestamp(), updatedAt: serverTimestamp() });
   }
   return true;
 }
-const lrSkip = (items) => setDoc(reviewRef(), { decided: Object.fromEntries(items.map((x) => [x.k, "skipped"])) }, { merge: true });
+async function lrSkip(items) {
+  await setDoc(reviewRef(), { decided: Object.fromEntries(items.map((x) => [x.k, "skipped"])) }, { merge: true });
+  // A skipped Unfiled suggestion is cleared, so the Pagemark simply stays Unfiled
+  const unf = items.filter((x) => x.unfiled && pagemarks.some((b) => b.id === x.id));
+  for (let i = 0; i < unf.length; i += 400) {
+    const batch = writeBatch(db);
+    for (const x of unf.slice(i, i + 400)) batch.update(doc(pmCol(), x.id), { suggestedFolder: null, suggestedBy: null });
+    await batch.commit();
+  }
+}
 
 async function lrAcceptMany(items) {
   // Folder changes first, so moves land in the folders as they'll be
@@ -2466,8 +2480,7 @@ function renderLibReview() {
   const left = lrLeft();
   const accepted = lrAccepted();
   const filed = libReview.filed || 0;
-  const unfiledNote = filed && pagemarks.some((b) => !b.folder && b.suggestedFolder)
-    ? ` It also suggested folders for ${plural(filed, "Unfiled Pagemark")}; you'll find those under Review suggestions.` : "";
+  const unfiledNote = "";
   $("#libreview-intro").textContent = lrAll().length
     ? "The Librarian looked over your whole library. The strongest suggestions come first, each with its reason. Accept what helps and skip the rest. Nothing changes until you accept it." + unfiledNote
     : "The Librarian looked over your whole library and found nothing that clearly needs changing." + unfiledNote;
@@ -2487,7 +2500,7 @@ function renderLibReview() {
         lrButtons([x], "Accept", lrFolderText(x)))))));
   }
   const byDest = new Map();
-  for (const m of left.filter((x) => !x.type)) {
+  for (const m of left.filter((x) => !x.type && !x.unfiled)) {
     if (!byDest.has(m.to)) byDest.set(m.to, []);
     byDest.get(m.to).push(m);
   }
@@ -2507,6 +2520,25 @@ function renderLibReview() {
           lrMoveNote(m),
           m.why ? el("span", { class: "lr-why", text: m.why }) : null),
         lrButtons([m], "Accept", `move ${m.title} to ${m.to}`))))));
+  }
+  // Last: a folder for each Unfiled Pagemark, grouped by folder
+  const unf = left.filter((x) => x.unfiled);
+  if (unf.length) {
+    groups.push(el("h3", { class: "lr-section", text: `File your Unfiled Pagemarks (${unf.length})` }));
+    const byFolder = new Map();
+    for (const m of unf) { if (!byFolder.has(m.to)) byFolder.set(m.to, []); byFolder.get(m.to).push(m); }
+    for (const [dest, list] of [...byFolder.entries()].sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]))) {
+      const parts = dest.split(" / "); const name = parts.pop();
+      groups.push(el("section", { class: "rv-group" },
+        el("div", { class: "rv-head" }, folderIcon(),
+          el("span", { class: "rv-name" }, parts.length ? el("span", { class: "hg-parent", text: parts.join(" / ") + " / " }) : null, name),
+          el("span", { class: "rv-count", text: String(list.length) }),
+          known.has(dest) ? null : el("span", { class: "rv-new", text: "new folder" }),
+          list.length > 1 ? el("span", { class: "lr-group-actions" }, lrButtons(list, `Accept all ${list.length}`, "file all in " + dest)) : null),
+        el("ul", { class: "rv-list" }, ...list.map((m) => el("li", { class: "lr-row" },
+          el("div", { class: "lr-main" }, el("span", { class: "lr-what", text: m.title })),
+          lrButtons([m], "Accept", `file ${m.title} in ${m.to}`))))));
+    }
   }
   $("#libreview-groups").replaceChildren(...groups);
   $("#libreview-bar").hidden = !left.length;
@@ -2867,7 +2899,7 @@ closeOnOutsideClick($("#dlg-tidy"));
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "124";
+const APP_VERSION = "125";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {

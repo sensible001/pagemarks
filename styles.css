@@ -1142,3 +1142,4 @@ dialog label .row .btn { display: flex; align-items: center; }
 .allowed-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.5rem; padding: 0.3rem 0; border-bottom: 1px solid var(--line); }
 #allowed-add input { max-width: 16rem; }
 #allowed-add { padding: 0; margin: 0.4rem 0 0; max-width: none; }
+.lr-section { font-size: 1.05rem; margin: 1.6rem 0 0.6rem; }
