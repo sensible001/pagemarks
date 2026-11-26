@@ -11,8 +11,8 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, getDocFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=128";
-import { ALLOWED_SITES, setExtraAllowed } from "./allowed-sites.js?v=128";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=129";
+import { ALLOWED_SITES, setExtraAllowed } from "./allowed-sites.js?v=129";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -532,7 +532,7 @@ function renderTree(node, depth) {
     btn.addEventListener("dragstart", (e) => {
       e.dataTransfer.setData("application/x-pm-folder", k.path);
       e.dataTransfer.effectAllowed = "move";
-      document.body.classList.add("dragging");
+      document.body.classList.add("dragging", "dragging-folder");   // the top-level drop spot only shows for folders
     });
     btn.addEventListener("dragend", endDrag);
     makeDropTarget(btn, k.path);
@@ -919,7 +919,7 @@ const nameOf = (path) => path.split(" / ").pop();
 const isInside = (path, folder) => path === folder || path.startsWith(folder + " / ");
 
 function endDrag() {
-  document.body.classList.remove("dragging");
+  document.body.classList.remove("dragging", "dragging-folder");
   document.querySelectorAll(".drop-over").forEach((n) => n.classList.remove("drop-over"));
 }
 
@@ -2960,7 +2960,7 @@ closeOnOutsideClick($("#dlg-tidy"));
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "128";
+const APP_VERSION = "129";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {
