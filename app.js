@@ -11,8 +11,8 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, getDocFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=141";
-import { ALLOWED_SITES, setExtraAllowed } from "./allowed-sites.js?v=141";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=142";
+import { ALLOWED_SITES, setExtraAllowed } from "./allowed-sites.js?v=142";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -712,7 +712,8 @@ function filtered() {
 
   const sort = $("#sort").value;
   list = [...list];
-  if (sort === "az") list.sort((a, b) => (a.title || a.url).localeCompare(b.title || b.url, undefined, { sensitivity: "base" }));
+  // Natural order: numbers in titles count as numbers, so "2. …" comes before "10. …"
+  if (sort === "az") list.sort((a, b) => (a.title || a.url).localeCompare(b.title || b.url, undefined, { sensitivity: "base", numeric: true }));
   else if (sort === "old") list.sort((a, b) => dateOf(a) - dateOf(b));
   else list.sort((a, b) => dateOf(b) - dateOf(a));
   // Pinned Pagemarks stay at the top of their folder (sort still applies within each group)
@@ -1646,7 +1647,7 @@ function renderHome(items) {
   const names = [...groups.keys()].sort((a, b) => rank(a) - rank(b)
     || (a === "" ? 1 : b === "" ? -1 : a.localeCompare(b, undefined, { sensitivity: "base" })));
   const cards = names.map((g) => {
-    const list = groups.get(g).sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || (a.title || a.url).localeCompare(b.title || b.url, undefined, { sensitivity: "base" }));
+    const list = groups.get(g).sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || (a.title || a.url).localeCompare(b.title || b.url, undefined, { sensitivity: "base", numeric: true }));
     const parts = g ? g.split(" / ") : ["Unfiled"];
     const heading = el("h3", { class: "home-group-title", "aria-level": "2", title: g || "Unfiled" }, folderIcon(),
       el("span", { class: "hg-name" },
@@ -2116,7 +2117,7 @@ function renderReview() {
           if (f) setSuggestion(list.map((b) => b.id), f);
         }
       }));
-    const rows = list.sort((a, b) => (a.title || "").localeCompare(b.title || "")).map((b) => {
+    const rows = list.sort((a, b) => (a.title || "").localeCompare(b.title || "", undefined, { sensitivity: "base", numeric: true })).map((b) => {
       const off = reviewOff.has(b.id);
       const box = el("input", { type: "checkbox", class: "rv-check", "aria-label": `File ${b.title || b.url}` });
       box.checked = !off;
@@ -2610,7 +2611,7 @@ $("#btn-export-html").addEventListener("click", () => {
   for (const f of allFolderPaths()) nodeFor(f);           // keeps empty folders too
   for (const b of pagemarks) nodeFor(b.folder).items.push(b);
 
-  const byName = (a, b) => (a.title || a.url).localeCompare(b.title || b.url, undefined, { sensitivity: "base" });
+  const byName = (a, b) => (a.title || a.url).localeCompare(b.title || b.url, undefined, { sensitivity: "base", numeric: true });
   const lines = [];
   const pad = (n) => "    ".repeat(n);
   const secs = (d) => Math.floor(d.getTime() / 1000);
@@ -3233,7 +3234,7 @@ closeOnOutsideClick($("#dlg-tidy"));
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "141";
+const APP_VERSION = "142";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {
