@@ -11,8 +11,8 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, getDocFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=133";
-import { ALLOWED_SITES, setExtraAllowed } from "./allowed-sites.js?v=133";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=134";
+import { ALLOWED_SITES, setExtraAllowed } from "./allowed-sites.js?v=134";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -3116,7 +3116,7 @@ closeOnOutsideClick($("#dlg-tidy"));
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "133";
+const APP_VERSION = "134";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {
