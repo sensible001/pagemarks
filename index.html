@@ -9,16 +9,38 @@
   <meta name="description" content="Pagemarks is a private, invitation-only app for saving and organizing web pages.">
   <meta name="application-name" content="Pagemarks">
   <meta property="og:site_name" content="Pagemarks">
-  <link rel="icon" href="favicon.ico?v=129" sizes="any">
-  <link rel="icon" href="favicon.svg?v=129" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=129">
+  <link rel="icon" href="favicon.ico?v=131" sizes="any">
+  <link rel="icon" href="favicon.svg?v=131" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=131">
   <meta name="apple-mobile-web-app-title" content="Pagemarks">
-  <link rel="manifest" href="manifest.webmanifest?v=129">
+  <link rel="manifest" href="manifest.webmanifest?v=131">
   <meta name="theme-color" content="#3f8069">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Gentium+Plus:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=129">
+  <link rel="stylesheet" href="styles.css?v=131">
+  <script>
+    // Apply your Display choices (text size, Light/Dark) before the page draws, so it doesn't flash.
+    // The account copy (Settings → Display) is the real one; this is the copy kept in this browser.
+    // Text size zooms the page like Ctrl and + does; on a small screen it grows only as far as it fits.
+    // The page then picks its layout from the zoomed width (the mw760/mw700/mw560 classes in styles.css).
+    window.pmApplyDisplay = function (p) {
+      p = p || {};
+      var h = document.documentElement;
+      var want = { large: 1.1, larger: 1.25, largest: 1.5 }[p.size] || 1;
+      var w = window.innerWidth || 1024;
+      var z = Math.max(1, Math.min(want, w / 360));
+      z = Math.round(z * 100) / 100;
+      h.style.zoom = z === 1 ? "" : String(z);
+      if (z === 1) h.style.removeProperty("--z"); else h.style.setProperty("--z", String(z));   // full-window sizes divide by this
+      var ew = w / z;
+      [760, 700, 560].forEach(function (b) { h.classList.toggle("mw" + b, z !== 1 && ew <= b); });
+      var dark = p.theme === "dark" || (p.theme === "auto" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+      if (dark) h.setAttribute("data-theme", "dark"); else h.removeAttribute("data-theme");
+      return z;
+    };
+    try { window.pmApplyDisplay(JSON.parse(localStorage.getItem("pm-prefs") || "{}")); } catch (e) {}
+  </script>
   <script>
     // "Try Pagemarks" demo (www.pagemarks.com/?demo): the same app, but with a stand-in for the
     // database that keeps everything in this browser tab (demo-fb.js). Nothing is saved to Pagemarks.
@@ -26,7 +48,7 @@
       document.documentElement.classList.add("demo");
       var map = document.createElement("script");
       map.type = "importmap";
-      var fb = "./demo-fb.js?v=129", base = "https://www.gstatic.com/firebasejs/13.4.0/";
+      var fb = "./demo-fb.js?v=131", base = "https://www.gstatic.com/firebasejs/13.4.0/";
       var imports = {};
       imports[base + "firebase-app.js"] = fb;
       imports[base + "firebase-auth.js"] = fb;
@@ -46,7 +68,7 @@
   <!-- Sign in -->
   <section id="screen-signin" class="screen center" role="main" hidden>
     <div class="card welcome">
-      <img src="icon.svg?v=129" alt="" class="welcome-icon">
+      <img src="icon.svg?v=131" alt="" class="welcome-icon">
       <h1>Pagemarks</h1>
       <p class="muted">A private, invitation-only app for saving and organizing web pages.</p>
       <button id="btn-signin" class="btn primary large">Sign in with Google</button>
@@ -94,7 +116,7 @@
       <a class="skip-link" href="#view-title">Skip to your Pagemarks</a>
       <div class="topbar-inner">
         <a class="brand" href="#" id="brand-home">
-          <img src="icon.svg?v=129" alt="" width="28" height="28"><span>Pagemarks</span>
+          <img src="icon.svg?v=131" alt="" width="28" height="28"><span>Pagemarks</span>
         </a>
         <div class="topbar-main">
           <div class="search-wrap">
@@ -112,7 +134,7 @@
       <nav class="sidebar" aria-label="Filters">
         <ul class="nav-list">
           <li><button class="nav-item" data-view="home"><span class="label"><span class="home-star" aria-hidden="true">★</span>Home</span> <span class="count" id="count-home">0</span></button></li>
-          <li><button class="nav-item" data-view="all">All Pagemarks <span class="count" id="count-all">0</span></button></li>
+          <li><button class="nav-item" data-view="all"><span id="all-label">All Pagemarks</span> <span class="count" id="count-all">0</span></button></li>
           <li><button class="nav-item" data-view="later">Read later <span class="count" id="count-later">0</span></button></li>
           <li><button class="nav-item" data-view="unfiled">Unfiled <span class="count" id="count-unfiled">0</span></button></li>
         </ul>
@@ -142,6 +164,7 @@
       <main class="main">
         <div class="main-head">
           <h1 id="view-title" tabindex="-1">All Pagemarks</h1>
+          <span id="holiday-line" class="holiday-line" hidden></span>
           <span id="folder-tools" class="folder-tools edit-only" hidden>
             <button type="button" class="btn small" id="folder-pin" title="Show this folder's starred Pagemarks first on Home">Pin on Home</button>
             <button type="button" class="btn small" id="folder-rename">Rename</button>
@@ -171,7 +194,7 @@
           </span>
         </div>
         <div id="guide-welcome" class="ext-card guide-welcome" hidden>
-          <img src="icon.svg?v=129" alt="" width="36" height="36">
+          <img src="icon.svg?v=131" alt="" width="36" height="36">
           <div class="ext-card-text">
             <strong>Welcome to Pagemarks</strong>
             <span class="muted">New here? A short guide shows how to save, find and organize your pages, and what the colored marks mean.</span>
@@ -180,7 +203,7 @@
           <button type="button" id="guide-welcome-no" class="btn">No thanks</button>
         </div>
         <div id="lib-welcome" class="ext-card lib-welcome" hidden>
-          <img src="icon.svg?v=129" alt="" width="36" height="36">
+          <img src="icon.svg?v=131" alt="" width="36" height="36">
           <div class="ext-card-text">
             <strong>The Librarian can help</strong>
             <span class="muted" id="lib-welcome-text"></span>
@@ -189,7 +212,7 @@
           <button type="button" id="lib-welcome-later" class="btn">Not now</button>
         </div>
         <div id="ext-card" class="ext-card" hidden>
-          <img src="favicon.svg?v=129" alt="" width="36" height="36">
+          <img src="favicon.svg?v=131" alt="" width="36" height="36">
           <div class="ext-card-text">
             <strong>Save Pagemarks in one click</strong>
             <span class="muted">Add the Pagemarks button to your browser, then click it on any page you want to keep.</span>
@@ -243,7 +266,7 @@
   <!-- Add / edit dialog -->
   <dialog id="dlg-edit">
     <form id="form-edit" method="dialog">
-      <p class="quick-brand" aria-hidden="true"><img src="icon.svg?v=129" alt="" width="28" height="28"><span>Pagemarks</span></p>
+      <p class="quick-brand" aria-hidden="true"><img src="icon.svg?v=131" alt="" width="28" height="28"><span>Pagemarks</span></p>
       <h2 id="edit-heading">Add Pagemark</h2>
 
       <label>Web address
@@ -546,7 +569,7 @@
             <ul>
               <li>It explains Pagemarks to visitors, with a picture of the sample library, and links to the demo, Our promise and the privacy policy.</li>
               <li>Search engines are told not to list it for now.</li>
-              <li>To launch it: ask Claude to make it the first page visitors see, and to let search engines list it.</li>
+              <li>To launch it: make it the first page visitors see, and let search engines list it.</li>
               <li>A draft <strong>pricing page</strong> is linked from it: <em>www.pagemarks.com/pricing</em>. Individual $30 a year; Family up to 5 people, $60 a year; 10,000 Pagemarks per person; no swap limits. Nothing can be bought yet.</li>
             </ul>
           </div>
@@ -560,7 +583,7 @@
               <li>No sign-in. Visitors start with a sample library and can add, organize and tidy up like a member. The same content checks apply.</li>
               <li>Everything stays in the visitor's own browser tab and is erased when they close it. Visitors never see each other's changes, and nothing is saved to Pagemarks.</li>
               <li>It costs nothing to run.</li>
-              <li>To release it: ask Claude to add the “Try Pagemarks” link to the sign-in screen and a line about it to the privacy policy.</li>
+              <li>To release it: add the “Try Pagemarks” link to the sign-in screen and a line about it to the privacy policy.</li>
             </ul>
           </div>
         </details>
@@ -577,7 +600,7 @@
 
       <section id="ext-section">
         <h3>Browser button</h3>
-        <p class="muted">The Pagemarks button saves the page you're on in one click: click it, or press <strong>Alt+P</strong>, then <em>Save</em>. It works in Chrome, Edge, Brave, Opera and Vivaldi on a computer.</p>
+        <p class="muted">The Pagemarks button saves the page you're on in one click: click it, or press <strong>Alt+P</strong>, then <em>Save</em>. From any page, <strong>Alt+K</strong> takes you to Pagemarks (to your open Pagemarks tab, or a new one). It works in Chrome, Edge, Brave, Opera and Vivaldi on a computer.</p>
         <p id="ext-installed" class="ext-installed" hidden>✓ Installed in this browser</p>
         <p id="ext-get" class="row" hidden><a id="ext-settings-add" class="btn" target="_blank" rel="noopener">Add to browser</a></p>
         <p id="ext-soon" class="muted" hidden>Coming soon to the Chrome Web Store.</p>
@@ -615,6 +638,40 @@
           </ol>
           <p class="muted">Made it once? In the Shortcuts app, press and hold it, then <em>Share → Copy iCloud Link</em>, and send that link to family. They just tap <em>Add Shortcut</em>.</p>
         </details>
+      </section>
+
+      <section id="display-section">
+        <h3>Display</h3>
+        <p class="muted">These follow your account, so they're the same on every computer and phone you sign in on.</p>
+        <fieldset class="seg-group">
+          <legend>Text size</legend>
+          <div class="seg" role="radiogroup">
+            <label><input type="radio" name="pref-size" value="standard"> Standard</label>
+            <label><input type="radio" name="pref-size" value="large"> Large</label>
+            <label><input type="radio" name="pref-size" value="larger"> Larger</label>
+            <label><input type="radio" name="pref-size" value="largest"> Largest</label>
+          </div>
+        </fieldset>
+        <fieldset class="seg-group">
+          <legend>Appearance</legend>
+          <div class="seg" role="radiogroup">
+            <label><input type="radio" name="pref-theme" value="light"> Light</label>
+            <label><input type="radio" name="pref-theme" value="dark"> Dark</label>
+            <label><input type="radio" name="pref-theme" value="auto"> Match my device</label>
+          </div>
+        </fieldset>
+        <fieldset class="seg-group">
+          <legend>Holidays</legend>
+          <p class="muted">A quiet line on Home on holidays where you live<span id="holiday-region"></span>.</p>
+          <label class="check"><input type="checkbox" id="pref-civic"> Civic holidays, like Independence Day and Thanksgiving</label>
+          <label class="check"><input type="checkbox" id="pref-religious"> Religious holidays, like Christmas and Easter</label>
+        </fieldset>
+      </section>
+
+      <section>
+        <h3>Quiet mode</h3>
+        <p class="muted">For sharing your screen: hides the Pagemarks name and logo, the welcome cards and the Librarian, and the browser tab just says “Links”. Everything else works as usual. Press <span class="key">Alt</span> + <span class="key">Q</span> on the Pagemarks page to turn it on or off. It stays on in this browser until you turn it off.</p>
+        <label class="check"><input type="checkbox" id="quiet-toggle"> Quiet mode</label>
       </section>
 
       <section>
@@ -701,6 +758,6 @@
   </dialog>
   </aside>
 
-  <script type="module" src="app.js?v=129"></script>
+  <script type="module" src="app.js?v=131"></script>
 </body>
 </html>

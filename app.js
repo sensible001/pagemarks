@@ -11,8 +11,8 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, getDocFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=129";
-import { ALLOWED_SITES, setExtraAllowed } from "./allowed-sites.js?v=129";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=131";
+import { ALLOWED_SITES, setExtraAllowed } from "./allowed-sites.js?v=131";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -64,6 +64,39 @@ const QUICK = (() => {
 })();
 if (QUICK) document.body.classList.add("quick");
 let quickOpened = false, quickSaved = false, quickFinished = false;
+
+// ---------- Quiet mode (Alt+Q) ----------
+// For screen sharing: hides Pagemarks' branding (name, logo, welcome cards, the Librarian, the update
+// note) and the tab says "Links" with a plain icon. Everything else works. Remembered per browser.
+const QUIET_KEY = "pm-quiet";
+function quietOn() { try { return localStorage.getItem(QUIET_KEY) === "on"; } catch { return false; } }
+const QUIET_ICON = "data:image/svg+xml," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect x="5" y="4" width="22" height="24" rx="4" fill="#8a8578"/><rect x="10" y="10" width="12" height="2.5" rx="1.2" fill="#fff"/><rect x="10" y="15" width="12" height="2.5" rx="1.2" fill="#fff"/><rect x="10" y="20" width="8" height="2.5" rx="1.2" fill="#fff"/></svg>');
+let normalIcons = null;
+function applyQuiet() {
+  const on = quietOn();
+  document.body.classList.toggle("quiet", on);
+  document.title = on ? "Links" : "Pagemarks";
+  const icons = [...document.querySelectorAll('link[rel="icon"]')];
+  if (!normalIcons) normalIcons = icons.map((l) => l.getAttribute("href"));
+  icons.forEach((l, i) => l.setAttribute("href", on ? QUIET_ICON : normalIcons[i]));
+  const lab = document.getElementById("all-label");
+  if (lab) lab.textContent = on ? "All links" : "All Pagemarks";
+  const t = document.getElementById("quiet-toggle");
+  if (t) t.checked = on;
+}
+function setQuiet(on) {
+  try { localStorage.setItem(QUIET_KEY, on ? "on" : "off"); } catch { /* ignore */ }
+  applyQuiet();
+  if (typeof render === "function" && user) render();
+}
+document.addEventListener("keydown", (e) => {
+  if (e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && e.code === "KeyQ") {
+    e.preventDefault();
+    setQuiet(!quietOn());
+  }
+});
+applyQuiet();
+document.getElementById("quiet-toggle")?.addEventListener("change", (e) => setQuiet(e.target.checked));
 
 function showScreen(name) {
   for (const s of ["loading", "signin", "notinvited", "offline", "app", "saved"]) {
@@ -249,6 +282,116 @@ $("#btn-retry-offline").addEventListener("click", () => location.reload());
 $("#btn-signout").addEventListener("click", () => { $("#dlg-settings").close(); doSignOut(); });
 $("#btn-signout-ni").addEventListener("click", doSignOut);
 // The "Try Pagemarks" demo (see demo-fb.js): leaving erases the sandbox
+// ---------- Display: text size, Light/Dark, holidays (Settings → Display) ----------
+// Saved with your account (users/{uid}/meta/prefs), and copied to this browser ("pm-prefs") so the
+// page can apply them before it draws. Text size zooms the whole page, like Ctrl and + in a browser.
+const PREFS_KEY = "pm-prefs";
+let prefs = (() => { try { return JSON.parse(localStorage.getItem(PREFS_KEY) || "{}") || {}; } catch { return {}; } })();
+const darkQuery = matchMedia("(prefers-color-scheme: dark)");
+function applyPrefs() {
+  if (window.pmApplyDisplay) window.pmApplyDisplay(prefs);
+  const theme = prefs.theme || "light";
+  const dark = document.documentElement.getAttribute("data-theme") === "dark";
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", dark ? "#161513" : "#3f8069");
+  for (const r of document.querySelectorAll('input[name="pref-size"]')) r.checked = r.value === (prefs.size || "standard");
+  for (const r of document.querySelectorAll('input[name="pref-theme"]')) r.checked = r.value === theme;
+  const c = document.getElementById("pref-civic"), g = document.getElementById("pref-religious");
+  if (c) c.checked = !!prefs.civic;
+  if (g) g.checked = !!prefs.religious;
+  renderHoliday();
+  if (typeof layoutHome === "function" && user && view && view.type === "home") { try { render(); } catch { /* ignore */ } }
+}
+function storePrefsLocally() { try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)); } catch { /* ignore */ } }
+function setPref(key, value) {
+  prefs = { ...prefs, [key]: value };
+  storePrefsLocally();
+  applyPrefs();
+  if (user) setDoc(doc(db, "users", user.uid, "meta", "prefs"), { [key]: value, updatedAt: serverTimestamp() }, { merge: true }).catch(() => {});
+}
+async function loadPrefs() {
+  try {
+    const snap = await getDoc(doc(db, "users", user.uid, "meta", "prefs"));
+    if (snap.exists()) {
+      const d = snap.data();
+      prefs = { size: d.size, theme: d.theme, civic: !!d.civic, religious: !!d.religious };
+      storePrefsLocally();
+      applyPrefs();
+    }
+  } catch { /* keep this browser's copy */ }
+}
+darkQuery.addEventListener?.("change", () => { if (prefs.theme === "auto") applyPrefs(); });
+let prefsResize = 0;
+window.addEventListener("resize", () => { if (prefs.size && prefs.size !== "standard") { clearTimeout(prefsResize); prefsResize = setTimeout(() => window.pmApplyDisplay?.(prefs), 120); } });
+document.querySelectorAll('input[name="pref-size"]').forEach((r) => r.addEventListener("change", () => setPref("size", r.value)));
+document.querySelectorAll('input[name="pref-theme"]').forEach((r) => r.addEventListener("change", () => setPref("theme", r.value)));
+document.getElementById("pref-civic")?.addEventListener("change", (e) => setPref("civic", e.target.checked));
+document.getElementById("pref-religious")?.addEventListener("change", (e) => setPref("religious", e.target.checked));
+
+// Holidays: worked out in this browser from its region (language setting, then time zone).
+// Nothing about where you are is saved or sent anywhere.
+function holidayRegion() {
+  try {
+    const loc = new Intl.Locale(navigator.language || "en-US");
+    const r = (loc.maximize().region || "").toUpperCase();
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+    if (r === "US" || /^America\/(New_York|Chicago|Denver|Los_Angeles|Phoenix|Anchorage|Detroit|Boise|Indiana|Kentucky|North_Dakota|Juneau|Sitka|Nome|Adak|Menominee|Yakutat|Metlakatla)/.test(tz) || tz === "Pacific/Honolulu") return "US";
+    return r;
+  } catch { return ""; }
+}
+function nthWeekday(y, m, weekday, n) {           // n = 1..4, or -1 for the last one
+  if (n > 0) { const d = new Date(y, m, 1); const off = (weekday - d.getDay() + 7) % 7; return new Date(y, m, 1 + off + 7 * (n - 1)); }
+  const d = new Date(y, m + 1, 0); const off = (d.getDay() - weekday + 7) % 7; return new Date(y, m, d.getDate() - off);
+}
+function easter(y) {                                // Western (Gregorian) Easter Sunday
+  const a = y % 19, b = Math.floor(y / 100), c = y % 100, d = Math.floor(b / 4), e = b % 4;
+  const f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * m + 114) / 31), day = ((h + l - 7 * m + 114) % 31) + 1;
+  return new Date(y, month - 1, day);
+}
+function holidaysFor(y, region) {
+  const list = [];
+  const civic = (date, text) => list.push({ date, text, kind: "civic" });
+  const faith = (date, text) => list.push({ date, text, kind: "religious" });
+  civic(new Date(y, 0, 1), "Happy New Year.");
+  if (region === "US") {
+    civic(nthWeekday(y, 0, 1, 3), "Martin Luther King Jr. Day.");
+    civic(nthWeekday(y, 1, 1, 3), "Presidents' Day.");
+    civic(nthWeekday(y, 4, 1, -1), "Memorial Day. Remembering those who gave their lives in service.");
+    civic(new Date(y, 6, 4), "Happy Independence Day.");
+    civic(nthWeekday(y, 8, 1, 1), "Happy Labor Day.");
+    civic(new Date(y, 10, 11), "Veterans Day. Thank you to all who served.");
+    civic(nthWeekday(y, 10, 4, 4), "Happy Thanksgiving.");
+  }
+  const e = easter(y);
+  faith(new Date(y, e.getMonth(), e.getDate() - 2), "Good Friday.");
+  faith(e, "He is risen. Happy Easter.");
+  faith(new Date(y, 11, 24), "Christmas Eve.");
+  faith(new Date(y, 11, 25), "Merry Christmas.");
+  return list;
+}
+function todaysHoliday(now = new Date()) {
+  if (!prefs.civic && !prefs.religious) return null;
+  const region = holidayRegion();
+  const same = (a) => a.getFullYear() === now.getFullYear() && a.getMonth() === now.getMonth() && a.getDate() === now.getDate();
+  return holidaysFor(now.getFullYear(), region).find((h) => same(h.date) && prefs[h.kind]) || null;
+}
+function renderHoliday() {
+  const line = document.getElementById("holiday-line");
+  const regionNote = document.getElementById("holiday-region");
+  if (regionNote) {
+    const r = holidayRegion();
+    let name = "";
+    try { name = r ? new Intl.DisplayNames(["en"], { type: "region" }).of(r) : ""; } catch { /* ignore */ }
+    regionNote.textContent = name ? ` (${name === "United States" ? "the United States" : name}, from your browser's settings)` : "";
+  }
+  if (!line) return;
+  const h = (typeof view !== "undefined" && view && view.type === "home") ? todaysHoliday() : null;
+  line.textContent = h ? h.text : "";
+  line.hidden = !h;
+}
+applyPrefs();
+
 const DEMO = document.documentElement.classList.contains("demo");
 $("#demo-leave").addEventListener("click", doSignOut);
 if (DEMO) $("#btn-signout").textContent = "Leave the demo";
@@ -315,6 +458,7 @@ onAuthStateChanged(auth, async (u) => {
   document.querySelectorAll(".owner-only").forEach(el => { el.hidden = !isAdmin; });
   checkPreviewCard();
   loadAllowedSites();
+  loadPrefs();
   showScreen("app");
   startPagemarks();
   startLibrarian();
@@ -476,7 +620,7 @@ function viewTitle() {
   if (view.type === "broken") return "Broken links";
   if (view.type === "moved") return "Moved pages";
   if (view.type === "unknown") return "Couldn't check";
-  return "All Pagemarks";
+  return quietOn() ? "All links" : "All Pagemarks";
 }
 
 // Build a nested folder tree with counts that include subfolders.
@@ -610,6 +754,7 @@ function render() {
 
   // List
   $("#view-title").textContent = viewTitle();
+  renderHoliday();
   $("#folder-tools").hidden = view.type !== "folder" || !!$("#search").value.trim();
   if (view.type === "folder") {
     $("#folder-pin").textContent = homePinned(view.value) ? "Unpin from Home" : "Pin on Home";
@@ -2960,7 +3105,7 @@ closeOnOutsideClick($("#dlg-tidy"));
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "129";
+const APP_VERSION = "131";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {
