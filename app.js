@@ -11,7 +11,7 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, getDocFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=120";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=121";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -2043,19 +2043,36 @@ $("#file-import").addEventListener("change", async (e) => {
   if (!file) return;
   const status = $("#import-status");
   status.textContent = "Reading file…";
+  $("#import-details").hidden = true;
   try {
-    const items = parseFavoritesHtml(await file.text());
+    const text = await file.text();
+    if (/^\s*[\[{]/.test(text) || /\.(json|jsonlz4)$/i.test(file.name)) {
+      status.textContent = "That looks like a Firefox backup file, which only Firefox can read. In Firefox, use Export Bookmarks to HTML instead, then choose that file here.";
+      return;
+    }
+    const items = parseFavoritesHtml(text);
+    // What didn't come in, and why: shown on screen once, never saved
+    const notes = { already: [], repeated: [], notWeb: [], refused: [] };
+    const label = (it) => (it.title || it.url || "(untitled)").slice(0, 200);
     const seen = new Set(pagemarks.map((b) => b.normUrl || normalizeUrl(b.url)));
     const toAdd = [];
     const starUrls = new Set();              // from a "★ Home" folder in a Pagemarks export
     let skipped = 0;
+    const addedFromFile = new Set();
     for (const it of items) {
       const u = parseUrl(it.url);
-      if (!u) { skipped++; continue; }
+      if (!u) { skipped++; notes.notWeb.push({ title: label(it), where: (it.url || "").slice(0, 60) }); continue; }
       const n = normalizeUrl(u.href);
       if (it.homeOnly) starUrls.add(n);
-      if (seen.has(n)) { if (!it.homeOnly) skipped++; continue; }
+      if (seen.has(n)) {
+        if (!it.homeOnly) {
+          skipped++;
+          (addedFromFile.has(n) ? notes.repeated : notes.already).push({ title: label(it), where: hostOf(u.href) });
+        }
+        continue;
+      }
       seen.add(n);
+      addedFromFile.add(n);
       toAdd.push({
         url: u.href,
         normUrl: n,
@@ -2072,7 +2089,12 @@ $("#file-import").addEventListener("change", async (e) => {
     for (const d of toAdd) if (starUrls.has(d.normUrl)) d.starred = true;
     // Content rules: quick checks first, then the family-safe lookup once per site
     let refused = 0;
-    let checked = toAdd.filter((d) => quickCheck(d).ok);
+    let checked = toAdd.filter((d) => {
+      const r = quickCheck(d);
+      if (!r.ok) notes.refused.push({ title: d.title, where: hostOf(d.url),
+        why: r.why === "words" ? "a blocked word in its title or address" : "its site is on the blocked list" });
+      return r.ok;
+    });
     refused += toAdd.length - checked.length;
     const hosts = [...new Set(checked.map((d) => hostOf(d.url)))];
     const allowedHost = new Map();
@@ -2085,7 +2107,11 @@ $("#file-import").addEventListener("change", async (e) => {
       }
     };
     await Promise.all(Array.from({ length: 8 }, work));
-    const passed = checked.filter((d) => allowedHost.get(hostOf(d.url)) !== false);
+    const passed = checked.filter((d) => {
+      if (allowedHost.get(hostOf(d.url)) !== false) return true;
+      notes.refused.push({ title: d.title, where: hostOf(d.url), why: "the family-safe check flags its site as adult or harmful" });
+      return false;
+    });
     refused += checked.length - passed.length;
     toAdd.length = 0; toAdd.push(...passed);
     if (refused) countRefusals(refused);
@@ -2096,6 +2122,7 @@ $("#file-import").addEventListener("change", async (e) => {
     const toStar = pagemarks.filter((b) => !b.starred && starUrls.has(b.normUrl || normalizeUrl(b.url)));
     if (!toAdd.length && !toStar.length) {
       status.textContent = `Nothing new to import (${skipped} duplicates or unsupported links skipped` + (refused ? `, ${refused} not allowed under the content rules).` : ").");
+      showImportDetails(notes);
       return;
     }
     for (let i = 0; i < toAdd.length; i += 400) {
@@ -2111,6 +2138,7 @@ $("#file-import").addEventListener("change", async (e) => {
     }
     status.textContent = `Done: ${toAdd.length} imported, ${skipped} skipped` + (refused ? `, ${refused} not allowed under the content rules.` : ".")
       + (overLimit ? ` ${overLimit} more weren't added, because each person can keep up to 10,000 Pagemarks.` : "");
+    showImportDetails(notes);
   } catch (err) {
     console.error(err);
     status.textContent = "Import failed: " + (err.message || err);
@@ -2118,6 +2146,27 @@ $("#file-import").addEventListener("change", async (e) => {
     e.target.value = "";
   }
 });
+
+// After an import: a "Show details" list of what didn't come in and why.
+// Built from the file you chose, shown on this screen only, and never saved.
+function showImportDetails(notes) {
+  const box = $("#import-details");
+  const groups = [
+    ["Already in Pagemarks", notes.already, false],
+    ["In the file more than once (the first copy was imported)", notes.repeated, false],
+    ["Not a web page (such as a browser's own list or a bookmarklet)", notes.notWeb, false],
+    ["Not allowed under the content rules", notes.refused, true]
+  ].filter(([, list]) => list.length);
+  box.hidden = !groups.length;
+  if (!groups.length) return;
+  $("#import-details-list").replaceChildren(...groups.map(([title, list, why]) => el("div", { class: "imp-group" },
+    el("p", { class: "imp-head", text: `${title} (${list.length})` }),
+    el("ul", {}, ...list.map((x) => el("li", {},
+      el("span", { class: "imp-title", text: x.title }),
+      x.where ? el("span", { class: "muted", text: " · " + x.where }) : null,
+      why && x.why ? el("span", { class: "imp-why", text: " — " + x.why }) : null))))));
+  box.open = false;
+}
 
 // Export
 function download(name, text, type) {
@@ -2736,7 +2785,7 @@ closeOnOutsideClick($("#dlg-tidy"));
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "120";
+const APP_VERSION = "121";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {

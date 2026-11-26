@@ -1126,3 +1126,12 @@ body.quick #dup-warning:not([hidden]) + #f-suggest { display: none !important; }
 dialog label .row { align-items: stretch; }
 dialog label .row input { margin-top: 0; }
 dialog label .row .btn { display: flex; align-items: center; }
+
+/* v121: import details */
+.import-details { margin-top: 0.4rem; font-size: 0.92rem; }
+.import-details summary { cursor: pointer; color: var(--accent); }
+.import-details .imp-group { margin: 0.6rem 0; }
+.import-details .imp-head { font-weight: 700; margin: 0 0 0.25rem; }
+.import-details ul { margin: 0; padding-left: 1.4em; max-height: 14rem; overflow-y: auto; }
+.import-details li { margin: 0.15rem 0; overflow-wrap: anywhere; }
+.import-details .imp-why { color: var(--warn-ink); }
