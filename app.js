@@ -11,8 +11,8 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, getDocFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=125";
-import { ALLOWED_SITES, setExtraAllowed } from "./allowed-sites.js?v=125";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=126";
+import { ALLOWED_SITES, setExtraAllowed } from "./allowed-sites.js?v=126";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -2628,12 +2628,14 @@ function renderSideLibrarian(st) {
 // A one-time welcome on Home after the owner gives someone Librarian visits
 const libWelcomeKey = () => "pm-lib-welcome-" + (user?.uid || "");
 
-// "Welcome to Pagemarks": shown once on Home, the first time someone signs in on this browser.
+// "Welcome to Pagemarks": shown once, the first time someone signs in on this browser, on the page
+// they land on: Home, or All Pagemarks for someone new who hasn't starred anything yet.
+const landingView = () => view.type === "home" || view.type === "all";
 // It points to the Getting started guide (/guide/), which is also linked at the top of Settings.
 const guideKey = () => "pm-guide-welcome-" + (user?.uid || "");
 const guideDismissed = () => { try { return !!localStorage.getItem(guideKey()); } catch { return true; } };
 function renderGuideWelcome() {
-  $("#guide-welcome").hidden = !(view.type === "home" && user && !guideDismissed());
+  $("#guide-welcome").hidden = !(landingView() && !$("#search").value.trim() && user && !guideDismissed());
 }
 function dismissGuideWelcome() {
   try { localStorage.setItem(guideKey(), "done"); } catch { /* ignore */ }
@@ -2646,7 +2648,7 @@ $("#guide-welcome-no").addEventListener("click", () => {
 });
 function libWelcomeDismissed() { try { return localStorage.getItem(libWelcomeKey()) === "done"; } catch { return false; } }
 function renderLibWelcome(st) {
-  const onHome = view.type === "home";
+  const onHome = landingView();
   const fresh = librarian && (librarian.left || 0) > 0 && librarian.made === undefined && !(librarian.status && librarian.status !== "idle");
   const show = !!(onHome && fresh && !libWelcomeDismissed());
   $("#lib-welcome").hidden = !show;
@@ -2685,7 +2687,7 @@ function showLibrarianProgress() {
   const when = asked ? (today ? `today at ${at}` : `${fmtDate(asked)} at ${at}`) : "";
   const stage = librarian.status === "working"
     ? "It has started and is working on it now."
-    : "It's in line and will start shortly. It checks for new requests every 15 minutes.";
+    : "It's in line and usually starts within the hour.";
   ask({
     title: "The Librarian is working",
     text: `You asked the Librarian to ${library ? "review your whole library" : "file your Unfiled Pagemarks"}${when ? " " + when : ""}. ${stage}\n\n` +
@@ -2899,7 +2901,7 @@ closeOnOutsideClick($("#dlg-tidy"));
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "125";
+const APP_VERSION = "126";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {

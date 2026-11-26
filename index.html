@@ -9,16 +9,16 @@
   <meta name="description" content="Pagemarks is a private, invitation-only app for saving and organizing web pages.">
   <meta name="application-name" content="Pagemarks">
   <meta property="og:site_name" content="Pagemarks">
-  <link rel="icon" href="favicon.ico?v=125" sizes="any">
-  <link rel="icon" href="favicon.svg?v=125" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=125">
+  <link rel="icon" href="favicon.ico?v=126" sizes="any">
+  <link rel="icon" href="favicon.svg?v=126" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=126">
   <meta name="apple-mobile-web-app-title" content="Pagemarks">
-  <link rel="manifest" href="manifest.webmanifest?v=125">
+  <link rel="manifest" href="manifest.webmanifest?v=126">
   <meta name="theme-color" content="#3f8069">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Gentium+Plus:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=125">
+  <link rel="stylesheet" href="styles.css?v=126">
   <script>
     // "Try Pagemarks" demo (www.pagemarks.com/?demo): the same app, but with a stand-in for the
     // database that keeps everything in this browser tab (demo-fb.js). Nothing is saved to Pagemarks.
@@ -26,7 +26,7 @@
       document.documentElement.classList.add("demo");
       var map = document.createElement("script");
       map.type = "importmap";
-      var fb = "./demo-fb.js?v=125", base = "https://www.gstatic.com/firebasejs/13.4.0/";
+      var fb = "./demo-fb.js?v=126", base = "https://www.gstatic.com/firebasejs/13.4.0/";
       var imports = {};
       imports[base + "firebase-app.js"] = fb;
       imports[base + "firebase-auth.js"] = fb;
@@ -46,7 +46,7 @@
   <!-- Sign in -->
   <section id="screen-signin" class="screen center" role="main" hidden>
     <div class="card welcome">
-      <img src="icon.svg?v=125" alt="" class="welcome-icon">
+      <img src="icon.svg?v=126" alt="" class="welcome-icon">
       <h1>Pagemarks</h1>
       <p class="muted">A private, invitation-only app for saving and organizing web pages.</p>
       <button id="btn-signin" class="btn primary large">Sign in with Google</button>
@@ -94,7 +94,7 @@
       <a class="skip-link" href="#view-title">Skip to your Pagemarks</a>
       <div class="topbar-inner">
         <a class="brand" href="#" id="brand-home">
-          <img src="icon.svg?v=125" alt="" width="28" height="28"><span>Pagemarks</span>
+          <img src="icon.svg?v=126" alt="" width="28" height="28"><span>Pagemarks</span>
         </a>
         <div class="topbar-main">
           <div class="search-wrap">
@@ -170,7 +170,7 @@
           </span>
         </div>
         <div id="guide-welcome" class="ext-card guide-welcome" hidden>
-          <img src="icon.svg?v=125" alt="" width="36" height="36">
+          <img src="icon.svg?v=126" alt="" width="36" height="36">
           <div class="ext-card-text">
             <strong>Welcome to Pagemarks</strong>
             <span class="muted">New here? A short guide shows how to save, find and organize your pages, and what the colored marks mean.</span>
@@ -179,7 +179,7 @@
           <button type="button" id="guide-welcome-no" class="btn">No thanks</button>
         </div>
         <div id="lib-welcome" class="ext-card lib-welcome" hidden>
-          <img src="icon.svg?v=125" alt="" width="36" height="36">
+          <img src="icon.svg?v=126" alt="" width="36" height="36">
           <div class="ext-card-text">
             <strong>The Librarian can help</strong>
             <span class="muted" id="lib-welcome-text"></span>
@@ -188,7 +188,7 @@
           <button type="button" id="lib-welcome-later" class="btn">Not now</button>
         </div>
         <div id="ext-card" class="ext-card" hidden>
-          <img src="favicon.svg?v=125" alt="" width="36" height="36">
+          <img src="favicon.svg?v=126" alt="" width="36" height="36">
           <div class="ext-card-text">
             <strong>Save Pagemarks in one click</strong>
             <span class="muted">Add the Pagemarks button to your browser, then click it on any page you want to keep.</span>
@@ -242,7 +242,7 @@
   <!-- Add / edit dialog -->
   <dialog id="dlg-edit">
     <form id="form-edit" method="dialog">
-      <p class="quick-brand" aria-hidden="true"><img src="icon.svg?v=125" alt="" width="28" height="28"><span>Pagemarks</span></p>
+      <p class="quick-brand" aria-hidden="true"><img src="icon.svg?v=126" alt="" width="28" height="28"><span>Pagemarks</span></p>
       <h2 id="edit-heading">Add Pagemark</h2>
 
       <label>Web address
@@ -629,6 +629,16 @@
       </section>
 
       <section class="owner-only" hidden>
+        <h3>Backups <span class="owner-badge">Only you see this</span></h3>
+        <p class="muted">Every day at about 2 AM Eastern, each person's Pagemarks and folders are copied to a private backup, kept for 14 days. To bring someone's library back:</p>
+        <ol>
+          <li>On GitHub, open the repository, then <em>Actions → Restore Pagemarks → Run workflow</em>.</li>
+          <li>Enter their sign-in email and the backup date (YYYY-MM-DD). Leave <em>add-missing</em> chosen to bring back deleted Pagemarks only, or choose <em>replace</em> to make the library exactly as it was that day.</li>
+          <li>Leave <em>Just report</em> on <em>yes</em> the first time, and read the result. Then run it again with <em>no</em> to do it.</li>
+        </ol>
+      </section>
+
+      <section class="owner-only" hidden>
         <h3>Allowed sites <span class="owner-badge">Only you see this</span></h3>
         <p class="muted">The family-safe list sometimes blocks a good site by mistake (it once blocked a CBD oil maker). Sites here skip only that list; the harmful-site check and the word rules still apply. When someone asks for a review, the site appears under <em>Review requests</em>.</p>
         <h4 class="mini-head">Review requests</h4>
@@ -690,6 +700,6 @@
   </dialog>
   </aside>
 
-  <script type="module" src="app.js?v=125"></script>
+  <script type="module" src="app.js?v=126"></script>
 </body>
 </html>
