@@ -1,0 +1,46 @@
+name: Restore Pagemarks
+
+on:
+  workflow_dispatch:
+    inputs:
+      email:
+        description: "The person's sign-in email"
+        required: true
+      date:
+        description: "Backup date (YYYY-MM-DD)"
+        required: true
+      mode:
+        description: "add-missing brings back deleted Pagemarks only (safe). replace makes the library exactly as it was."
+        type: choice
+        options: [add-missing, replace]
+        default: add-missing
+      dry_run:
+        description: "Just report what would happen?"
+        type: choice
+        options: ["yes", "no"]
+        default: "yes"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backup
+  cancel-in-progress: false
+
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - name: Install
+        run: npm install --no-save --no-audit --no-fund firebase-admin@14
+      - name: Restore
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        # The inputs (including the email) are read from GitHub's event file inside the script,
+        # so they never appear in the run's public log
+        run: node checker/restore.mjs
