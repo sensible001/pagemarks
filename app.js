@@ -11,8 +11,8 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, getDocFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=140";
-import { ALLOWED_SITES, setExtraAllowed } from "./allowed-sites.js?v=140";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=141";
+import { ALLOWED_SITES, setExtraAllowed } from "./allowed-sites.js?v=141";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -1524,7 +1524,7 @@ function homePinButton(g) {
 const EXTENSION_URL = "https://chromewebstore.google.com/detail/pagemarks/nbkhamahlmmlpgddhcjmmmnjnmagkbof";
 // Firefox: the signed add-on is kept on this site (www.pagemarks.com/firefox/), not listed on Mozilla's site.
 // Firefox checks firefox/updates.json for new versions on its own.
-const FIREFOX_URL = "https://www.pagemarks.com/firefox/pagemarks-1.7.xpi";
+const FIREFOX_URL = "https://www.pagemarks.com/firefox/pagemarks-1.8.xpi";
 const extInstalled = () => document.documentElement.hasAttribute("data-pagemarks-extension");
 const isFirefox = () => /Firefox\//.test(navigator.userAgent) && !/Mobile|Android|FxiOS/.test(navigator.userAgent);
 // Desktop Chrome, Edge, Brave, Opera and Vivaldi install from the Chrome Web Store; desktop Firefox from this site
@@ -3233,7 +3233,7 @@ closeOnOutsideClick($("#dlg-tidy"));
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "140";
+const APP_VERSION = "141";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {
