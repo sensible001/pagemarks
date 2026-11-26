@@ -11,8 +11,8 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, getDocFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=126";
-import { ALLOWED_SITES, setExtraAllowed } from "./allowed-sites.js?v=126";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=127";
+import { ALLOWED_SITES, setExtraAllowed } from "./allowed-sites.js?v=127";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -350,8 +350,9 @@ async function toggleHomePin(path) {
     toast("Pinned. Home shows starred Pagemarks, so click ☆ on the ones in this folder you want there.");
 }
 
-// Every folder stays until you delete it: any folder in use is also recorded in the folder list,
-// so it remains (with a count of 0) after its last Pagemark is deleted or moved out.
+// A folder stays when you move its last Pagemark out (you may be reorganizing), but when you DELETE
+// Pagemarks, any folder they leave empty goes too (see dropEmptiedFolders). Folders you create stay
+// until you delete them, and "Remove empty folders" in Organize clears out any that are left.
 let metaLoaded = false, pmLoaded = false, syncing = false, relocating = 0;
 async function syncFolders() {
   // Paused while a folder is being moved/renamed, so the old name isn't re-recorded mid-move
@@ -585,6 +586,9 @@ function render() {
 
   // Folder tree
   const tree = buildTree();
+  const emptyN = emptyFolders().length;
+  $("#folders-remove-empty").hidden = !emptyN;
+  $("#folders-remove-empty").textContent = `Remove empty folders (${emptyN})`;
   const fl = $("#folder-list");
   fl.replaceChildren(...renderTree(tree, 0));
   if (!tree.children.size) fl.append(el("li", { class: "muted", text: "None yet" }));
@@ -1557,8 +1561,61 @@ $("#bulk-later").addEventListener("click", () =>
   bulkWrite((batch, ref) => batch.update(ref, { readLater: true, updatedAt: serverTimestamp() }), (n) => `${n} marked Read later`));
 $("#bulk-delete").addEventListener("click", async () => {
   const n = selected.size;
-  if (!(await ask({ title: `Delete ${plural(n, "Pagemark")}?`, text: "This can't be undone.", ok: "Delete", danger: true }))) return;
+  if (!(await ask({ title: `Delete ${plural(n, "Pagemark")}?`, text: "This can't be undone. Folders they leave empty are removed too.", ok: "Delete", danger: true }))) return;
+  const doomed = pagemarks.filter((b) => selected.has(b.id));
   await bulkWrite((batch, ref) => batch.delete(ref), (n) => `${n} deleted`);
+  await dropEmptiedFolders(doomed);
+});
+
+// After deleting Pagemarks: the folders they were in go too, if nothing is left in them
+// (no Pagemarks, no sub-folders), and so does any parent folder that this leaves empty.
+async function dropEmptiedFolders(deleted) {
+  const gone = new Set(deleted.map((b) => b.id));
+  const used = pagemarks.filter((b) => !gone.has(b.id)).map((b) => b.folder).filter(Boolean);
+  const candidates = new Set();
+  for (const b of deleted) {
+    if (!b.folder) continue;
+    const parts = b.folder.split(" / ");
+    for (let i = parts.length; i >= 1; i--) candidates.add(parts.slice(0, i).join(" / "));
+  }
+  if (!candidates.size) return;
+  const removed = new Set();
+  // Deepest first, so a parent is judged after its sub-folders
+  for (const p of [...candidates].sort((a, b) => b.split(" / ").length - a.split(" / ").length)) {
+    const hasPagemarks = used.some((f) => isInside(f, p));
+    const hasSubfolder = allFolderPaths().some((f) => f !== p && isInside(f, p) && !removed.has(f) && ![...removed].some((r) => isInside(f, r)));
+    if (!hasPagemarks && !hasSubfolder) removed.add(p);
+  }
+  if (!removed.size) return;
+  await removeFolders(removed);
+}
+
+// Remove folders from the folder list (their Pagemarks, if any, are not touched by this)
+async function removeFolders(paths) {
+  const gone = (p) => [...paths].some((r) => isInside(p, r));
+  relocating++;
+  try {
+    await saveExtraFolders(extraFolders.filter((p) => !gone(p)));
+    if (homePins.some(gone)) await saveHomePins(homePins.filter((p) => !gone(p)));
+  } catch (e) { console.error(e); }
+  finally { relocating--; }
+  if (view.type === "folder" && gone(view.value)) setView({ type: "all", value: null });
+}
+
+// Organize → "Remove empty folders": every folder with no Pagemarks in it or in its sub-folders
+function emptyFolders() {
+  const used = pagemarks.map((b) => b.folder).filter(Boolean);
+  return allFolderPaths().filter((p) => !used.some((f) => isInside(f, p)));
+}
+$("#folders-remove-empty").addEventListener("click", async () => {
+  const empty = emptyFolders();
+  if (!empty.length) return;
+  const ok = await ask({
+    title: `Remove ${plural(empty.length, "empty folder")}?`,
+    text: "Folders with no Pagemarks in them, or in their sub-folders, will be removed. No Pagemarks are affected.",
+    ok: "Remove", danger: true
+  });
+  if (ok) await removeFolders(new Set(empty));
 });
 
 // ---------- Folder suggestions ----------
@@ -2016,14 +2073,16 @@ $("#form-edit").addEventListener("submit", async (e) => {
 
 async function deleteOne(b) {
   if (!(await ask({ title: "Delete this Pagemark?", text: `“${b.title || hostOf(b.url)}” will be deleted. This can't be undone.`, ok: "Delete", danger: true }))) return;
-  try { await deleteDoc(doc(pmCol(), b.id)); }
+  try { await deleteDoc(doc(pmCol(), b.id)); await dropEmptiedFolders([b]); }
   catch (e) { console.error(e); toast("Couldn't delete it. Are you online?"); }
 }
 
 $("#btn-delete").addEventListener("click", async () => {
   if (!editingId) return;
   if (!(await ask({ title: "Delete this Pagemark?", text: "This can't be undone.", ok: "Delete", danger: true }))) return;
+  const doomed = pagemarks.find((x) => x.id === editingId);
   await deleteDoc(doc(pmCol(), editingId));
+  if (doomed) dropEmptiedFolders([doomed]);
   dlgEdit.close();
   
 });
@@ -2901,7 +2960,7 @@ closeOnOutsideClick($("#dlg-tidy"));
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "126";
+const APP_VERSION = "127";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {
