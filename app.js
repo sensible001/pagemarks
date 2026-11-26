@@ -11,8 +11,8 @@ import {
   writeBatch, serverTimestamp, Timestamp, getDocsFromServer, getDocFromServer, query, limit, increment
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=138";
-import { ALLOWED_SITES, setExtraAllowed } from "./allowed-sites.js?v=138";
+import { checkPagemark, quickCheck, textAllowed, familyDnsAllows, REFUSAL_MESSAGE } from "./content-rules.js?v=139";
+import { ALLOWED_SITES, setExtraAllowed } from "./allowed-sites.js?v=139";
 
 // ---------- Firebase ----------
 const app = initializeApp(firebaseConfig);
@@ -2200,6 +2200,8 @@ function openEdit(b = null) {
   $("#f-tags").value = b ? (b.tags || []).join(", ") : (view.type === "tag" ? view.value : "");
   $("#f-notes").value = b ? b.notes || "" : "";
   $("#f-later").checked = b ? !!b.readLater : view.type === "later";
+  $("#f-star").checked = b ? !!b.starred : false;
+  $("#f-pin").checked = b ? !!b.pinned : false;
   $("#btn-delete").hidden = !b;
   $("#dup-warning").hidden = true;
   dlgEdit.showModal();
@@ -2311,6 +2313,9 @@ $("#form-edit").addEventListener("submit", async (e) => {
     readLater: $("#f-later").checked,
     updatedAt: serverTimestamp()
   };
+
+  // The save window (from the browser button) also has Add to Home and Pin
+  if (QUICK) { data.starred = $("#f-star").checked; data.pinned = $("#f-pin").checked; }
 
   // Content rules: checked at the moment of saving
   const saveBtn = $("#btn-save");
@@ -3228,7 +3233,7 @@ closeOnOutsideClick($("#dlg-tidy"));
 
 // ---------- Version check ----------
 // Each release bumps APP_VERSION here, version.json, and the ?v= numbers in index.html.
-const APP_VERSION = "138";
+const APP_VERSION = "139";
 $("#app-version").textContent = APP_VERSION;
 async function checkForUpdate() {
   try {

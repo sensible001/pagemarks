@@ -9,16 +9,16 @@
   <meta name="description" content="Pagemarks is a private, invitation-only app for saving and organizing web pages.">
   <meta name="application-name" content="Pagemarks">
   <meta property="og:site_name" content="Pagemarks">
-  <link rel="icon" href="favicon.ico?v=138" sizes="any">
-  <link rel="icon" href="favicon.svg?v=138" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=138">
+  <link rel="icon" href="favicon.ico?v=139" sizes="any">
+  <link rel="icon" href="favicon.svg?v=139" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=139">
   <meta name="apple-mobile-web-app-title" content="Pagemarks">
-  <link rel="manifest" href="manifest.webmanifest?v=138">
+  <link rel="manifest" href="manifest.webmanifest?v=139">
   <meta name="theme-color" content="#3f8069">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Gentium+Plus:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=138">
+  <link rel="stylesheet" href="styles.css?v=139">
   <script>
     // Apply your Display choices (text size, Light/Dark) before the page draws, so it doesn't flash.
     // The account copy (Settings → Display) is the real one; this is the copy kept in this browser.
@@ -48,7 +48,7 @@
       document.documentElement.classList.add("demo");
       var map = document.createElement("script");
       map.type = "importmap";
-      var fb = "./demo-fb.js?v=138", base = "https://www.gstatic.com/firebasejs/13.4.0/";
+      var fb = "./demo-fb.js?v=139", base = "https://www.gstatic.com/firebasejs/13.4.0/";
       var imports = {};
       imports[base + "firebase-app.js"] = fb;
       imports[base + "firebase-auth.js"] = fb;
@@ -68,7 +68,7 @@
   <!-- Sign in -->
   <section id="screen-signin" class="screen center" role="main" hidden>
     <div class="card welcome">
-      <img src="icon.svg?v=138" alt="" class="welcome-icon">
+      <img src="icon.svg?v=139" alt="" class="welcome-icon">
       <h1>Pagemarks</h1>
       <p class="muted">A private, invitation-only app for saving and organizing web pages.</p>
       <button id="btn-signin" class="btn primary large">Sign in with Google</button>
@@ -116,7 +116,7 @@
       <a class="skip-link" href="#view-title">Skip to your Pagemarks</a>
       <div class="topbar-inner">
         <a class="brand" href="#" id="brand-home">
-          <img src="icon.svg?v=138" alt="" width="28" height="28"><span>Pagemarks</span>
+          <img src="icon.svg?v=139" alt="" width="28" height="28"><span>Pagemarks</span>
         </a>
         <div class="topbar-main">
           <div class="search-wrap">
@@ -194,7 +194,7 @@
           </span>
         </div>
         <div id="guide-welcome" class="ext-card guide-welcome" hidden>
-          <img src="icon.svg?v=138" alt="" width="36" height="36">
+          <img src="icon.svg?v=139" alt="" width="36" height="36">
           <div class="ext-card-text">
             <strong>Welcome to Pagemarks</strong>
             <span class="muted">New here? A short guide shows how to save, find and organize your pages, and what the colored marks mean.</span>
@@ -203,7 +203,7 @@
           <button type="button" id="guide-welcome-no" class="btn">No thanks</button>
         </div>
         <div id="lib-welcome" class="ext-card lib-welcome" hidden>
-          <img src="icon.svg?v=138" alt="" width="36" height="36">
+          <img src="icon.svg?v=139" alt="" width="36" height="36">
           <div class="ext-card-text">
             <strong>The Librarian can help</strong>
             <span class="muted" id="lib-welcome-text"></span>
@@ -212,7 +212,7 @@
           <button type="button" id="lib-welcome-later" class="btn">Not now</button>
         </div>
         <div id="ext-card" class="ext-card" hidden>
-          <img src="favicon.svg?v=138" alt="" width="36" height="36">
+          <img src="favicon.svg?v=139" alt="" width="36" height="36">
           <div class="ext-card-text">
             <strong>Save Pagemarks in one click</strong>
             <span class="muted">Add the Pagemarks button to your browser, then click it on any page you want to keep.</span>
@@ -266,7 +266,7 @@
   <!-- Add / edit dialog -->
   <dialog id="dlg-edit">
     <form id="form-edit" method="dialog">
-      <p class="quick-brand" aria-hidden="true"><img src="icon.svg?v=138" alt="" width="28" height="28"><span>Pagemarks</span></p>
+      <p class="quick-brand" aria-hidden="true"><img src="icon.svg?v=139" alt="" width="28" height="28"><span>Pagemarks</span></p>
       <h2 id="edit-heading">Add Pagemark</h2>
 
       <label>Web address
@@ -302,7 +302,11 @@
         <textarea id="f-notes" rows="3"></textarea>
       </label>
 
-      <label class="check"><input id="f-later" type="checkbox"> Read later</label>
+      <div class="check-row">
+        <label class="check quick-only" title="Show it on Home"><input id="f-star" type="checkbox"> Add to Home</label>
+        <label class="check quick-only" title="Keep it at the top of its folder"><input id="f-pin" type="checkbox"> Pin</label>
+        <label class="check"><input id="f-later" type="checkbox"> Read later</label>
+      </div>
 
       <div class="dlg-actions">
         <button type="button" id="btn-delete" class="btn danger" hidden>Delete</button>
@@ -771,6 +775,6 @@
   </dialog>
   </aside>
 
-  <script type="module" src="app.js?v=138"></script>
+  <script type="module" src="app.js?v=139"></script>
 </body>
 </html>

@@ -1320,3 +1320,9 @@ body.quiet .holiday-line { display: none; }
 #dlg-settings .faith-row label.check { margin-top: 0.2rem; }
 .holiday-all-list li { align-items: baseline; }
 #dlg-settings label.check input[type="checkbox"] { accent-color: var(--brand); }
+
+/* v139: the save window's Add to Home · Pin · Read later, side by side */
+.check-row { display: flex; flex-wrap: wrap; gap: 0.35rem 1.6rem; }
+.check-row label.check { margin: 0; }
+body:not(.quick) .check-row .quick-only { display: none; }
+#f-star, #f-pin, #f-later { accent-color: var(--brand); }
